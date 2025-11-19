@@ -22,14 +22,16 @@ class RobotArm {
   baseY: number;
   segments: Segment[];
   time: number;
+  scale: number;
 
-  constructor(x: number, y: number) {
+  constructor(x: number, y: number, scale: number = 1) {
     this.baseX = x;
     this.baseY = y;
+    this.scale = scale;
     this.segments = [
-      { length: 120, angle: -Math.PI / 2 },
-      { length: 100, angle: -Math.PI / 4 },
-      { length: 60, angle: -Math.PI / 2 }
+      { length: 120 * scale, angle: -Math.PI / 2 },
+      { length: 100 * scale, angle: -Math.PI / 4 },
+      { length: 60 * scale, angle: -Math.PI / 2 }
     ];
     this.time = 0;
   }
@@ -55,7 +57,7 @@ class RobotArm {
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
     ctx.strokeStyle = 'hsl(var(--primary))';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 8 * this.scale;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -66,7 +68,7 @@ class RobotArm {
     // Draw base
     ctx.fillStyle = 'hsl(var(--primary))';
     ctx.beginPath();
-    ctx.arc(this.baseX, this.baseY, 12, 0, Math.PI * 2);
+    ctx.arc(this.baseX, this.baseY, 12 * this.scale, 0, Math.PI * 2);
     ctx.fill();
 
     // Draw segments
@@ -83,7 +85,7 @@ class RobotArm {
       // Draw joint
       ctx.fillStyle = 'hsl(var(--accent))';
       ctx.beginPath();
-      ctx.arc(endX, endY, 6, 0, Math.PI * 2);
+      ctx.arc(endX, endY, 6 * this.scale, 0, Math.PI * 2);
       ctx.fill();
 
       currentX = endX;
@@ -91,7 +93,7 @@ class RobotArm {
     });
 
     // Draw claw
-    const clawSize = 15;
+    const clawSize = 15 * this.scale;
     ctx.fillStyle = 'hsl(var(--accent))';
     ctx.beginPath();
     ctx.moveTo(currentX, currentY);
@@ -124,12 +126,24 @@ export const HeroCanvas = () => {
       canvas.width = width;
       canvas.height = height;
 
+      // Responsive settings
+      const isMobile = width < 768;
+      const isTablet = width >= 768 && width < 1024;
+      
+      // Particle area (left side, more constrained on mobile)
+      const particleWidthRatio = isMobile ? 0.5 : 0.6;
+      
+      // Robot arm position and scale
+      const robotXRatio = isMobile ? 0.85 : isTablet ? 0.78 : 0.75;
+      const robotYRatio = isMobile ? 0.7 : 0.6;
+      const robotScale = isMobile ? 0.5 : isTablet ? 0.7 : 1;
+
       // Create particles
       particlesRef.current = [];
       const particleCount = Math.floor((width * height) / 15000);
       for (let i = 0; i < particleCount; i++) {
         particlesRef.current.push({
-          x: Math.random() * (width * 0.6),
+          x: Math.random() * (width * particleWidthRatio),
           y: Math.random() * height,
           vx: (Math.random() - 0.5) * 1,
           vy: (Math.random() - 0.5) * 1,
@@ -138,8 +152,12 @@ export const HeroCanvas = () => {
         });
       }
 
-      // Create robot arm
-      robotArmRef.current = new RobotArm(width * 0.75, height * 0.6);
+      // Create robot arm with responsive positioning
+      robotArmRef.current = new RobotArm(
+        width * robotXRatio, 
+        height * robotYRatio,
+        robotScale
+      );
     };
 
     const updateParticle = (p: Particle, width: number, height: number, mouseX: number | null, mouseY: number | null) => {
@@ -158,8 +176,9 @@ export const HeroCanvas = () => {
         }
       }
 
-      // Boundary checks
-      if (p.x < 0 || p.x > width * 0.6) p.vx *= -1;
+      // Boundary checks (responsive)
+      const particleWidthRatio = width < 768 ? 0.5 : 0.6;
+      if (p.x < 0 || p.x > width * particleWidthRatio) p.vx *= -1;
       if (p.y < 0 || p.y > height) p.vy *= -1;
 
       // Damping
