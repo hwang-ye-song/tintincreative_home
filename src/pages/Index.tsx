@@ -5,6 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CurriculumCard } from "@/components/CurriculumCard";
 import { PortfolioCard } from "@/components/PortfolioCard";
 import { FacultyCard } from "@/components/FacultyCard";
+import { HeroCanvas } from "@/components/HeroCanvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Brain, Lightbulb, ArrowRight, Rocket } from "lucide-react";
@@ -29,31 +30,8 @@ const Index = () => {
     <div className="min-h-screen">
       <Navbar />
       
-      {/* Hero Section */}
-      <section id="hero" className="pt-32 pb-20 px-4 bg-gradient-to-br from-background to-primary/5">
-        <div className="container mx-auto text-center">
-          <div className="inline-block mb-6 px-4 py-2 bg-accent/10 rounded-full animate-fade-in">
-            <span className="text-accent font-medium text-sm">차세대 학습</span>
-          </div>
-          <h1 className="font-heading text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
-            AI & 로봇공학 아카데미
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in">
-            실습 중심의 AI와 로봇공학 교육을 통해 청소년들이 내일의 혁신가가 되도록 지원합니다
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
-            <Button size="lg" className="group hover-scale">
-              시작하기
-              <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Link to="/curriculum/basic">
-              <Button size="lg" variant="outline" className="hover-scale">
-                커리큘럼 탐색
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Hero Section with Canvas Animation */}
+      <HeroCanvas />
 
       {/* Learning Roadmap */}
       <section className="py-20 px-4">
