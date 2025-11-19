@@ -3,6 +3,10 @@ import { Link } from "react-router-dom";
 import { Bot, Mail, Phone, MapPin } from "lucide-react";
 
 export const Footer = () => {
+  const handleLinkClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <footer className="bg-secondary text-secondary-foreground">
       <div className="container mx-auto px-4 py-12">
@@ -23,22 +27,22 @@ export const Footer = () => {
             <h3 className="font-heading font-semibold mb-4">빠른 링크</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/" className="hover:text-accent transition-colors">
+                <Link to="/" onClick={handleLinkClick} className="hover:text-accent transition-colors">
                   홈
                 </Link>
               </li>
               <li>
-                <Link to="/portfolio" className="hover:text-accent transition-colors">
+                <Link to="/portfolio" onClick={handleLinkClick} className="hover:text-accent transition-colors">
                   포트폴리오
                 </Link>
               </li>
               <li>
-                <Link to="/faculty" className="hover:text-accent transition-colors">
+                <Link to="/faculty" onClick={handleLinkClick} className="hover:text-accent transition-colors">
                   교수진
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="hover:text-accent transition-colors">
+                <Link to="/login" onClick={handleLinkClick} className="hover:text-accent transition-colors">
                   로그인
                 </Link>
               </li>
@@ -50,17 +54,17 @@ export const Footer = () => {
             <h3 className="font-heading font-semibold mb-4">커리큘럼</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/curriculum/basic" className="hover:text-accent transition-colors">
+                <Link to="/curriculum/basic" onClick={handleLinkClick} className="hover:text-accent transition-colors">
                   기초 트랙
                 </Link>
               </li>
               <li>
-                <Link to="/curriculum/application" className="hover:text-accent transition-colors">
+                <Link to="/curriculum/application" onClick={handleLinkClick} className="hover:text-accent transition-colors">
                   응용 트랙
                 </Link>
               </li>
               <li>
-                <Link to="/curriculum/robot" className="hover:text-accent transition-colors">
+                <Link to="/curriculum/robot" onClick={handleLinkClick} className="hover:text-accent transition-colors">
                   로봇 트랙
                 </Link>
               </li>
