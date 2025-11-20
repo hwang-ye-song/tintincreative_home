@@ -6,6 +6,11 @@
 All colors MUST be HSL.
 */
 
+/* Global Font */
+* {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+}
+
 @layer base {
   :root {
     /* Background & Foreground */
@@ -59,8 +64,8 @@ All colors MUST be HSL.
     --radius: 0.5rem;
 
     /* Typography Scale */
-    --font-heading: 'Space Grotesk', system-ui, sans-serif;
-    --font-body: 'Inter', system-ui, sans-serif;
+    --font-heading: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-body: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     
     /* Font Sizes - Heading Scale */
     --text-h1: 3.5rem;      /* 56px */
@@ -201,5 +206,39 @@ All colors MUST be HSL.
 
   html {
     scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Logo Gradient Style */
+  .logo-gradient {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #00AFFF 0%, #7B61FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  /* CTA Button Gradient Style */
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #00AFFF 0%, #7B61FF 100%);
+    color: white;
+    border-radius: 30px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+
+  .cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 175, 255, 0.3);
   }
 }
