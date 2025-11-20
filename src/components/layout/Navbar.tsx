@@ -52,9 +52,9 @@ export const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 font-heading font-bold text-xl text-primary">
-            <Bot className="h-6 w-6" />
-            <span>AI & 로봇공학 아카데미</span>
+          <Link to="/" className="flex items-center gap-2">
+            <Bot className="h-6 w-6 text-primary" />
+            <span className="logo-gradient">REALIZE</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -77,9 +77,9 @@ export const Navbar = () => {
             >
               포트폴리오
             </button>
-            <Button onClick={() => scrollToSection('contact')} variant="default">
-              상담하기
-            </Button>
+            <button onClick={() => scrollToSection('contact')} className="cta-btn">
+              수강 상담하기
+            </button>
             <Link to="/login">
               <Button variant="outline">로그인</Button>
             </Link>
@@ -116,9 +116,9 @@ export const Navbar = () => {
             >
               포트폴리오
             </button>
-            <Button onClick={() => scrollToSection('contact')} variant="default" className="w-full">
-              상담하기
-            </Button>
+            <button onClick={() => scrollToSection('contact')} className="cta-btn w-full">
+              수강 상담하기
+            </button>
             <Link to="/login">
               <Button variant="outline" className="w-full">로그인</Button>
             </Link>
