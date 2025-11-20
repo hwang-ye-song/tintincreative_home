@@ -12,104 +12,9 @@ interface Particle {
   color: string;
 }
 
-interface Segment {
-  length: number;
-  angle: number;
-}
-
-class RobotArm {
-  baseX: number;
-  baseY: number;
-  segments: Segment[];
-  time: number;
-  scale: number;
-
-  constructor(x: number, y: number, scale: number = 1) {
-    this.baseX = x;
-    this.baseY = y;
-    this.scale = scale;
-    this.segments = [
-      { length: 120 * scale, angle: -Math.PI / 2 },
-      { length: 100 * scale, angle: -Math.PI / 4 },
-      { length: 60 * scale, angle: -Math.PI / 2 }
-    ];
-    this.time = 0;
-  }
-
-  update(mouseX: number | null, mouseY: number | null, width: number) {
-    this.time += 0.02;
-    
-    if (mouseX !== null && mouseY !== null && mouseX > width * 0.5) {
-      // Mouse tracking
-      const dx = mouseX - this.baseX;
-      const dy = mouseY - this.baseY;
-      this.segments[0].angle = Math.atan2(dy, dx) * 0.5 - 1.5;
-      this.segments[1].angle = Math.sin(this.time) * 0.5 + 1;
-      this.segments[2].angle = Math.cos(this.time) * 0.5 + 1;
-    } else {
-      // Idle wave animation
-      this.segments[0].angle = -Math.PI / 2 + Math.sin(this.time * 0.5) * 0.2;
-      this.segments[1].angle = 0.5 + Math.cos(this.time * 0.5) * 0.3;
-      this.segments[2].angle = -Math.PI / 2 + Math.sin(this.time * 0.7) * 0.15;
-    }
-  }
-
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.save();
-    ctx.strokeStyle = 'hsl(var(--primary))';
-    ctx.lineWidth = 8 * this.scale;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    let currentX = this.baseX;
-    let currentY = this.baseY;
-    let currentAngle = 0;
-
-    // Draw base
-    ctx.fillStyle = 'hsl(var(--primary))';
-    ctx.beginPath();
-    ctx.arc(this.baseX, this.baseY, 12 * this.scale, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw segments
-    this.segments.forEach((segment, index) => {
-      currentAngle += segment.angle;
-      const endX = currentX + Math.cos(currentAngle) * segment.length;
-      const endY = currentY + Math.sin(currentAngle) * segment.length;
-
-      ctx.beginPath();
-      ctx.moveTo(currentX, currentY);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-
-      // Draw joint
-      ctx.fillStyle = 'hsl(var(--accent))';
-      ctx.beginPath();
-      ctx.arc(endX, endY, 6 * this.scale, 0, Math.PI * 2);
-      ctx.fill();
-
-      currentX = endX;
-      currentY = endY;
-    });
-
-    // Draw claw
-    const clawSize = 15 * this.scale;
-    ctx.fillStyle = 'hsl(var(--accent))';
-    ctx.beginPath();
-    ctx.moveTo(currentX, currentY);
-    ctx.lineTo(currentX + clawSize, currentY - clawSize);
-    ctx.lineTo(currentX + clawSize, currentY + clawSize);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
-  }
-}
-
 export const HeroCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
-  const robotArmRef = useRef<RobotArm | null>(null);
   const mouseRef = useRef<{ x: number | null; y: number | null }>({ x: null, y: null });
   const animationRef = useRef<number>();
 
@@ -126,24 +31,12 @@ export const HeroCanvas = () => {
       canvas.width = width;
       canvas.height = height;
 
-      // Responsive settings
-      const isMobile = width < 768;
-      const isTablet = width >= 768 && width < 1024;
-      
-      // Particle area (left side, more constrained on mobile)
-      const particleWidthRatio = isMobile ? 0.5 : 0.6;
-      
-      // Robot arm position and scale
-      const robotXRatio = isMobile ? 0.85 : isTablet ? 0.78 : 0.75;
-      const robotYRatio = isMobile ? 0.7 : 0.6;
-      const robotScale = isMobile ? 0.5 : isTablet ? 0.7 : 1;
-
-      // Create particles
+      // Create particles across full screen
       particlesRef.current = [];
-      const particleCount = Math.floor((width * height) / 15000);
+      const particleCount = Math.floor((width * height) / 10000); // Increased density
       for (let i = 0; i < particleCount; i++) {
         particlesRef.current.push({
-          x: Math.random() * (width * particleWidthRatio),
+          x: Math.random() * width,
           y: Math.random() * height,
           vx: (Math.random() - 0.5) * 1,
           vy: (Math.random() - 0.5) * 1,
@@ -151,13 +44,6 @@ export const HeroCanvas = () => {
           color: 'hsl(var(--primary))'
         });
       }
-
-      // Create robot arm with responsive positioning
-      robotArmRef.current = new RobotArm(
-        width * robotXRatio, 
-        height * robotYRatio,
-        robotScale
-      );
     };
 
     const updateParticle = (p: Particle, width: number, height: number, mouseX: number | null, mouseY: number | null) => {
@@ -176,9 +62,8 @@ export const HeroCanvas = () => {
         }
       }
 
-      // Boundary checks (responsive)
-      const particleWidthRatio = width < 768 ? 0.5 : 0.6;
-      if (p.x < 0 || p.x > width * particleWidthRatio) p.vx *= -1;
+      // Boundary checks
+      if (p.x < 0 || p.x > width) p.vx *= -1;
       if (p.y < 0 || p.y > height) p.vy *= -1;
 
       // Damping
@@ -212,22 +97,6 @@ export const HeroCanvas = () => {
       });
     };
 
-    const drawRobotConnections = (ctx: CanvasRenderingContext2D, particles: Particle[], robotX: number, robotY: number) => {
-      particles.forEach(p => {
-        const dx = robotX - p.x;
-        const dy = robotY - p.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < 300) {
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(robotX, robotY);
-          ctx.strokeStyle = `hsla(var(--accent), ${(1 - distance / 300) * 0.2})`;
-          ctx.lineWidth = 0.3;
-          ctx.stroke();
-        }
-      });
-    };
 
     const animate = () => {
       const width = canvas.width;
@@ -247,13 +116,6 @@ export const HeroCanvas = () => {
 
       // Draw connections between particles
       drawConnections(ctx, particles);
-
-      // Update and draw robot arm
-      if (robotArmRef.current) {
-        robotArmRef.current.update(mouseX, mouseY, width);
-        drawRobotConnections(ctx, particles, robotArmRef.current.baseX, robotArmRef.current.baseY);
-        robotArmRef.current.draw(ctx);
-      }
 
       animationRef.current = requestAnimationFrame(animate);
     };
