@@ -9,6 +9,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+// Validation schemas
+const loginSchema = z.object({
+  email: z.string().email("유효한 이메일 주소를 입력해주세요").max(255, "이메일은 255자를 초과할 수 없습니다"),
+  password: z.string().min(8, "비밀번호는 최소 8자 이상이어야 합니다").max(128, "비밀번호는 128자를 초과할 수 없습니다"),
+});
+
+const signUpSchema = loginSchema.extend({
+  name: z.string().trim().min(1, "이름을 입력해주세요").max(100, "이름은 100자를 초과할 수 없습니다"),
+});
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,14 +27,33 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string; name?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     setIsLoading(true);
 
     try {
+      // Validate input based on signup or login
+      const schema = isSignUp ? signUpSchema : loginSchema;
+      const data = isSignUp ? { email, password, name } : { email, password };
+      
+      const validationResult = schema.safeParse(data);
+      
+      if (!validationResult.success) {
+        const fieldErrors: { email?: string; password?: string; name?: string } = {};
+        validationResult.error.errors.forEach((err) => {
+          const field = err.path[0] as string;
+          fieldErrors[field as keyof typeof fieldErrors] = err.message;
+        });
+        setErrors(fieldErrors);
+        setIsLoading(false);
+        return;
+      }
+
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email,
@@ -99,7 +129,11 @@ const Login = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required={isSignUp}
+                    maxLength={100}
                   />
+                  {errors.name && (
+                    <p className="text-sm text-destructive">{errors.name}</p>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
@@ -111,7 +145,11 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  maxLength={255}
                 />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">비밀번호</Label>
@@ -122,7 +160,11 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  maxLength={128}
                 />
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
               </div>
 
               <Button 
