@@ -122,24 +122,24 @@ const CurriculumDetail = () => {
               {/* Header */}
               <div className="animate-fade-in">
                 <Badge className="mb-4">{curriculum.level}</Badge>
-                <h1 className="font-heading text-5xl font-bold mb-4">{curriculum.title}</h1>
-                <p className="text-2xl text-primary font-medium mb-4">{curriculum.subtitle}</p>
-                <p className="text-lg text-muted-foreground">{curriculum.description}</p>
+                <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold mb-4">{curriculum.title}</h1>
+                <p className="text-xl md:text-2xl text-primary font-medium mb-4">{curriculum.subtitle}</p>
+                <p className="text-base md:text-lg text-muted-foreground">{curriculum.description}</p>
               </div>
 
               {/* Three-Stage Roadmap */}
               <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                <h2 className="font-heading text-3xl font-bold mb-6">3단계 로드맵</h2>
+                <h2 className="font-heading text-2xl md:text-3xl font-bold mb-6">3단계 로드맵</h2>
                 <div className="space-y-6">
                   {curriculum.tracks.map((track, index) => (
                     <Card key={index} className="border-l-4 border-l-primary hover-scale animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
                       <CardHeader>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <CardTitle className="font-heading text-xl mb-2">
+                            <CardTitle className="font-heading text-lg md:text-xl mb-2">
                               {track.name}
                             </CardTitle>
-                            <CardDescription className="text-base">
+                            <CardDescription className="text-sm md:text-base">
                               {track.description}
                             </CardDescription>
                           </div>
@@ -165,7 +165,7 @@ const CurriculumDetail = () => {
 
               {/* Media Gallery */}
               <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                <h2 className="font-heading text-3xl font-bold mb-6">프로젝트 갤러리</h2>
+                <h2 className="font-heading text-2xl md:text-3xl font-bold mb-6">프로젝트 갤러리</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {curriculum.mediaAssets.map((asset, index) => (
                     <Card key={index} className="overflow-hidden hover-scale animate-fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
