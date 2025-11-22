@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
+  const [user, setUser] = useState<User | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === "/";
@@ -23,6 +26,19 @@ export const Navbar = () => {
       setIsOpen(false);
     }
   };
+
+  useEffect(() => {
+    // Check auth state
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -80,9 +96,15 @@ export const Navbar = () => {
             <button onClick={() => scrollToSection('contact')} className="cta-btn">
               수강 상담하기
             </button>
-            <Link to="/login">
-              <Button variant="outline">로그인</Button>
-            </Link>
+            {user ? (
+              <Link to="/mypage">
+                <Button variant="outline">마이페이지</Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="outline">로그인</Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -119,9 +141,15 @@ export const Navbar = () => {
             <button onClick={() => scrollToSection('contact')} className="cta-btn w-full">
               수강 상담하기
             </button>
-            <Link to="/login">
-              <Button variant="outline" className="w-full">로그인</Button>
-            </Link>
+            {user ? (
+              <Link to="/mypage">
+                <Button variant="outline" className="w-full">마이페이지</Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="outline" className="w-full">로그인</Button>
+              </Link>
+            )}
           </div>
         )}
       </div>
