@@ -38,8 +38,8 @@ export const HeroCanvas = () => {
         particlesRef.current.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: (Math.random() - 0.5) * 0.45,
           size: Math.random() * 2 + 1,
           color: 'hsl(190, 100%, 60%)'
         });
