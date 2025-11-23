@@ -4,16 +4,13 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, Plus, Eye, Code } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { X, Plus } from "lucide-react";
+import { TiptapEditor } from "@/components/TiptapEditor";
 
 const CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -219,51 +216,16 @@ const CreateProject = () => {
             </div>
 
             <div className="bg-card border border-border rounded-lg p-6">
-              <Label className="text-base font-semibold mb-2 block">프로젝트 설명 * (마크다운 지원)</Label>
+              <Label className="text-base font-semibold mb-2 block">프로젝트 설명 *</Label>
               <p className="text-sm text-muted-foreground mb-4">
-                마크다운 문법을 사용하여 텍스트를 꾸밀 수 있습니다. (예: **굵게**, *기울임*, # 제목, - 목록 등)
+                텍스트 편집 도구를 사용하여 내용을 꾸며보세요
               </p>
               
-              <Tabs defaultValue="edit" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="edit" className="gap-2">
-                    <Code className="h-4 w-4" />
-                    편집
-                  </TabsTrigger>
-                  <TabsTrigger value="preview" className="gap-2">
-                    <Eye className="h-4 w-4" />
-                    미리보기
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="edit" className="mt-4">
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    required
-                    rows={15}
-                    placeholder="프로젝트에 대해 자세히 설명해주세요&#10;&#10;마크다운 사용 예시:&#10;# 큰 제목&#10;## 중간 제목&#10;**굵은 글씨**&#10;*기울임 글씨*&#10;- 목록 항목&#10;[링크](https://example.com)"
-                    className="font-mono"
-                  />
-                </TabsContent>
-                
-                <TabsContent value="preview" className="mt-4">
-                  <div className="min-h-[400px] p-4 border border-border rounded-md bg-background/50">
-                    {description ? (
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {description}
-                        </ReactMarkdown>
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground text-center py-8">
-                        설명을 입력하면 여기에 미리보기가 표시됩니다
-                      </p>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
+              <TiptapEditor
+                content={description}
+                onChange={setDescription}
+                placeholder="프로젝트에 대해 자세히 설명해주세요"
+              />
             </div>
 
             <div className="flex justify-end gap-3">

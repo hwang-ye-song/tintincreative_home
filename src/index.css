@@ -374,4 +374,33 @@ All colors MUST be HSL.
     font-size: 0.875rem;
     line-height: 1.7142857;
   }
+
+  /* Tiptap Editor Styles */
+  .tiptap-editor {
+    min-height: 400px;
+  }
+
+  .tiptap-editor .ProseMirror {
+    outline: none;
+  }
+
+  .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+    color: hsl(var(--muted-foreground));
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .tiptap-editor .ProseMirror > * + * {
+    margin-top: 0.75em;
+  }
+
+  .tiptap-editor .ProseMirror img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    display: block;
+    margin: 1em 0;
+  }
 }
