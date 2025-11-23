@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Heart, Edit2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import {
@@ -33,6 +33,11 @@ interface Comment {
   };
 }
 
+interface Like {
+  id: string;
+  user_id: string;
+}
+
 const ProjectDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,6 +48,10 @@ const ProjectDetailPage = () => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [likes, setLikes] = useState<Like[]>([]);
+  const [isLiked, setIsLiked] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -72,8 +81,9 @@ const ProjectDetailPage = () => {
   useEffect(() => {
     if (project) {
       fetchComments();
+      fetchLikes();
     }
-  }, [project]);
+  }, [project, currentUserId]);
 
   const fetchComments = async () => {
     if (!project) return;
@@ -89,6 +99,60 @@ const ProjectDetailPage = () => {
 
     if (!error && data) {
       setComments(data as Comment[]);
+    }
+  };
+
+  const fetchLikes = async () => {
+    if (!project) return;
+
+    const { data, error } = await supabase
+      .from('project_likes')
+      .select('id, user_id')
+      .eq('project_id', project.id);
+
+    if (!error && data) {
+      setLikes(data);
+      setIsLiked(data.some(like => like.user_id === currentUserId));
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!currentUserId || !project) {
+      toast({
+        title: "로그인 필요",
+        description: "좋아요를 누르려면 로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (isLiked) {
+        const { error } = await supabase
+          .from('project_likes')
+          .delete()
+          .eq('project_id', project.id)
+          .eq('user_id', currentUserId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('project_likes')
+          .insert({
+            project_id: project.id,
+            user_id: currentUserId
+          });
+
+        if (error) throw error;
+      }
+
+      fetchLikes();
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "좋아요 처리에 실패했습니다.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -123,6 +187,58 @@ const ProjectDetailPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editingContent.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_comments')
+        .update({ content: editingContent.trim() })
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "댓글 수정 완료",
+        description: "댓글이 성공적으로 수정되었습니다."
+      });
+
+      setEditingCommentId(null);
+      setEditingContent("");
+      fetchComments();
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "댓글 수정에 실패했습니다.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_comments')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "댓글 삭제 완료",
+        description: "댓글이 성공적으로 삭제되었습니다."
+      });
+
+      fetchComments();
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "댓글 삭제에 실패했습니다.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -237,15 +353,30 @@ const ProjectDetailPage = () => {
 
             {/* Project Info */}
             <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-              <h1 className="font-heading text-3xl font-bold">{project.title}</h1>
+              <div className="flex items-start justify-between gap-4">
+                <h1 className="font-heading text-xl md:text-2xl font-bold">{project.title}</h1>
+                
+                {/* Like Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToggleLike}
+                  className="flex items-center gap-2 min-w-fit"
+                >
+                  <Heart 
+                    className={`h-5 w-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`}
+                  />
+                  <span className="text-sm">{likes.length}</span>
+                </Button>
+              </div>
               
               <div className="flex items-center gap-2">
-                <Avatar>
-                  <AvatarFallback>{project.profiles?.name?.[0] || 'U'}</AvatarFallback>
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">{project.profiles?.name?.[0] || 'U'}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{project.profiles?.name || '익명'}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-medium">{project.profiles?.name || '익명'}</p>
+                  <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(project.created_at), {
                       addSuffix: true,
                       locale: ko
@@ -276,16 +407,16 @@ const ProjectDetailPage = () => {
 
             {/* Project Description */}
             <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="font-medium mb-4">프로젝트 설명</h3>
+              <h3 className="text-sm font-medium mb-4">프로젝트 설명</h3>
               <div 
-                className="prose prose-sm max-w-none dark:prose-invert"
+                className="prose prose-sm max-w-none dark:prose-invert text-sm"
                 dangerouslySetInnerHTML={{ __html: project.description }}
               />
             </div>
 
             {/* Comments Section */}
             <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="font-medium mb-4">댓글 ({comments.length})</h3>
+              <h3 className="text-sm font-medium mb-4">댓글 ({comments.length})</h3>
 
               {/* Comment Form */}
               {currentUserId ? (
@@ -311,26 +442,88 @@ const ProjectDetailPage = () => {
               <div className="space-y-4">
                 {comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
                       <AvatarFallback className="text-xs">
                         {comment.profiles.name[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">
-                          {comment.profiles.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(comment.created_at), {
-                            addSuffix: true,
-                            locale: ko
-                          })}
-                        </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-xs">
+                            {comment.profiles.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(comment.created_at), {
+                              addSuffix: true,
+                              locale: ko
+                            })}
+                          </span>
+                        </div>
+                        
+                        {currentUserId === comment.user_id && (
+                          <div className="flex gap-1">
+                            {editingCommentId === comment.id ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditComment(comment.id)}
+                                  className="h-6 px-2"
+                                >
+                                  <span className="text-xs">저장</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingCommentId(null);
+                                    setEditingContent("");
+                                  }}
+                                  className="h-6 px-2"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingCommentId(comment.id);
+                                    setEditingContent(comment.content);
+                                  }}
+                                  className="h-6 px-2"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  className="h-6 px-2 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {comment.content}
-                      </p>
+                      
+                      {editingCommentId === comment.id ? (
+                        <Textarea
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                          className="text-xs mt-2"
+                          rows={2}
+                        />
+                      ) : (
+                        <p className="text-xs text-foreground break-words">
+                          {comment.content}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
