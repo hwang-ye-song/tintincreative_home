@@ -5,8 +5,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PortfolioCard } from "@/components/PortfolioCard";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles, Search } from "lucide-react";
 
 interface Project {
   id: string;
@@ -20,12 +21,14 @@ interface Project {
   profiles: {
     name: string;
   };
+  commentCount?: number;
 }
 
 const Portfolio = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("전체");
+  const [searchQuery, setSearchQuery] = useState("");
   const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
   const [user, setUser] = useState<any>(null);
 
@@ -35,7 +38,7 @@ const Portfolio = () => {
   }, []);
 
   const fetchProjects = async () => {
-    const { data, error } = await supabase
+    const { data: projectsData, error } = await supabase
       .from('projects')
       .select(`
         *,
@@ -43,14 +46,39 @@ const Portfolio = () => {
       `)
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setProjects(data as Project[]);
+    if (!error && projectsData) {
+      // Fetch comment counts for each project
+      const projectsWithCounts = await Promise.all(
+        projectsData.map(async (project) => {
+          const { count } = await supabase
+            .from('project_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', project.id);
+          
+          return {
+            ...project,
+            commentCount: count || 0
+          };
+        })
+      );
+      
+      setProjects(projectsWithCounts as Project[]);
     }
   };
 
-  const filteredProjects = selectedCategory === "전체"
-    ? projects
-    : projects.filter(project => project.category === selectedCategory);
+  const filteredProjects = projects.filter(project => {
+    const matchesCategory = selectedCategory === "전체" || project.category === selectedCategory;
+    
+    if (!searchQuery) return matchesCategory;
+    
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = 
+      project.title.toLowerCase().includes(query) ||
+      project.description.toLowerCase().includes(query) ||
+      (project.tags && project.tags.some(tag => tag.toLowerCase().includes(query)));
+    
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,6 +118,20 @@ const Portfolio = () => {
       {/* Main Content */}
       <div className="pb-20 px-4">
         <div className="container mx-auto">
+          {/* Search Bar */}
+          <div className="max-w-2xl mx-auto mb-8 animate-fade-in">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="제목, 설명, 태그로 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
           {/* Category Filter */}
           <div className="flex flex-wrap justify-center gap-3 mb-16 animate-fade-in">
             {categories.map((category, index) => (
@@ -105,14 +147,14 @@ const Portfolio = () => {
             ))}
           </div>
 
-          {/* Projects Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Projects List */}
+          <div className="max-w-4xl mx-auto space-y-4">
             {filteredProjects.map((project, index) => (
               <div
                 key={project.id}
                 onClick={() => navigate(`/portfolio/${project.id}`)}
                 className="cursor-pointer animate-fade-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <PortfolioCard
                   title={project.title}
@@ -120,7 +162,8 @@ const Portfolio = () => {
                   description={project.description}
                   category={project.category || "기타"}
                   tags={project.tags || []}
-                  image={project.image_url || "📁"}
+                  commentCount={project.commentCount}
+                  likeCount={0}
                 />
               </div>
             ))}
