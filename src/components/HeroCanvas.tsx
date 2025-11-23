@@ -33,13 +33,13 @@ export const HeroCanvas = () => {
 
       // Create particles across full screen
       particlesRef.current = [];
-      const particleCount = Math.floor((width * height) / 10000); // Increased density
+      const particleCount = Math.floor((width * height) / 14286); // 30% reduced density
       for (let i = 0; i < particleCount; i++) {
         particlesRef.current.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 1,
-          vy: (Math.random() - 0.5) * 1,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: (Math.random() - 0.5) * 1.5,
           size: Math.random() * 2 + 1,
           color: 'hsl(190, 100%, 60%)'
         });
