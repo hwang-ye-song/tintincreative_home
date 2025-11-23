@@ -1,6 +1,8 @@
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Heart, MessageCircle } from "lucide-react";
 
 interface PortfolioCardProps {
   title: string;
@@ -8,43 +10,87 @@ interface PortfolioCardProps {
   description: string;
   category: string;
   tags: string[];
-  image: string;
+  commentCount?: number;
+  likeCount?: number;
 }
 
-export const PortfolioCard = ({ title, student, description, category, tags, image }: PortfolioCardProps) => {
+// Utility to strip HTML and get plain text preview
+const getTextPreview = (html: string, maxLength: number = 150): string => {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  const text = div.textContent || div.innerText || '';
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+};
+
+export const PortfolioCard = ({ 
+  title, 
+  student, 
+  description, 
+  category, 
+  tags, 
+  commentCount = 0,
+  likeCount = 0 
+}: PortfolioCardProps) => {
+  const plainDescription = getTextPreview(description);
+  const initials = student.split(' ').map(n => n[0]).join('').toUpperCase();
+
   return (
-    <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border-border/50 bg-card/50 backdrop-blur-sm">
-      <div className="relative aspect-video bg-gradient-to-br from-primary/10 via-primary/5 to-background flex items-center justify-center text-6xl overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        <span className="relative z-10 transform group-hover:scale-110 transition-transform duration-300">{image}</span>
-        
-        {/* Tags in top-left corner */}
-        {tags && tags.length > 0 && (
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2 z-20">
-            {tags.map((tag, index) => (
-              <Badge 
-                key={index} 
-                variant="secondary" 
-                className="bg-primary/90 text-primary-foreground border-0 rounded-full px-3 py-1 text-xs font-medium shadow-lg"
-              >
-                {tag}
-              </Badge>
-            ))}
+    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm p-4">
+      <div className="flex gap-4">
+        {/* Avatar on the left */}
+        <Avatar className="h-12 w-12 flex-shrink-0">
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+
+        {/* Content in the middle */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2 mb-2">
+            <h3 className="font-heading text-lg font-semibold group-hover:text-primary transition-colors truncate">
+              {title}
+            </h3>
           </div>
-        )}
-      </div>
-      <CardHeader className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
-            {category}
-          </Badge>
+          
+          {/* Tags */}
+          {tags && tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {tags.map((tag, index) => (
+                <Badge 
+                  key={index} 
+                  variant="secondary" 
+                  className="bg-primary/90 text-primary-foreground border-0 rounded-full px-2 py-0.5 text-xs font-medium"
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+            {plainDescription}
+          </p>
+
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span>제작: {student}</span>
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 text-xs">
+              {category}
+            </Badge>
+          </div>
         </div>
-        <CardTitle className="font-heading text-xl group-hover:text-primary transition-colors">{title}</CardTitle>
-        <CardDescription className="text-xs">제작: {student}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-      </CardContent>
+
+        {/* Stats on the right */}
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Heart className="h-4 w-4" />
+            <span className="text-sm">{likeCount}</span>
+          </div>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-sm">{commentCount}</span>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 };

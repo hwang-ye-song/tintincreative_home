@@ -178,17 +178,23 @@ const MyPage = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-4">
                   {projects.map((project) => (
-                    <PortfolioCard
+                    <div
                       key={project.id}
-                      title={project.title}
-                      student={profile?.name || "익명"}
-                      description={project.description}
-                      category={project.category || "기타"}
-                      tags={project.tags || []}
-                      image={project.image_url || "📁"}
-                    />
+                      onClick={() => navigate(`/portfolio/${project.id}`)}
+                      className="cursor-pointer"
+                    >
+                      <PortfolioCard
+                        title={project.title}
+                        student={profile?.name || "익명"}
+                        description={project.description}
+                        category={project.category || "기타"}
+                        tags={project.tags || []}
+                        commentCount={0}
+                        likeCount={0}
+                      />
+                    </div>
                   ))}
                 </div>
               )}

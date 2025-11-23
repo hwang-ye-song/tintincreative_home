@@ -141,7 +141,8 @@ const Index = () => {
                 description="음성으로 제어되는 홈 자동화 시스템"
                 category="AI"
                 tags={[]}
-                image="🏠"
+                commentCount={0}
+                likeCount={0}
               />
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
@@ -151,7 +152,8 @@ const Index = () => {
                 description="컴퓨터 비전을 활용한 미니 자율주행차"
                 category="로봇"
                 tags={[]}
-                image="🚗"
+                commentCount={0}
+                likeCount={0}
               />
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
@@ -161,7 +163,8 @@ const Index = () => {
                 description="사용자 감정을 이해하는 AI 챗봇"
                 category="NLP"
                 tags={[]}
-                image="💬"
+                commentCount={0}
+                likeCount={0}
               />
             </div>
           </div>
