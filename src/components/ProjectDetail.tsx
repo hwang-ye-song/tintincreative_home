@@ -9,8 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 interface Project {
   id: string;
@@ -168,11 +166,10 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
 
             <div>
               <h3 className="font-medium mb-2">프로젝트 설명</h3>
-              <div className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {project.description}
-                </ReactMarkdown>
-              </div>
+              <div 
+                className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
+                dangerouslySetInnerHTML={{ __html: project.description }}
+              />
             </div>
           </div>
 
