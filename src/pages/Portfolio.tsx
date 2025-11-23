@@ -26,7 +26,7 @@ interface Project {
 const Portfolio = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("전체");
-  const [categories, setCategories] = useState<string[]>(["전체"]);
+  const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -47,12 +47,6 @@ const Portfolio = () => {
 
     if (!error && data) {
       setProjects(data as Project[]);
-      
-      // Extract unique categories
-      const uniqueCategories = Array.from(
-        new Set(data.map(p => p.category).filter(Boolean))
-      ) as string[];
-      setCategories(["전체", ...uniqueCategories]);
     }
   };
 
@@ -65,34 +59,29 @@ const Portfolio = () => {
       <Navbar />
       
       {/* Hero Header Section */}
-      <div className="relative pt-32 pb-20 px-4 overflow-hidden">
+      <div className="relative pt-24 pb-8 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(139,92,246,0.1),transparent_50%)]" />
         
         <div className="container mx-auto relative z-10">
-          <div className="text-center max-w-3xl mx-auto space-y-6 animate-fade-in">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Student Showcase</span>
+          <div className="text-center max-w-3xl mx-auto space-y-3 animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-2">
+              <Sparkles className="h-3 w-3 text-primary" />
+              <span className="text-xs font-medium text-primary">Student Showcase</span>
             </div>
-            <h1 className="font-heading text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-br from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent leading-tight">
+            <h1 className="font-heading text-2xl md:text-3xl font-bold bg-gradient-to-br from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent leading-tight">
               학생 프로젝트
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              우리 학생들이 만든 혁신적인 AI & 로봇 프로젝트를 탐색해보세요
-            </p>
           </div>
 
           {/* Add Project Button */}
           {user && (
-            <div className="flex justify-center mt-8 animate-fade-in">
+            <div className="flex justify-center mt-4 animate-fade-in">
               <Button 
                 onClick={() => setIsFormOpen(true)} 
-                size="lg"
+                size="sm"
                 className="hover-scale shadow-lg hover:shadow-xl transition-all"
               >
-                <Plus className="mr-2 h-5 w-5" />
+                <Plus className="mr-2 h-4 w-4" />
                 프로젝트 등록
               </Button>
             </div>
@@ -132,6 +121,7 @@ const Portfolio = () => {
                   student={project.profiles.name}
                   description={project.description}
                   category={project.category || "기타"}
+                  tags={project.tags || []}
                   image={project.image_url || "📁"}
                 />
               </div>

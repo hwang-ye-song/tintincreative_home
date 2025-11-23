@@ -140,6 +140,7 @@ const Index = () => {
                 student="김민준"
                 description="음성으로 제어되는 홈 자동화 시스템"
                 category="AI"
+                tags={[]}
                 image="🏠"
               />
             </div>
@@ -149,6 +150,7 @@ const Index = () => {
                 student="이서연"
                 description="컴퓨터 비전을 활용한 미니 자율주행차"
                 category="로봇"
+                tags={[]}
                 image="🚗"
               />
             </div>
@@ -158,6 +160,7 @@ const Index = () => {
                 student="박지우"
                 description="사용자 감정을 이해하는 AI 챗봇"
                 category="NLP"
+                tags={[]}
                 image="💬"
               />
             </div>
