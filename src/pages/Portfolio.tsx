@@ -1,10 +1,10 @@
 import React from "react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PortfolioCard } from "@/components/PortfolioCard";
 import { Button } from "@/components/ui/button";
-import { ProjectForm } from "@/components/ProjectForm";
 import { ProjectDetail } from "@/components/ProjectDetail";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Sparkles } from "lucide-react";
@@ -24,10 +24,10 @@ interface Project {
 }
 
 const Portfolio = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [user, setUser] = useState<any>(null);
 
@@ -77,7 +77,7 @@ const Portfolio = () => {
           {user && (
             <div className="flex justify-center mt-4 animate-fade-in">
               <Button 
-                onClick={() => setIsFormOpen(true)} 
+                onClick={() => navigate("/portfolio/create")} 
                 size="sm"
                 className="hover-scale shadow-lg hover:shadow-xl transition-all"
               >
@@ -143,13 +143,7 @@ const Portfolio = () => {
 
       <Footer />
 
-      {/* Dialogs */}
-      <ProjectForm
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        onSuccess={fetchProjects}
-      />
-      
+      {/* Project Detail Dialog */}
       <ProjectDetail
         project={selectedProject}
         open={!!selectedProject}
