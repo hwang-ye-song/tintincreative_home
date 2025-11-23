@@ -5,7 +5,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PortfolioCard } from "@/components/PortfolioCard";
 import { Button } from "@/components/ui/button";
-import { ProjectDetail } from "@/components/ProjectDetail";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Sparkles } from "lucide-react";
 
@@ -28,7 +27,6 @@ const Portfolio = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -112,7 +110,7 @@ const Portfolio = () => {
             {filteredProjects.map((project, index) => (
               <div
                 key={project.id}
-                onClick={() => setSelectedProject(project)}
+                onClick={() => navigate(`/portfolio/${project.id}`)}
                 className="cursor-pointer animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
@@ -142,13 +140,6 @@ const Portfolio = () => {
       </div>
 
       <Footer />
-
-      {/* Project Detail Dialog */}
-      <ProjectDetail
-        project={selectedProject}
-        open={!!selectedProject}
-        onOpenChange={(open) => !open && setSelectedProject(null)}
-      />
     </div>
   );
 };

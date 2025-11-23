@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface TiptapEditorProps {
   content: string;
@@ -42,6 +44,8 @@ interface TiptapEditorProps {
 export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입력하세요" }: TiptapEditorProps) => {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const editor = useEditor({
     extensions: [
@@ -68,6 +72,22 @@ export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입�
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4 dark:prose-invert',
       },
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            event.preventDefault();
+            const file = items[i].getAsFile();
+            if (file) {
+              handleImageUpload(file);
+            }
+            return true;
+          }
+        }
+        return false;
+      },
     },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
@@ -78,6 +98,57 @@ export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입�
     return null;
   }
 
+  const handleImageUpload = async (file: File) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "로그인 필요",
+          description: "이미지를 업로드하려면 로그인이 필요합니다.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('project-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('project-images')
+        .getPublicUrl(fileName);
+
+      editor?.chain().focus().setImage({ src: publicUrl }).run();
+
+      toast({
+        title: "이미지 업로드 완료",
+        description: "이미지가 본문에 추가되었습니다."
+      });
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "이미지 업로드에 실패했습니다.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleImageButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+  };
+
   const addLink = () => {
     if (linkUrl) {
       editor.chain().focus().setLink({ href: linkUrl }).run();
@@ -86,12 +157,6 @@ export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입�
     }
   };
 
-  const addImage = () => {
-    const url = window.prompt('이미지 URL을 입력하세요:');
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
-  };
 
   const ToolbarButton = ({ 
     onClick, 
@@ -283,11 +348,18 @@ export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입�
         </ToolbarButton>
         
         <ToolbarButton
-          onClick={addImage}
+          onClick={handleImageButtonClick}
           title="이미지 추가"
         >
           <ImageIcon className="h-4 w-4" />
         </ToolbarButton>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
         
         <ToolbarButton
           onClick={() => {}}
