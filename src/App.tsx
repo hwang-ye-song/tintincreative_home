@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import CurriculumDetail from "./pages/CurriculumDetail";
 import Portfolio from "./pages/Portfolio";
 import CreateProject from "./pages/CreateProject";
+import EditProject from "./pages/EditProject";
+import ProjectDetailPage from "./pages/ProjectDetailPage";
 import Faculty from "./pages/Faculty";
 import Login from "./pages/Login";
 import MyPage from "./pages/MyPage";
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/curriculum/:id" element={<CurriculumDetail />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/portfolio/create" element={<CreateProject />} />
+          <Route path="/portfolio/edit/:id" element={<EditProject />} />
+          <Route path="/portfolio/:id" element={<ProjectDetailPage />} />
           <Route path="/faculty" element={<Faculty />} />
           <Route path="/login" element={<Login />} />
           <Route path="/mypage" element={<MyPage />} />

@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, Plus } from "lucide-react";
+import { X, Plus, ArrowLeft } from "lucide-react";
 import { TiptapEditor } from "@/components/TiptapEditor";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -121,14 +122,31 @@ const CreateProject = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <div className="pt-24 pb-20 px-4">
+      <div className="pt-20 pb-20 px-4">
         <div className="container mx-auto max-w-4xl">
-          <div className="mb-8">
-            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-2">새 프로젝트 작성</h1>
-            <p className="text-muted-foreground">프로젝트의 상세 정보를 입력해주세요</p>
+          <div className="mb-6 flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/portfolio")}
+              className="shrink-0"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="font-heading text-2xl md:text-3xl font-bold">새 프로젝트 작성</h1>
+              <p className="text-sm text-muted-foreground">프로젝트의 상세 정보를 입력해주세요</p>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <Tabs defaultValue="editor" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="editor">편집</TabsTrigger>
+              <TabsTrigger value="preview">미리보기</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="editor">
+              <form onSubmit={handleSubmit} className="space-y-6">
             <div className="bg-card border border-border rounded-lg p-6 space-y-6">
               <div>
                 <Label htmlFor="title" className="text-base font-semibold">프로젝트 제목 *</Label>
@@ -228,20 +246,53 @@ const CreateProject = () => {
               />
             </div>
 
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/portfolio")}
-                disabled={loading}
-              >
-                취소
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "등록 중..." : "프로젝트 등록"}
-              </Button>
-            </div>
-          </form>
+                <div className="flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate("/portfolio")}
+                    disabled={loading}
+                  >
+                    취소
+                  </Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "등록 중..." : "프로젝트 등록"}
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="preview">
+              <div className="space-y-6">
+                <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+                  <h2 className="font-heading text-2xl font-bold">{title || "제목 없음"}</h2>
+                  
+                  {category && (
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                      {category}
+                    </Badge>
+                  )}
+                  
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag, index) => (
+                        <Badge key={index} variant="outline">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-6">
+                  <div 
+                    className="prose prose-sm max-w-none dark:prose-invert"
+                    dangerouslySetInnerHTML={{ __html: description || "<p class='text-muted-foreground'>내용 없음</p>" }}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
