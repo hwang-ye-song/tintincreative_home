@@ -41,7 +41,7 @@ export const HeroCanvas = () => {
           vx: (Math.random() - 0.5) * 0.45,
           vy: (Math.random() - 0.5) * 0.45,
           size: Math.random() * 2 + 1,
-          color: 'hsl(190, 100%, 60%)'
+          color: 'hsl(210, 100%, 50%)'
         });
       }
     };
@@ -93,7 +93,7 @@ export const HeroCanvas = () => {
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(190, 100%, 60%, ${1 - distance / 120})`;
+            ctx.strokeStyle = `hsla(210, 100%, 50%, ${1 - distance / 120})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
