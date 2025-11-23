@@ -22,6 +22,7 @@ interface Project {
     name: string;
   };
   commentCount?: number;
+  likeCount?: number;
 }
 
 const Portfolio = () => {
@@ -47,17 +48,24 @@ const Portfolio = () => {
       .order('created_at', { ascending: false });
 
     if (!error && projectsData) {
-      // Fetch comment counts for each project
+      // Fetch comment and like counts for each project
       const projectsWithCounts = await Promise.all(
         projectsData.map(async (project) => {
-          const { count } = await supabase
-            .from('project_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('project_id', project.id);
+          const [commentResult, likeResult] = await Promise.all([
+            supabase
+              .from('project_comments')
+              .select('*', { count: 'exact', head: true })
+              .eq('project_id', project.id),
+            supabase
+              .from('project_likes')
+              .select('*', { count: 'exact', head: true })
+              .eq('project_id', project.id)
+          ]);
           
           return {
             ...project,
-            commentCount: count || 0
+            commentCount: commentResult.count || 0,
+            likeCount: likeResult.count || 0
           };
         })
       );
@@ -163,7 +171,7 @@ const Portfolio = () => {
                   category={project.category || "기타"}
                   tags={project.tags || []}
                   commentCount={project.commentCount}
-                  likeCount={0}
+                  likeCount={project.likeCount || 0}
                 />
               </div>
             ))}
