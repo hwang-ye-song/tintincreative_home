@@ -15,6 +15,7 @@ interface Project {
   title: string;
   description: string;
   category: string | null;
+  tags: string[] | null;
   image_url: string | null;
   created_at: string;
 }
@@ -185,6 +186,7 @@ const MyPage = () => {
                       student={profile?.name || "익명"}
                       description={project.description}
                       category={project.category || "기타"}
+                      tags={project.tags || []}
                       image={project.image_url || "📁"}
                     />
                   ))}
