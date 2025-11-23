@@ -50,6 +50,18 @@ export const HeroCanvas = () => {
       p.x += p.vx;
       p.y += p.vy;
 
+      // Gentle mouse interaction
+      if (mouseX !== null && mouseY !== null) {
+        const dx = mouseX - p.x;
+        const dy = mouseY - p.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < 150) {
+          const force = (150 - distance) / 150;
+          p.vx -= (dx / distance) * force * 0.2;
+          p.vy -= (dy / distance) * force * 0.2;
+        }
+      }
+
       // Boundary checks with smooth bounce
       if (p.x < 0 || p.x > width) p.vx *= -1;
       if (p.y < 0 || p.y > height) p.vy *= -1;
@@ -57,6 +69,10 @@ export const HeroCanvas = () => {
       // Keep particles within bounds
       p.x = Math.max(0, Math.min(width, p.x));
       p.y = Math.max(0, Math.min(height, p.y));
+
+      // Gentle damping
+      p.vx *= 0.995;
+      p.vy *= 0.995;
     };
 
     const drawParticle = (ctx: CanvasRenderingContext2D, p: Particle) => {
