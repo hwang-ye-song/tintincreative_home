@@ -164,7 +164,7 @@ const Index = () => {
           </div>
           
           <div className="text-center animate-fade-in">
-            <Link to="/portfolio">
+            <Link to="/portfolio" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Button variant="outline" size="lg" className="hover-scale">
                 모든 프로젝트 보기
                 <ArrowRight className="ml-2 h-4 w-4" />
