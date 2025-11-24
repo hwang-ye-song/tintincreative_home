@@ -2,9 +2,10 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Heart, MessageCircle } from "lucide-react";
+import { Heart, MessageCircle, Eye } from "lucide-react";
 
 interface PortfolioCardProps {
+  id: string;
   title: string;
   student: string;
   description: string;
@@ -12,6 +13,7 @@ interface PortfolioCardProps {
   tags: string[];
   commentCount?: number;
   likeCount?: number;
+  viewCount?: number;
 }
 
 // Utility to strip HTML and get plain text preview
@@ -23,13 +25,15 @@ const getTextPreview = (html: string, maxLength: number = 150): string => {
 };
 
 export const PortfolioCard = ({ 
+  id,
   title, 
   student, 
   description, 
   category, 
   tags, 
   commentCount = 0,
-  likeCount = 0 
+  likeCount = 0,
+  viewCount = 0
 }: PortfolioCardProps) => {
   const plainDescription = getTextPreview(description);
   const initials = student.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -80,14 +84,18 @@ export const PortfolioCard = ({
         </div>
 
         {/* Stats on the right */}
-        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <div className="flex items-center gap-1 text-muted-foreground">
-            <Heart className="h-4 w-4" />
-            <span className="text-sm">{likeCount}</span>
+            <Eye className="h-3.5 w-3.5" />
+            <span className="text-xs">{viewCount}</span>
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-sm">{commentCount}</span>
+            <Heart className="h-3.5 w-3.5" />
+            <span className="text-xs">{likeCount}</span>
+          </div>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <MessageCircle className="h-3.5 w-3.5" />
+            <span className="text-xs">{commentCount}</span>
           </div>
         </div>
       </div>

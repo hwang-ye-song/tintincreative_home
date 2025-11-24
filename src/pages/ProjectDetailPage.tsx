@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { ArrowLeft, Pencil, Trash2, Heart, Edit2, X } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Heart, Edit2, X, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import {
@@ -82,8 +82,22 @@ const ProjectDetailPage = () => {
     if (project) {
       fetchComments();
       fetchLikes();
+      incrementViewCount();
     }
   }, [project, currentUserId]);
+
+  const incrementViewCount = async () => {
+    if (!project) return;
+    
+    try {
+      const { error } = await supabase
+        .rpc('increment_project_view_count', { project_id: project.id });
+      
+      if (error) console.error('Failed to increment view count:', error);
+    } catch (error) {
+      console.error('Error incrementing view count:', error);
+    }
+  };
 
   const fetchComments = async () => {
     if (!project) return;
@@ -352,22 +366,28 @@ const ProjectDetailPage = () => {
             )}
 
             {/* Project Info */}
-            <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+            <div className="bg-card border border-border rounded-lg p-4 md:p-6 space-y-4">
               <div className="flex items-start justify-between gap-4">
-                <h1 className="font-heading text-xl md:text-2xl font-bold">{project.title}</h1>
+                <h1 className="font-heading text-lg md:text-xl font-bold">{project.title}</h1>
                 
-                {/* Like Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleToggleLike}
-                  className="flex items-center gap-2 min-w-fit"
-                >
-                  <Heart 
-                    className={`h-5 w-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`}
-                  />
-                  <span className="text-sm">{likes.length}</span>
-                </Button>
+                {/* Like and View Stats */}
+                <div className="flex items-center gap-3 min-w-fit">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Eye className="h-4 w-4" />
+                    <span className="text-xs">{project.view_count || 0}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleToggleLike}
+                    className="flex items-center gap-1 h-8 px-2"
+                  >
+                    <Heart 
+                      className={`h-4 w-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`}
+                    />
+                    <span className="text-xs">{likes.length}</span>
+                  </Button>
+                </div>
               </div>
               
               <div className="flex items-center gap-2">
@@ -406,43 +426,23 @@ const ProjectDetailPage = () => {
             </div>
 
             {/* Project Description */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-sm font-medium mb-4">프로젝트 설명</h3>
+            <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+              <h3 className="text-xs md:text-sm font-medium mb-3">프로젝트 설명</h3>
               <div 
-                className="prose prose-sm max-w-none dark:prose-invert text-sm"
+                className="prose prose-sm max-w-none dark:prose-invert text-xs md:text-sm leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: project.description }}
               />
             </div>
 
             {/* Comments Section */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-sm font-medium mb-4">댓글 ({comments.length})</h3>
-
-              {/* Comment Form */}
-              {currentUserId ? (
-                <form onSubmit={handleSubmitComment} className="mb-6">
-                  <Textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="댓글을 입력하세요..."
-                    rows={3}
-                    className="mb-2"
-                  />
-                  <Button type="submit" disabled={loading || !newComment.trim()}>
-                    {loading ? "작성 중..." : "댓글 작성"}
-                  </Button>
-                </form>
-              ) : (
-                <p className="text-sm text-muted-foreground mb-6">
-                  댓글을 작성하려면 로그인이 필요합니다.
-                </p>
-              )}
+            <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+              <h3 className="text-xs md:text-sm font-medium mb-4">댓글 ({comments.length})</h3>
 
               {/* Comments List */}
-              <div className="space-y-4">
+              <div className="space-y-3 mb-6">
                 {comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
+                    <Avatar className="h-7 w-7 flex-shrink-0">
                       <AvatarFallback className="text-xs">
                         {comment.profiles.name[0]}
                       </AvatarFallback>
@@ -520,7 +520,7 @@ const ProjectDetailPage = () => {
                           rows={2}
                         />
                       ) : (
-                        <p className="text-xs text-foreground break-words">
+                        <p className="text-xs text-foreground break-words leading-relaxed">
                           {comment.content}
                         </p>
                       )}
@@ -529,11 +529,31 @@ const ProjectDetailPage = () => {
                 ))}
 
                 {comments.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
+                  <p className="text-xs text-muted-foreground text-center py-4">
                     아직 댓글이 없습니다. 첫 댓글을 작성해보세요!
                   </p>
                 )}
               </div>
+
+              {/* Comment Form - Moved to bottom */}
+              {currentUserId ? (
+                <form onSubmit={handleSubmitComment} className="border-t pt-4">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="댓글을 입력하세요..."
+                    rows={3}
+                    className="mb-2 text-xs md:text-sm"
+                  />
+                  <Button type="submit" disabled={loading || !newComment.trim()} size="sm">
+                    {loading ? "작성 중..." : "댓글 작성"}
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-xs text-muted-foreground border-t pt-4">
+                  댓글을 작성하려면 로그인이 필요합니다.
+                </p>
+              )}
             </div>
           </div>
         </div>
