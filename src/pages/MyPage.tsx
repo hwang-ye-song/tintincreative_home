@@ -18,6 +18,9 @@ interface Project {
   tags: string[] | null;
   image_url: string | null;
   created_at: string;
+  view_count?: number;
+  commentCount?: number;
+  likeCount?: number;
 }
 
 interface Comment {
@@ -76,14 +79,35 @@ const MyPage = () => {
   };
 
   const fetchMyProjects = async (userId: string) => {
-    const { data, error } = await supabase
+    const { data: projectsData, error } = await supabase
       .from('projects')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setProjects(data);
+    if (!error && projectsData) {
+      const projectsWithCounts = await Promise.all(
+        projectsData.map(async (project) => {
+          const [commentResult, likeResult] = await Promise.all([
+            supabase
+              .from('project_comments')
+              .select('*', { count: 'exact', head: true })
+              .eq('project_id', project.id),
+            supabase
+              .from('project_likes')
+              .select('*', { count: 'exact', head: true })
+              .eq('project_id', project.id)
+          ]);
+          
+          return {
+            ...project,
+            commentCount: commentResult.count || 0,
+            likeCount: likeResult.count || 0
+          };
+        })
+      );
+      
+      setProjects(projectsWithCounts as Project[]);
     }
   };
 
@@ -186,13 +210,15 @@ const MyPage = () => {
                       className="cursor-pointer"
                     >
                       <PortfolioCard
+                        id={project.id}
                         title={project.title}
                         student={profile?.name || "익명"}
                         description={project.description}
                         category={project.category || "기타"}
                         tags={project.tags || []}
-                        commentCount={0}
-                        likeCount={0}
+                        commentCount={project.commentCount || 0}
+                        likeCount={project.likeCount || 0}
+                        viewCount={project.view_count || 0}
                       />
                     </div>
                   ))}

@@ -136,6 +136,7 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div className="animate-fade-in hover-scale">
               <PortfolioCard
+                id="example-1"
                 title="스마트 홈 도우미"
                 student="김민준"
                 description="음성으로 제어되는 홈 자동화 시스템"
@@ -143,10 +144,12 @@ const Index = () => {
                 tags={[]}
                 commentCount={0}
                 likeCount={0}
+                viewCount={0}
               />
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
               <PortfolioCard
+                id="example-2"
                 title="자율 주행 자동차"
                 student="이서연"
                 description="컴퓨터 비전을 활용한 미니 자율주행차"
@@ -154,10 +157,12 @@ const Index = () => {
                 tags={[]}
                 commentCount={0}
                 likeCount={0}
+                viewCount={0}
               />
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
               <PortfolioCard
+                id="example-3"
                 title="감정 분석 챗봇"
                 student="박지우"
                 description="사용자 감정을 이해하는 AI 챗봇"
@@ -165,6 +170,7 @@ const Index = () => {
                 tags={[]}
                 commentCount={0}
                 likeCount={0}
+                viewCount={0}
               />
             </div>
           </div>
