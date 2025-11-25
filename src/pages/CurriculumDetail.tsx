@@ -13,42 +13,17 @@ import { Curriculum } from "@/types";
 import { Helmet } from "react-helmet-async";
 
 const fetchCurriculum = async (id: string): Promise<Curriculum | null> => {
-  const { data, error } = await supabase
-    .from("curriculums")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) {
-    // Fallback to JSON if DB doesn't have the data
-    try {
-      const response = await fetch("/data/curriculums.json");
-      if (response.ok) {
-        const jsonData = await response.json();
-        return jsonData[id] || null;
-      }
-    } catch {
-      // Ignore fallback error
+  try {
+    const response = await fetch("/data/curriculums.json");
+    if (!response.ok) {
+      throw new Error("Failed to load curriculum data");
     }
-    throw error;
+    const jsonData = await response.json();
+    return jsonData[id] || null;
+  } catch (error) {
+    console.error("Error loading curriculum:", error);
+    return null;
   }
-
-  if (!data) return null;
-
-  return {
-    id: data.id,
-    title: data.title,
-    subtitle: data.subtitle,
-    description: data.description,
-    level: data.level,
-    duration: data.duration,
-    students: data.students,
-    price: data.price,
-    tracks: data.tracks as Curriculum["tracks"],
-    mediaAssets: data.media_assets as Curriculum["mediaAssets"],
-    created_at: data.created_at,
-    updated_at: data.updated_at,
-  };
 };
 
 const CurriculumDetail = () => {

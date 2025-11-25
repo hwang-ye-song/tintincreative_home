@@ -31,13 +31,10 @@ const Portfolio = () => {
       .from('projects')
       .select(`
         *,
-        profiles (name)
+        profiles (id, name, email)
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(pageParam * ITEMS_PER_PAGE, (pageParam + 1) * ITEMS_PER_PAGE - 1);
-
-    // Filter out hidden projects (is_hidden might not exist in old data)
-    query = query.or('is_hidden.is.null,is_hidden.eq.false');
 
     if (selectedCategory !== "전체") {
       query = query.eq('category', selectedCategory);
@@ -105,7 +102,7 @@ const Portfolio = () => {
       .from('projects')
       .select(`
         *,
-        profiles (name)
+        profiles (id, name, email)
       `)
       .order('view_count', { ascending: false })
       .limit(3);

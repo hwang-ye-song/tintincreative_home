@@ -252,11 +252,11 @@ const Login = () => {
           throw new Error(errorMessage);
         }
 
-        // 프로필 확인 및 역할 체크
+        // 프로필 확인
         if (data.user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('role, name')
+            .select('name')
             .eq('id', data.user.id)
             .single();
 
@@ -264,14 +264,6 @@ const Login = () => {
             title: "로그인 성공!",
             description: profile?.name ? `${profile.name}님 환영합니다!` : "환영합니다.",
           });
-          
-          // 관리자인 경우 관리자 페이지로 이동할 수 있도록
-          if (profile?.role === 'admin') {
-            toast({
-              title: "관리자 로그인",
-              description: "관리자 페이지에 접근할 수 있습니다.",
-            });
-          }
         }
 
         navigate("/");
