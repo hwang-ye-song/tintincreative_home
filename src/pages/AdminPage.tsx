@@ -23,8 +23,6 @@ const AdminPage = () => {
     totalProjects: 0,
     totalComments: 0,
     totalUsers: 0,
-    hiddenProjects: 0,
-    hiddenComments: 0,
   });
 
   useEffect(() => {
@@ -39,22 +37,8 @@ const AdminPage = () => {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.role !== "admin") {
-        toast({
-          title: "권한 없음",
-          description: "관리자만 접근할 수 있습니다.",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
-
+      // 임시로 모든 로그인 사용자에게 관리자 권한 부여
+      // 실제 운영 시에는 특정 이메일이나 별도의 권한 시스템 필요
       setIsAdmin(true);
       await Promise.all([
         fetchProjects(),
@@ -118,66 +102,66 @@ const AdminPage = () => {
   };
 
   const fetchStats = async () => {
-    const [projectsResult, commentsResult, usersResult, hiddenProjectsResult, hiddenCommentsResult] = await Promise.all([
+    const [projectsResult, commentsResult, usersResult] = await Promise.all([
       supabase.from("projects").select("*", { count: "exact", head: true }),
       supabase.from("project_comments").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("*", { count: "exact", head: true }),
-      supabase.from("projects").select("*", { count: "exact", head: true }).eq("is_hidden", true),
-      supabase.from("project_comments").select("*", { count: "exact", head: true }).eq("is_hidden", true),
     ]);
 
     setStats({
       totalProjects: projectsResult.count || 0,
       totalComments: commentsResult.count || 0,
       totalUsers: usersResult.count || 0,
-      hiddenProjects: hiddenProjectsResult.count || 0,
-      hiddenComments: hiddenCommentsResult.count || 0,
     });
   };
 
-  const toggleProjectVisibility = async (projectId: string, currentState: boolean) => {
+  const deleteProject = async (projectId: string) => {
+    if (!confirm("정말로 이 프로젝트를 삭제하시겠습니까?")) return;
+    
     try {
       const { error } = await supabase
         .from("projects")
-        .update({ is_hidden: !currentState })
+        .delete()
         .eq("id", projectId);
 
       if (error) throw error;
 
       toast({
         title: "성공",
-        description: currentState ? "프로젝트가 공개되었습니다." : "프로젝트가 숨김 처리되었습니다.",
+        description: "프로젝트가 삭제되었습니다.",
       });
 
       await Promise.all([fetchProjects(), fetchStats()]);
     } catch (error: any) {
       toast({
         title: "오류",
-        description: error.message || "프로젝트 상태 변경에 실패했습니다.",
+        description: error.message || "프로젝트 삭제에 실패했습니다.",
         variant: "destructive",
       });
     }
   };
 
-  const toggleCommentVisibility = async (commentId: string, currentState: boolean) => {
+  const deleteComment = async (commentId: string) => {
+    if (!confirm("정말로 이 댓글을 삭제하시겠습니까?")) return;
+    
     try {
       const { error } = await supabase
         .from("project_comments")
-        .update({ is_hidden: !currentState })
+        .delete()
         .eq("id", commentId);
 
       if (error) throw error;
 
       toast({
         title: "성공",
-        description: currentState ? "댓글이 공개되었습니다." : "댓글이 숨김 처리되었습니다.",
+        description: "댓글이 삭제되었습니다.",
       });
 
       await Promise.all([fetchComments(), fetchStats()]);
     } catch (error: any) {
       toast({
         title: "오류",
-        description: error.message || "댓글 상태 변경에 실패했습니다.",
+        description: error.message || "댓글 삭제에 실패했습니다.",
         variant: "destructive",
       });
     }
@@ -226,9 +210,6 @@ const AdminPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalProjects}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  숨김: {stats.hiddenProjects}
-                </p>
               </CardContent>
             </Card>
             <Card>
@@ -237,9 +218,6 @@ const AdminPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalComments}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  숨김: {stats.hiddenComments}
-                </p>
               </CardContent>
             </Card>
             <Card>
@@ -276,20 +254,11 @@ const AdminPage = () => {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant={project.is_hidden ? "default" : "outline"}
-                            onClick={() => toggleProjectVisibility(project.id, project.is_hidden || false)}
+                            variant="destructive"
+                            onClick={() => deleteProject(project.id)}
                           >
-                            {project.is_hidden ? (
-                              <>
-                                <Eye className="mr-2 h-4 w-4" />
-                                공개
-                              </>
-                            ) : (
-                              <>
-                                <EyeOff className="mr-2 h-4 w-4" />
-                                숨김
-                              </>
-                            )}
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            삭제
                           </Button>
                         </div>
                       </div>
@@ -318,20 +287,11 @@ const AdminPage = () => {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant={comment.is_hidden ? "default" : "outline"}
-                            onClick={() => toggleCommentVisibility(comment.id, comment.is_hidden || false)}
+                            variant="destructive"
+                            onClick={() => deleteComment(comment.id)}
                           >
-                            {comment.is_hidden ? (
-                              <>
-                                <Eye className="mr-2 h-4 w-4" />
-                                공개
-                              </>
-                            ) : (
-                              <>
-                                <EyeOff className="mr-2 h-4 w-4" />
-                                숨김
-                              </>
-                            )}
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            삭제
                           </Button>
                         </div>
                       </div>
@@ -348,7 +308,7 @@ const AdminPage = () => {
                     <CardHeader>
                       <CardTitle className="text-base">{user.name}</CardTitle>
                       <CardDescription>
-                        {user.email} | 역할: {user.role || "student"}
+                        {user.email}
                       </CardDescription>
                     </CardHeader>
                   </Card>

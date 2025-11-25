@@ -109,7 +109,7 @@ const ProjectDetailPage = () => {
 
     const { data, error } = await supabase
       .from('project_likes')
-      .select('id, user_id')
+      .select('id, user_id, project_id')
       .eq('project_id', project.id);
 
     if (!error && data) {
