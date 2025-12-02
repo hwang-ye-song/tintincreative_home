@@ -40,19 +40,27 @@ const MyPage = () => {
   // 탭 상태 관리
   const [activeTab, setActiveTab] = useState("projects");
 
-  // 사용자 정보 가져오기
-  const { data: userData } = useQuery({
+  // 사용자 정보 가져오기 - 실제 세션 확인
+  const { data: userData, isLoading: isLoadingUser } = useQuery({
     queryKey: ["currentUser"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/login');
+      // getSession()을 사용하여 실제 세션 확인
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session || !session.user) {
         return null;
       }
-      return user;
+      return session.user;
     },
     staleTime: 5 * 60 * 1000, // 5분간 캐시
+    retry: false,
   });
+
+  // 인증되지 않은 사용자 리다이렉트
+  useEffect(() => {
+    if (!isLoadingUser && !userData) {
+      navigate('/login');
+    }
+  }, [isLoadingUser, userData, navigate]);
 
   // 프로필 정보 가져오기 (React Query)
   const { data: profile, isLoading: isLoadingProfile } = useQuery<Profile>({
@@ -514,7 +522,12 @@ const MyPage = () => {
     staleTime: 30 * 1000, // 30초간 캐시
   });
 
-  const loading = isLoadingProfile || isLoadingProjects || isLoadingComments;
+  const loading = isLoadingUser || isLoadingProfile || isLoadingProjects || isLoadingComments;
+
+  // 인증되지 않은 사용자는 아무것도 렌더링하지 않음
+  if (!isLoadingUser && !userData) {
+    return null;
+  }
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
