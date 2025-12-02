@@ -40,27 +40,44 @@ const MyPage = () => {
   // 탭 상태 관리
   const [activeTab, setActiveTab] = useState("projects");
 
-  // 사용자 정보 가져오기 - 실제 세션 확인
-  const { data: userData, isLoading: isLoadingUser } = useQuery({
-    queryKey: ["currentUser"],
-    queryFn: async () => {
-      // getSession()을 사용하여 실제 세션 확인
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error || !session || !session.user) {
-        return null;
-      }
-      return session.user;
-    },
-    staleTime: 5 * 60 * 1000, // 5분간 캐시
-    retry: false,
-  });
+  // 사용자 정보 - 간단하게 useState와 useEffect 사용
+  const [userData, setUserData] = useState<any | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
 
-  // 인증되지 않은 사용자 리다이렉트
   useEffect(() => {
-    if (!isLoadingUser && !userData) {
-      navigate('/login');
-    }
-  }, [isLoadingUser, userData, navigate]);
+    const checkUser = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session || !session.user) {
+          setUserData(null);
+          navigate('/login');
+          return;
+        }
+        setUserData(session.user);
+      } catch (error) {
+        console.error('User check error:', error);
+        setUserData(null);
+        navigate('/login');
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    checkUser();
+
+    // 인증 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session || !session.user) {
+        setUserData(null);
+        navigate('/login');
+      } else {
+        setUserData(session.user);
+      }
+      setIsLoadingUser(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   // 프로필 정보 가져오기 (React Query)
   const { data: profile, isLoading: isLoadingProfile } = useQuery<Profile>({
