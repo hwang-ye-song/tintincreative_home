@@ -20,23 +20,30 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // React와 React-DOM은 항상 같은 청크에 포함 (의존성 순서 보장)
+          // React와 React-DOM은 반드시 같은 청크에 포함 (createContext 에러 방지)
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+            // React 관련 모든 패키지를 하나의 청크로 묶기
+            if (
+              id.includes('react') || 
+              id.includes('react-dom') || 
+              id.includes('scheduler') ||
+              id.includes('react-router') ||
+              id.includes('@tanstack/react-query') ||
+              id.includes('react-helmet') ||
+              id.includes('react-hook-form') ||
+              id.includes('react-markdown')
+            ) {
               return 'vendor-react';
             }
-            if (id.includes('@tanstack/react-query')) {
-              return 'vendor-react-query';
-            }
+            // Radix UI는 React에 의존하므로 별도 청크
             if (id.includes('@radix-ui')) {
               return 'vendor-radix-ui';
             }
-            if (id.includes('react-router') || id.includes('@remix-run')) {
-              return 'vendor-router';
-            }
+            // 아이콘 라이브러리
             if (id.includes('lucide-react')) {
               return 'vendor-icons';
             }
+            // 나머지 vendor
             return 'vendor';
           }
         },
