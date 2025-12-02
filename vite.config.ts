@@ -16,40 +16,28 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    chunkSizeWarningLimit: 1000, // 청크 크기 경고 한계를 1MB로 설정
-    target: 'esnext', // 최신 ES 기능 사용
-    minify: 'esbuild', // esbuild로 최소화 (더 빠름)
-    sourcemap: false, // 프로덕션에서는 소스맵 비활성화
+    chunkSizeWarningLimit: 1600, // 경고 제한을 조금 더 늘려줍니다.
+    target: 'esnext',
+    minify: 'esbuild',
+    sourcemap: false,
     rollupOptions: {
       output: {
-        // 청크 파일명 포맷
+        // manualChunks 설정을 제거하거나, 아래처럼 단순화하세요.
+        // 복잡한 분리 로직이 오히려 React Context 충돌을 유발할 수 있습니다.
+        manualChunks: undefined, 
+        
+        // 또는 모든 라이브러리를 하나로 묶어 안전하게 처리하려면 아래 주석을 해제하고 사용하세요:
+        /*
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        },
+        */
+        
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
-        // React를 명시적으로 하나의 청크로 묶기 (createContext 에러 방지)
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // React 코어를 반드시 같은 청크에 포함
-            if (
-              id.includes('/react/') || 
-              id.includes('/react-dom/') ||
-              id.includes('/scheduler/')
-            ) {
-              return 'vendor-react';
-            }
-            // React 관련 라이브러리들도 같은 청크에 포함
-            if (
-              id.includes('/react-router') ||
-              id.includes('/@tanstack/react-query') ||
-              id.includes('/react-helmet') ||
-              id.includes('/react-hook-form')
-            ) {
-              return 'vendor-react';
-            }
-          }
-          // 나머지는 Vite가 자동으로 처리
-          return null;
-        },
       },
     },
   },
