@@ -234,19 +234,8 @@ const Portfolio = () => {
         return { projects: [] as Project[], totalCount: 0 };
       }
 
-      // 사용자 정보를 캐시에서 가져오기 (없어도 프로젝트는 표시)
-      // 에러가 발생해도 프로젝트 목록은 표시되도록 안전하게 처리
-      let currentUser: any | null = null;
-      let currentUserRole: string | null = null;
-      
-      try {
-        const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
-        currentUser = cachedUserData?.user ?? null;
-        currentUserRole = cachedUserData?.userRole ?? null;
-      } catch (error) {
-        // 사용자 정보를 가져오지 못해도 계속 진행
-        console.warn("Failed to get user data from cache:", error);
-      }
+      // 사용자 정보는 이미 로드된 user, userRole 변수 사용 (쿼리 외부에서 가져옴)
+      // 이렇게 하면 쿼리 간 의존성을 제거하여 무한 루프 방지
 
       // 클라이언트 사이드 필터링 (검색)
       let filteredProjects = projectsData.filter(matchesSearch);
@@ -323,24 +312,14 @@ const Portfolio = () => {
     data: popularData,
     isLoading: isLoadingPopular,
   } = useQuery<Project[]>({
-    queryKey: ["popularProjects"],
+    queryKey: ["popularProjects", user?.id, userRole],
     queryFn: async () => {
-      // 캐시에서 사용자 정보 가져오기 (없어도 프로젝트는 표시)
-      let currentUser: any | null = null;
-      let currentUserRole: string | null = null;
-      
-      try {
-        const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
-        currentUser = cachedUserData?.user ?? null;
-        currentUserRole = cachedUserData?.userRole ?? null;
-      } catch (error) {
-        // 사용자 정보를 가져오지 못해도 계속 진행
-        console.warn("Failed to get user data from cache for popular projects:", error);
-      }
-      
-      return fetchPopularProjects(currentUser, currentUserRole);
+      return fetchPopularProjects(user, userRole);
     },
     staleTime: 120 * 1000, // 120초 동안 캐시 유지 (인기 프로젝트는 더 오래 캐시)
+    enabled: true, // 항상 활성화
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const popularProjects = popularData ?? [];
