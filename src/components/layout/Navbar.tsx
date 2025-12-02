@@ -100,6 +100,7 @@ export const Navbar = () => {
         if (!session || !session.user) {
           setUser(null);
           setUserRole(null);
+          setIsCheckingAuth(false);
           return;
         }
         
@@ -119,6 +120,8 @@ export const Navbar = () => {
           }
         } catch (error) {
           setUserRole(null);
+        } finally {
+          setIsCheckingAuth(false);
         }
       }
     );
@@ -167,7 +170,7 @@ export const Navbar = () => {
             >
               홈
             </button>
-            {userRole === 'admin' && (
+            {!isCheckingAuth && userRole === 'admin' && (
               <Link to="/admin">
                 <Button variant="ghost" size="sm" className="text-foreground hover:text-primary">
                   관리자 페이지
@@ -221,7 +224,7 @@ export const Navbar = () => {
             >
               홈
             </button>
-            {userRole === 'admin' && (
+            {!isCheckingAuth && userRole === 'admin' && (
               <Link to="/admin" onClick={() => setIsOpen(false)}>
                 <Button variant="ghost" className="w-full text-left justify-start">
                   관리자 페이지
