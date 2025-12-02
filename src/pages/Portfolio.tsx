@@ -79,6 +79,8 @@ const Portfolio = () => {
     },
     staleTime: 5 * 60 * 1000, // 5분간 캐시
     retry: false,
+    refetchOnMount: false, // 마운트 시 리페치 비활성화
+    refetchOnWindowFocus: false, // 윈도우 포커스 시 리페치 비활성화
   });
 
   const user = userData?.user ?? null;
@@ -311,6 +313,7 @@ const Portfolio = () => {
   const {
     data: projectsData,
     isLoading,
+    isError,
   } = useQuery<{ projects: Project[]; totalCount: number }>({
     queryKey: [
       "projects",
@@ -409,6 +412,9 @@ const Portfolio = () => {
       };
     },
     staleTime: 30 * 1000, // 30초 동안 캐시 유지
+    retry: 1, // 실패 시 1번만 재시도
+    refetchOnMount: false, // 마운트 시 리페치 비활성화
+    refetchOnWindowFocus: false, // 윈도우 포커스 시 리페치 비활성화
   });
 
   const projects = projectsData?.projects ?? [];
@@ -580,11 +586,20 @@ const Portfolio = () => {
           </h2>
 
           {/* Projects List */}
-          {isLoading ? (
+          {isLoading && !projectsData ? (
             <div className="max-w-4xl mx-auto space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-24 w-full" />
               ))}
+            </div>
+          ) : isError ? (
+            <div className="text-center py-20 animate-fade-in">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                <Sparkles className="h-10 w-10 text-muted-foreground/50" />
+              </div>
+              <p className="text-lg text-muted-foreground">
+                프로젝트를 불러오는 중 오류가 발생했습니다.
+              </p>
             </div>
           ) : (
             <>
