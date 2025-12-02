@@ -147,25 +147,25 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
           created_at: string
           email: string
           id: string
           name: string
+          avatar_url: string | null
         }
         Insert: {
-          avatar_url?: string | null
           created_at?: string
           email: string
           id: string
           name: string
+          avatar_url?: string | null
         }
         Update: {
-          avatar_url?: string | null
           created_at?: string
           email?: string
           id?: string
           name?: string
+          avatar_url?: string | null
         }
         Relationships: []
       }
@@ -174,6 +174,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_hidden: boolean
           project_id: string
           user_id: string
         }
@@ -181,6 +182,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_hidden?: boolean
           project_id: string
           user_id: string
         }
@@ -188,6 +190,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_hidden?: boolean
           project_id?: string
           user_id?: string
         }
@@ -251,6 +254,7 @@ export type Database = {
           description: string
           id: string
           image_url: string | null
+          is_hidden: boolean
           tags: string[] | null
           title: string
           user_id: string
@@ -262,6 +266,7 @@ export type Database = {
           description: string
           id?: string
           image_url?: string | null
+          is_hidden?: boolean
           tags?: string[] | null
           title: string
           user_id: string
@@ -273,6 +278,7 @@ export type Database = {
           description?: string
           id?: string
           image_url?: string | null
+          is_hidden?: boolean
           tags?: string[] | null
           title?: string
           user_id?: string

@@ -36,6 +36,9 @@ const MyPage = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordUpdateLoading, setPasswordUpdateLoading] = useState(false);
+  
+  // 탭 상태 관리
+  const [activeTab, setActiveTab] = useState("projects");
 
   // 사용자 정보 가져오기
   const { data: userData } = useQuery({
@@ -557,9 +560,9 @@ const MyPage = () => {
                 <div className="flex items-center gap-4 flex-1">
                   <div className="relative">
                     <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                      {profile?.avatar_url || avatarPreview ? (
+                      {profile?.avatar_url ? (
                         <img
-                          src={avatarPreview || profile?.avatar_url || ''}
+                          src={profile.avatar_url}
                           alt={profile?.name || '프로필'}
                           className="w-full h-full object-cover"
                         />
@@ -567,83 +570,32 @@ const MyPage = () => {
                         <User className="h-8 w-8 text-primary" />
                       )}
                     </div>
-                    <label
-                      htmlFor="avatar-upload"
-                      className="absolute bottom-0 right-0 h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
-                      title="프로필 이미지 변경"
-                    >
-                      <Camera className="h-3 w-3" />
-                      <input
-                        id="avatar-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                      />
-                    </label>
                   </div>
                   <div className="flex-1">
-                    {isEditingProfile ? (
-                      <div className="space-y-2">
-                        <Input
-                          value={editedName}
-                          onChange={(e) => setEditedName(e.target.value)}
-                          placeholder="이름을 입력하세요"
-                          className="text-2xl font-bold"
-                          maxLength={100}
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={handleUpdateProfile}
-                            disabled={profileUpdateLoading}
-                          >
-                            <Save className="mr-2 h-4 w-4" />
-                            {profileUpdateLoading ? "저장 중..." : "저장"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setIsEditingProfile(false);
-                              setEditedName(profile?.name || "");
-                            }}
-                          >
-                            <X className="mr-2 h-4 w-4" />
-                            취소
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <CardTitle className="text-2xl md:text-3xl">{profile?.name}</CardTitle>
-                        <CardDescription className="text-sm md:text-base">{profile?.email}</CardDescription>
-                      </>
-                    )}
+                    <CardTitle className="text-2xl md:text-3xl">{profile?.name}</CardTitle>
+                    <CardDescription className="text-sm md:text-base">{profile?.email}</CardDescription>
                   </div>
                 </div>
-                {!isEditingProfile && (
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setIsEditingProfile(true)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      수정
-                    </Button>
-                    <Button onClick={handleLogout} variant="outline" size="sm">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      로그아웃
-                    </Button>
-                  </div>
-                )}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setActiveTab("settings")}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    수정
+                  </Button>
+                  <Button onClick={handleLogout} variant="outline" size="sm">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    로그아웃
+                  </Button>
+                </div>
               </div>
             </CardHeader>
           </Card>
 
           {/* Tabs */}
-          <Tabs defaultValue="projects" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="projects">내 프로젝트 ({projects.length})</TabsTrigger>
               <TabsTrigger value="comments">내 댓글 ({comments.length})</TabsTrigger>
@@ -676,6 +628,7 @@ const MyPage = () => {
                         commentCount={project.commentCount || 0}
                         likeCount={project.likeCount || 0}
                         viewCount={project.view_count || 0}
+                        avatarUrl={profile?.avatar_url || null}
                       />
                     </div>
                   ))}
@@ -813,27 +766,61 @@ const MyPage = () => {
                         </div>
                       </div>
                     </div>
+                    {/* 이름 수정 */}
                     <div className="space-y-2">
                       <Label htmlFor="profile-name">이름</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="profile-name"
-                          value={editedName}
-                          onChange={(e) => setEditedName(e.target.value)}
-                          placeholder="이름을 입력하세요"
-                          maxLength={100}
-                          disabled={!isEditingProfile}
-                        />
-                        {!isEditingProfile && (
+                      {isEditingProfile ? (
+                        <div className="space-y-2">
+                          <Input
+                            id="profile-name"
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                            placeholder="이름을 입력하세요"
+                            maxLength={100}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={handleUpdateProfile}
+                              disabled={profileUpdateLoading}
+                              size="sm"
+                            >
+                              <Save className="mr-2 h-4 w-4" />
+                              {profileUpdateLoading ? "저장 중..." : "저장"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setIsEditingProfile(false);
+                                setEditedName(profile?.name || "");
+                              }}
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              취소
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Input
+                            id="profile-name"
+                            value={profile?.name || ""}
+                            disabled
+                            className="bg-muted"
+                          />
                           <Button
-                            onClick={() => setIsEditingProfile(true)}
                             variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setIsEditingProfile(true);
+                              setEditedName(profile?.name || "");
+                            }}
                           >
                             <Edit2 className="mr-2 h-4 w-4" />
-                            수정
+                            이름 수정
                           </Button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="profile-email">이메일</Label>
@@ -847,27 +834,6 @@ const MyPage = () => {
                         이메일은 변경할 수 없습니다.
                       </p>
                     </div>
-                    {isEditingProfile && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleUpdateProfile}
-                          disabled={profileUpdateLoading}
-                        >
-                          <Save className="mr-2 h-4 w-4" />
-                          {profileUpdateLoading ? "저장 중..." : "저장"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setIsEditingProfile(false);
-                            setEditedName(profile?.name || "");
-                          }}
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          취소
-                        </Button>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
 

@@ -5,6 +5,20 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+// 구글 폼 URL - 환경 변수에서 가져오거나 직접 설정
+// 편집 링크를 제출 링크로 변환 (edit -> viewform)
+const getGoogleFormUrl = () => {
+  const envUrl = import.meta.env.VITE_GOOGLE_FORM_URL;
+  if (envUrl) {
+    // 환경 변수에 URL이 있으면 사용
+    return envUrl.replace('/edit', '/viewform');
+  }
+  // 기본값: 제공된 구글 폼 URL
+  return "https://docs.google.com/forms/d/e/1FAIpQLSeIJyroJdeZfc_5phn0sFBvbXjQoWj9hSjopaVJahLBq5AYhA/viewform?usp=header";
+};
+
+const GOOGLE_FORM_URL = getGoogleFormUrl();
+
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
@@ -25,6 +39,12 @@ export const Navbar = () => {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setIsOpen(false);
     }
+  };
+
+  const handleConsultationClick = () => {
+    // 구글 폼을 새 창에서 열기
+    window.open(GOOGLE_FORM_URL, '_blank', 'noopener,noreferrer');
+    setIsOpen(false);
   };
 
   useEffect(() => {
@@ -93,7 +113,7 @@ export const Navbar = () => {
             >
               포트폴리오
             </button>
-            <button onClick={() => scrollToSection('contact')} className="cta-btn">
+            <button onClick={handleConsultationClick} className="cta-btn">
               수강 상담하기
             </button>
             {user ? (
@@ -138,7 +158,7 @@ export const Navbar = () => {
             >
               포트폴리오
             </button>
-            <button onClick={() => scrollToSection('contact')} className="cta-btn w-full">
+            <button onClick={handleConsultationClick} className="cta-btn w-full">
               수강 상담하기
             </button>
             {user ? (

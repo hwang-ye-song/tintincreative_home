@@ -120,7 +120,8 @@ const CreateProject = () => {
           category,
           tags,
           image_url: imageUrl,
-          user_id: user.id
+          user_id: user.id,
+          is_hidden: false
         });
 
       if (insertError) throw insertError;

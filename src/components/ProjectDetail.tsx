@@ -4,12 +4,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Project, Comment } from "@/types";
+
+const getOptimizedImageUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.includes("supabase.co/storage")) {
+    return `${url}?width=800&quality=80`;
+  }
+  return url;
+};
+
+const getOptimizedAvatarUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.includes("supabase.co/storage")) {
+    return `${url}?width=128&quality=80`;
+  }
+  return url;
+};
 
 interface ProjectDetailProps {
   project: Project | null;
@@ -41,7 +57,7 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
       .from('project_comments')
       .select(`
         *,
-        profiles (name)
+        profiles (name, avatar_url)
       `)
       .eq('project_id', project.id)
       .order('created_at', { ascending: true });
@@ -87,6 +103,11 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
 
   if (!project) return null;
 
+  const authorName = project.profiles?.name || "익명";
+  const authorAvatar = getOptimizedAvatarUrl(project.profiles?.avatar_url);
+  const projectDescription = project.description || "";
+  const optimizedProjectImage = getOptimizedImageUrl(project.image_url);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -96,12 +117,10 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
 
         <div className="space-y-6">
           {/* Project Image */}
-          {project.image_url && (
+          {optimizedProjectImage && (
             <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
               <img
-                src={project.image_url.includes('supabase.co/storage') 
-                  ? `${project.image_url}?width=800&quality=80`
-                  : project.image_url}
+                src={optimizedProjectImage}
                 alt={project.title}
                 className="w-full h-full object-cover"
                 loading="lazy"
@@ -113,10 +132,13 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Avatar>
-                <AvatarFallback>{project.profiles.name[0]}</AvatarFallback>
+                {authorAvatar && (
+                  <AvatarImage src={authorAvatar} alt={`${authorName} 프로필 이미지`} />
+                )}
+                <AvatarFallback>{authorName.charAt(0) || "U"}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium">{project.profiles.name}</p>
+                <p className="font-medium">{authorName}</p>
                 <p className="text-sm text-muted-foreground">
                   {formatDistanceToNow(new Date(project.created_at), {
                     addSuffix: true,
@@ -148,7 +170,9 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
               <h3 className="font-medium mb-2">프로젝트 설명</h3>
               <div 
                 className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
-                dangerouslySetInnerHTML={{ __html: project.description }}
+                dangerouslySetInnerHTML={{
+                  __html: projectDescription || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>",
+                }}
               />
             </div>
           </div>
@@ -179,31 +203,39 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
 
             {/* Comments List */}
             <div className="space-y-4">
-              {comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs">
-                      {comment.profiles.name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm">
-                        {comment.profiles.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(comment.created_at), {
-                          addSuffix: true,
-                          locale: ko
-                        })}
-                      </span>
+              {comments.map((comment) => {
+                const commenterName = comment.profiles?.name || "익명";
+                const commenterAvatar = getOptimizedAvatarUrl(comment.profiles?.avatar_url);
+
+                return (
+                  <div key={comment.id} className="flex gap-3">
+                    <Avatar className="h-8 w-8">
+                      {commenterAvatar && (
+                        <AvatarImage src={commenterAvatar} alt={`${commenterName} 프로필 이미지`} />
+                      )}
+                      <AvatarFallback className="text-xs">
+                        {commenterName.charAt(0) || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm">
+                          {commenterName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(comment.created_at), {
+                            addSuffix: true,
+                            locale: ko
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {comment.content}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {comment.content}
-                    </p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {comments.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">

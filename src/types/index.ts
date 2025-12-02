@@ -5,6 +5,7 @@ export interface Profile {
   name: string;
   email: string;
   created_at?: string;
+  role?: 'admin' | 'student';
   avatar_url?: string | null;
 }
 
@@ -20,7 +21,8 @@ export interface Project {
   view_count?: number;
   commentCount?: number;
   likeCount?: number;
-  profiles?: Profile;
+  is_hidden?: boolean;
+  profiles?: Partial<Profile>;
 }
 
 export interface Comment {
@@ -30,12 +32,18 @@ export interface Comment {
   user_id: string;
   project_id?: string;
   post_id?: string;
+  parent_comment_id?: string | null;
   profiles?: {
-    name: string;
+    name?: string;
+    avatar_url?: string | null;
   };
   projects?: {
     title: string;
   };
+  is_hidden?: boolean;
+  replies?: Comment[];
+  likeCount?: number;
+  userLiked?: boolean;
 }
 
 export interface Like {
