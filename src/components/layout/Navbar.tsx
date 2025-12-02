@@ -24,6 +24,7 @@ export const Navbar = () => {
   const [activeSection, setActiveSection] = useState("hero");
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // 초기 인증 확인 중 상태
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === "/";
@@ -51,19 +52,22 @@ export const Navbar = () => {
   useEffect(() => {
     // Check auth state and user role
     const checkUser = async () => {
-      // 실제 세션을 확인하여 유효한 사용자만 표시
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      setIsCheckingAuth(true);
       
-      if (sessionError || !session) {
-        setUser(null);
-        setUserRole(null);
-        return;
-      }
-      
-      const user = session.user;
-      setUser(user);
-      
-      if (user) {
+      try {
+        // 실제 세션을 확인하여 유효한 사용자만 표시
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session || !session.user) {
+          setUser(null);
+          setUserRole(null);
+          setIsCheckingAuth(false);
+          return;
+        }
+        
+        const user = session.user;
+        setUser(user);
+        
         try {
           // Get user role from profile
           const { data: profile, error: profileError } = await supabase
@@ -73,17 +77,18 @@ export const Navbar = () => {
             .single();
           
           if (profileError || !profile) {
-            // 프로필이 없어도 사용자는 유효하므로 null로 설정
             setUserRole(null);
           } else {
             setUserRole(profile?.role || null);
           }
         } catch (error) {
-          // 프로필 조회 실패 시 role만 null로 설정
           setUserRole(null);
         }
-      } else {
+      } catch (error) {
+        setUser(null);
         setUserRole(null);
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
     
@@ -184,14 +189,16 @@ export const Navbar = () => {
             <button onClick={handleConsultationClick} className="cta-btn">
               수강 상담하기
             </button>
-            {user ? (
-              <Link to="/mypage">
-                <Button variant="outline">마이페이지</Button>
-              </Link>
-            ) : (
-              <Link to="/login">
-                <Button variant="outline">로그인</Button>
-              </Link>
+            {!isCheckingAuth && (
+              user ? (
+                <Link to="/mypage">
+                  <Button variant="outline">마이페이지</Button>
+                </Link>
+              ) : (
+                <Link to="/login">
+                  <Button variant="outline">로그인</Button>
+                </Link>
+              )
             )}
           </div>
 
@@ -236,14 +243,16 @@ export const Navbar = () => {
             <button onClick={handleConsultationClick} className="cta-btn w-full">
               수강 상담하기
             </button>
-            {user ? (
-              <Link to="/mypage">
-                <Button variant="outline" className="w-full">마이페이지</Button>
-              </Link>
-            ) : (
-              <Link to="/login">
-                <Button variant="outline" className="w-full">로그인</Button>
-              </Link>
+            {!isCheckingAuth && (
+              user ? (
+                <Link to="/mypage">
+                  <Button variant="outline" className="w-full">마이페이지</Button>
+                </Link>
+              ) : (
+                <Link to="/login">
+                  <Button variant="outline" className="w-full">로그인</Button>
+                </Link>
+              )
             )}
           </div>
         )}

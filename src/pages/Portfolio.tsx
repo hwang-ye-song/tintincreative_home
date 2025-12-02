@@ -219,6 +219,8 @@ const Portfolio = () => {
         page: currentPage,
         category: selectedCategory,
         search: searchQuery,
+        userId: user?.id || null,
+        userRole: userRole || null,
       },
     ],
     queryFn: async () => {
@@ -234,8 +236,10 @@ const Portfolio = () => {
         return { projects: [] as Project[], totalCount: 0 };
       }
 
-      // 사용자 정보는 이미 로드된 user, userRole 변수 사용 (쿼리 외부에서 가져옴)
-      // 이렇게 하면 쿼리 간 의존성을 제거하여 무한 루프 방지
+      // 쿼리 함수 내에서 사용자 정보를 다시 가져와서 최신 상태 보장
+      // 쿼리 키에 포함되어 있으므로 사용자 정보가 변경되면 자동으로 재실행됨
+      const currentUser = user;
+      const currentUserRole = userRole;
 
       // 클라이언트 사이드 필터링 (검색)
       let filteredProjects = projectsData.filter(matchesSearch);
@@ -247,8 +251,8 @@ const Portfolio = () => {
           return true;
         }
         // 숨겨진 프로젝트는 작성자나 관리자만 볼 수 있음
-        if (user) {
-          return project.user_id === user.id || userRole === "admin";
+        if (currentUser) {
+          return project.user_id === currentUser.id || currentUserRole === "admin";
         }
         return false;
       });
