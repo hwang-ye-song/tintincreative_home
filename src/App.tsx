@@ -17,7 +17,17 @@ import MyPage from "./pages/MyPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 60초 (더 긴 캐시 유지)
+      gcTime: 10 * 60 * 1000, // 10분 (더 긴 가비지 컬렉션 시간)
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false, // 마운트 시 자동 리페치 비활성화 (캐시 우선)
+    },
+  },
+});
 
 const App = () => (
   <HelmetProvider>
@@ -25,7 +35,12 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/curriculum/:id" element={<CurriculumDetail />} />

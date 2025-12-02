@@ -27,13 +27,15 @@ const AdminPage = () => {
         return { isAdmin: false, user: null };
       }
 
-      const { data: profile } = await supabase
+      // role 컬럼이 없을 수 있으므로 모든 컬럼 선택
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("role")
+        .select("*")
         .eq("id", user.id)
         .single();
 
-      if (profile?.role !== "admin") {
+      // 에러가 발생하거나 프로필이 없거나 role이 admin이 아니면 접근 거부
+      if (profileError || !profile || (profile as { role?: string })?.role !== "admin") {
         toast({
           title: "권한 없음",
           description: "관리자만 접근할 수 있습니다.",

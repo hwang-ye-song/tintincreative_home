@@ -3,6 +3,15 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
+
+// 중복 extension 경고를 방지하기 위해 고유한 이름 부여
+const CustomUnderline = Underline.extend({
+  name: 'customUnderline',
+});
+
+const CustomLink = Link.extend({
+  name: 'customLink',
+});
 import {
   Bold,
   Italic,
@@ -55,8 +64,9 @@ export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입�
           levels: [2, 3],
         },
       }),
-      Underline,
-      Link.configure({
+      // 중복 경고를 방지하기 위해 고유한 이름을 가진 extension 사용
+      CustomUnderline,
+      CustomLink.configure({
         openOnClick: false,
         HTMLAttributes: {
           class: 'text-primary underline cursor-pointer',

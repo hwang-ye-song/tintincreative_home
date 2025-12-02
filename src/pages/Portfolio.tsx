@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -11,41 +11,78 @@ import { Plus, Sparkles, Search } from "lucide-react";
 import { Project } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-const VISIBILITY_FILTER = "is_hidden.is.null,is_hidden.eq.false";
-
+// Supabase의 or() 메서드는 괄호 없이 사용해야 함
 const Portfolio = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
-  const [user, setUser] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+  const queryClient = useQueryClient();
 
+  // 페이지 로드 시 스크롤을 맨 위로 이동
   useEffect(() => {
-    const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      let userRoleValue: string | null = null;
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        userRoleValue = (profile as { role?: string } | null)?.role || null;
-        setUserRole(userRoleValue);
-      }
-      
-      return { user, userRoleValue };
-    };
-    
-    loadUser();
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
+
+  // 사용자 정보를 React Query로 병렬 로딩 (프로젝트 데이터와 독립적으로 로드)
+  // 에러가 발생해도 프로젝트 목록은 표시되도록 retry: false, 에러 무시
+  const { data: userData } = useQuery<{ user: any | null; userRole: string | null }>({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { user: null, userRole: null };
+
+        // role 컬럼이 없을 수 있으므로 에러 처리
+        // 모든 컬럼을 선택하여 role이 없어도 에러가 발생하지 않도록 함
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+
+          // 에러가 발생하거나 프로필이 없으면 null 반환
+          if (profileError || !profile) {
+            if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
+              console.warn("Profile fetch failed:", profileError);
+            }
+            return {
+              user,
+              userRole: null,
+            };
+          }
+
+          return {
+            user,
+            userRole: (profile as { role?: string } | null)?.role || null,
+          };
+        } catch (profileError: any) {
+          // profiles 테이블이나 role 컬럼이 없을 경우 null 반환 (조용히 처리)
+          // 400 오류는 개발 환경에서만 경고 출력
+          if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
+            console.warn("Profile role fetch failed:", profileError);
+          }
+          return {
+            user,
+            userRole: null,
+          };
+        }
+      } catch (error) {
+        console.warn("User fetch failed:", error);
+        return { user: null, userRole: null };
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5분간 캐시
+    retry: false,
+  });
+
+  const user = userData?.user ?? null;
+  const userRole = userData?.userRole ?? null;
 
   const stripHtml = (html: string | null | undefined) => {
     if (!html) return "";
@@ -61,10 +98,7 @@ const Portfolio = () => {
     return Boolean(inTitle || inDescription || inTags);
   };
 
-  const buildProjectsQuery = (
-    pageParam: number,
-    skipVisibilityFilter = false
-  ) => {
+  const buildProjectsQuery = (pageParam: number) => {
     let query = supabase
       .from("projects")
       .select(
@@ -77,10 +111,6 @@ const Portfolio = () => {
       .order("created_at", { ascending: false })
       .range(pageParam * ITEMS_PER_PAGE, (pageParam + 1) * ITEMS_PER_PAGE - 1);
 
-    if (!skipVisibilityFilter) {
-      query = query.or(VISIBILITY_FILTER);
-    }
-
     if (selectedCategory !== "전체") {
       query = query.eq("category", selectedCategory);
     }
@@ -92,46 +122,151 @@ const Portfolio = () => {
     setCurrentPage(1);
   }, [selectedCategory, searchQuery]);
 
+  // 다음 페이지 프리페칭 컴포넌트
+  const PrefetchNextPage = ({ 
+    currentPage, 
+    totalPages, 
+    selectedCategory, 
+    searchQuery,
+    queryClient 
+  }: { 
+    currentPage: number; 
+    totalPages: number; 
+    selectedCategory: string;
+    searchQuery: string;
+    queryClient: ReturnType<typeof useQueryClient>;
+  }) => {
+    const hasPrefetched = useRef(false);
+    
+    useEffect(() => {
+      if (hasPrefetched.current || currentPage >= totalPages) return;
+      
+      // 다음 페이지 데이터 프리페칭
+      const nextPage = currentPage + 1;
+      const pageParam = nextPage - 1;
+      
+      queryClient.prefetchQuery({
+        queryKey: [
+          "projects",
+          {
+            page: nextPage,
+            category: selectedCategory,
+            search: searchQuery,
+          },
+        ],
+        queryFn: async () => {
+          const { data: projectsData, error, count } = await buildProjectsQuery(pageParam);
+          
+          if (error || !projectsData) {
+            return { projects: [] as Project[], totalCount: 0 };
+          }
+          
+          const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+          const currentUser = cachedUserData?.user ?? null;
+          const currentUserRole = cachedUserData?.userRole ?? null;
+          
+          let filteredProjects = projectsData.filter(matchesSearch);
+          filteredProjects = filteredProjects.filter((project) => {
+            if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
+              return true;
+            }
+            if (currentUser) {
+              return project.user_id === currentUser.id || currentUserRole === "admin";
+            }
+            return false;
+          });
+          
+          const projectIds = filteredProjects.map((p) => p.id);
+          let commentCounts: Record<string, number> = {};
+          let likeCounts: Record<string, number> = {};
+          
+          if (projectIds.length > 0) {
+            const [commentsResult, likesResult] = await Promise.all([
+              supabase
+                .from("project_comments")
+                .select("project_id")
+                .in("project_id", projectIds),
+              supabase
+                .from("project_likes")
+                .select("project_id")
+                .in("project_id", projectIds),
+            ]);
+            
+            if (commentsResult.data) {
+              commentsResult.data.forEach((comment) => {
+                commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
+              });
+            }
+            
+            if (likesResult.data) {
+              likesResult.data.forEach((like) => {
+                likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
+              });
+            }
+          }
+          
+          return {
+            projects: filteredProjects.map((project) => ({
+              ...project,
+              commentCount: commentCounts[project.id] || 0,
+              likeCount: likeCounts[project.id] || 0,
+              view_count: project.view_count || 0,
+            })) as Project[],
+            totalCount: count || 0,
+          };
+        },
+        staleTime: 30 * 1000,
+      }).catch(() => {
+        // 프리페칭 실패는 조용히 처리
+      });
+      
+      hasPrefetched.current = true;
+    }, [currentPage, totalPages, selectedCategory, searchQuery]);
+    
+    return null;
+  };
+
   const fetchPopularProjects = async (currentUser?: any, currentUserRole?: string | null) => {
-    const executeQuery = (skipVisibilityFilter = false) => {
-      let query = supabase
-        .from("projects")
-        .select(`
-          *,
-          profiles (name, avatar_url)
-        `)
-        .order("view_count", { ascending: false })
-        .limit(10); // 더 많이 가져와서 필터링
+    const { data: projectsData, error } = await supabase
+      .from("projects")
+      .select(`
+        *,
+        profiles (name, avatar_url)
+      `)
+      .order("view_count", { ascending: false })
+      .limit(20); // 더 많이 가져와서 필터링
 
-      if (!skipVisibilityFilter) {
-        query = query.or(VISIBILITY_FILTER);
-      }
-
-      return query;
-    };
-
-    let { data: projectsData, error } = await executeQuery();
-
-    if (error && error.message?.includes("is_hidden")) {
-      ({ data: projectsData, error } = await executeQuery(true));
+    if (error) {
+      console.error("Failed to fetch popular projects:", error);
+      return [];
     }
 
-    if (!error && projectsData) {
-      // 작성자이거나 관리자인 경우 숨겨진 프로젝트도 포함
-      if (currentUser) {
-        projectsData = projectsData.filter((project) => {
-          if (!project.is_hidden) return true;
-          return project.user_id === currentUser.id || currentUserRole === "admin";
-        });
-      } else {
-        projectsData = projectsData.filter((project) => !project.is_hidden);
-      }
-      
-      // 상위 3개만 선택
-      projectsData = projectsData.slice(0, 3);
+    if (!projectsData) {
+      return [];
+    }
+
+    // 작성자이거나 관리자인 경우 숨겨진 프로젝트도 포함
+    let filteredProjects = projectsData;
+    if (currentUser) {
+      filteredProjects = filteredProjects.filter((project) => {
+        // is_hidden이 undefined, null이거나 false면 공개
+        if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
+          return true;
+        }
+        // 숨겨진 프로젝트는 작성자나 관리자만 볼 수 있음
+        return project.user_id === currentUser.id || currentUserRole === "admin";
+      });
+    } else {
+      filteredProjects = filteredProjects.filter((project) => 
+        project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false
+      );
+    }
+    
+    // 상위 3개만 선택
+    filteredProjects = filteredProjects.slice(0, 3);
       
       // N+1 쿼리 최적화: 프로젝트 ID 목록을 얻은 후 댓글/좋아요를 병렬로 조회
-      const projectIds = projectsData.map(p => p.id);
+      const projectIds = filteredProjects.map(p => p.id);
       
       let commentCounts: Record<string, number> = {};
       let likeCounts: Record<string, number> = {};
@@ -162,7 +297,7 @@ const Portfolio = () => {
         }
       }
       
-      const projectsWithCounts = projectsData.map((project) => ({
+      const projectsWithCounts = filteredProjects.map((project) => ({
         ...project,
         commentCount: commentCounts[project.id] || 0,
         likeCount: likeCounts[project.id] || 0,
@@ -170,8 +305,6 @@ const Portfolio = () => {
       }));
       
       return projectsWithCounts;
-    }
-    return [];
   };
 
   // React Query를 사용하여 프로젝트 리스트 캐싱
@@ -185,36 +318,50 @@ const Portfolio = () => {
         page: currentPage,
         category: selectedCategory,
         search: searchQuery,
-        userId: user?.id ?? null,
-        userRole,
       },
     ],
     queryFn: async () => {
       const pageParam = currentPage - 1;
-      const executeQuery = (skipVisibilityFilter = false) =>
-        buildProjectsQuery(pageParam, skipVisibilityFilter);
+      const { data: projectsData, error, count } = await buildProjectsQuery(pageParam);
 
-      let { data: projectsData, error, count } = await executeQuery();
-
-      if (error && error.message?.includes("is_hidden")) {
-        ({ data: projectsData, error, count } = await executeQuery(true));
-      }
-
-      if (error || !projectsData) {
+      if (error) {
         console.error("Failed to fetch projects:", error);
         return { projects: [] as Project[], totalCount: 0 };
       }
 
+      if (!projectsData) {
+        return { projects: [] as Project[], totalCount: 0 };
+      }
+
+      // 사용자 정보를 캐시에서 가져오기 (없어도 프로젝트는 표시)
+      // 에러가 발생해도 프로젝트 목록은 표시되도록 안전하게 처리
+      let currentUser: any | null = null;
+      let currentUserRole: string | null = null;
+      
+      try {
+        const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+        currentUser = cachedUserData?.user ?? null;
+        currentUserRole = cachedUserData?.userRole ?? null;
+      } catch (error) {
+        // 사용자 정보를 가져오지 못해도 계속 진행
+        console.warn("Failed to get user data from cache:", error);
+      }
+
+      // 클라이언트 사이드 필터링 (검색)
       let filteredProjects = projectsData.filter(matchesSearch);
 
-      if (user) {
-        filteredProjects = filteredProjects.filter((project) => {
-          if (!project.is_hidden) return true;
-          return project.user_id === user.id || userRole === "admin";
-        });
-      } else {
-        filteredProjects = filteredProjects.filter((project) => !project.is_hidden);
-      }
+      // 가시성 필터링 (클라이언트 사이드) - 모든 프로젝트를 먼저 보여주고 나중에 필터링
+      filteredProjects = filteredProjects.filter((project) => {
+        // is_hidden이 undefined, null이거나 false면 공개로 간주
+        if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
+          return true;
+        }
+        // 숨겨진 프로젝트는 작성자나 관리자만 볼 수 있음
+        if (currentUser) {
+          return project.user_id === currentUser.id || currentUserRole === "admin";
+        }
+        return false;
+      });
 
       // N+1 쿼리 최적화: 프로젝트 ID 목록을 얻은 후 댓글/좋아요를 병렬로 조회
       const projectIds = filteredProjects.map((p) => p.id);
@@ -267,17 +414,29 @@ const Portfolio = () => {
   const projects = projectsData?.projects ?? [];
   const totalCount = projectsData?.totalCount ?? 0;
 
-  // 인기 프로젝트 캐싱
+  // 인기 프로젝트 캐싱 (사용자 정보와 독립적으로 로드)
   const {
     data: popularData,
     isLoading: isLoadingPopular,
   } = useQuery<Project[]>({
-    queryKey: [
-      "popularProjects",
-      { userId: user?.id ?? null, userRole },
-    ],
-    queryFn: () => fetchPopularProjects(user, userRole),
-    staleTime: 60 * 1000, // 60초 동안 캐시 유지
+    queryKey: ["popularProjects"],
+    queryFn: async () => {
+      // 캐시에서 사용자 정보 가져오기 (없어도 프로젝트는 표시)
+      let currentUser: any | null = null;
+      let currentUserRole: string | null = null;
+      
+      try {
+        const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+        currentUser = cachedUserData?.user ?? null;
+        currentUserRole = cachedUserData?.userRole ?? null;
+      } catch (error) {
+        // 사용자 정보를 가져오지 못해도 계속 진행
+        console.warn("Failed to get user data from cache for popular projects:", error);
+      }
+      
+      return fetchPopularProjects(currentUser, currentUserRole);
+    },
+    staleTime: 120 * 1000, // 120초 동안 캐시 유지 (인기 프로젝트는 더 오래 캐시)
   });
 
   const popularProjects = popularData ?? [];
@@ -302,14 +461,6 @@ const Portfolio = () => {
       pages.push(i);
     }
     return pages;
-  };
-
-  const getOptimizedImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.includes('supabase.co/storage')) {
-      return `${url}?width=400&quality=80`;
-    }
-    return url;
   };
 
   return (
@@ -459,6 +610,17 @@ const Portfolio = () => {
                     />
                   </div>
                 ))}
+                
+                {/* 다음 페이지 데이터 프리페칭 (마지막 3개 항목 근처에 도달하면) */}
+                {currentPage < totalPages && projects.length >= 7 && (
+                  <PrefetchNextPage 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    selectedCategory={selectedCategory}
+                    searchQuery={searchQuery}
+                    queryClient={queryClient}
+                  />
+                )}
               </div>
 
               {projects.length === 0 && (

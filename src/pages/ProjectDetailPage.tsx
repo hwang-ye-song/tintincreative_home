@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ArrowLeft, Pencil, Trash2, Heart, Edit2, X, Eye, ThumbsUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,21 +25,11 @@ import { ko } from "date-fns/locale";
 import { Comment, Like, Project } from "@/types";
 import { Helmet } from "react-helmet-async";
 
-const getOptimizedImageUrl = (url?: string | null) => {
-  if (!url) return null;
-  if (url.includes("supabase.co/storage")) {
-    return `${url}?width=800&quality=80`;
-  }
-  return url;
-};
-
-const getOptimizedAvatarUrl = (url?: string | null) => {
-  if (!url) return null;
-  if (url.includes("supabase.co/storage")) {
-    return `${url}?width=128&quality=80`;
-  }
-  return url;
-};
+import { 
+  getOptimizedImageUrl, 
+  getOptimizedAvatarUrl, 
+  getOptimizedLargeImageUrl 
+} from "@/lib/imageUtils";
 
 const getPlainTextExcerpt = (html?: string | null, length: number = 160) => {
   if (!html) return "";
@@ -47,7 +37,6 @@ const getPlainTextExcerpt = (html?: string | null, length: number = 160) => {
   return text.substring(0, length);
 };
 
-const VISIBILITY_FILTER = "is_hidden.is.null,is_hidden.eq.false";
 type CommentWithReplies = Comment & { replies?: Comment[] };
 type CommentLikeRow = { comment_id: string; user_id: string };
 
@@ -55,7 +44,7 @@ const ProjectDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -72,31 +61,79 @@ const ProjectDetailPage = () => {
   const [editingContent, setEditingContent] = useState("");
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
 
+  // 사용자 정보를 React Query로 병렬 로딩
+  // 에러가 발생해도 프로젝트는 표시되도록 에러 처리
+  const { data: userData } = useQuery<{ user: any | null; userRole: string | null }>({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { user: null, userRole: null };
+
+        // role 컬럼이 없을 수 있으므로 에러 처리
+        // 모든 컬럼을 선택하여 role이 없어도 에러가 발생하지 않도록 함
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+
+          // 에러가 발생하거나 프로필이 없으면 null 반환
+          if (profileError || !profile) {
+            if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
+              console.warn("Profile fetch failed:", profileError);
+            }
+            return {
+              user,
+              userRole: null,
+            };
+          }
+
+          return {
+            user,
+            userRole: (profile as { role?: string } | null)?.role || null,
+          };
+        } catch (profileError: any) {
+          // profiles 테이블이나 role 컬럼이 없을 경우 null 반환 (조용히 처리)
+          // 400 오류는 개발 환경에서만 경고 출력
+          if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
+            console.warn("Profile role fetch failed:", profileError);
+          }
+          return {
+            user,
+            userRole: null,
+          };
+        }
+      } catch (error) {
+        console.warn("User fetch failed:", error);
+        return { user: null, userRole: null };
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5분간 캐시
+    retry: false,
+  });
+
+  const currentUserId = userData?.user?.id || null;
+  const userRole = userData?.userRole || null;
+
+  // 페이지 로드 시 스크롤을 맨 위로 이동
   useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [id]);
 
   const { data: project, isLoading, refetch, error } = useQuery<Project>({
-    queryKey: ["project", id, currentUserId],
+    queryKey: ["project", id],
     queryFn: async () => {
       if (!id) {
         throw new Error("유효하지 않은 프로젝트 ID 입니다.");
       }
       
-      // 현재 사용자가 관리자인지 확인
-      let isAdmin = false;
-      if (currentUserId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", currentUserId)
-          .single();
-        isAdmin = (profile as any)?.role === "admin";
-      }
+      // 사용자 정보를 캐시에서 가져오기 (없으면 null)
+      const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+      const cachedUserId = cachedUserData?.user?.id || null;
+      const cachedUserRole = cachedUserData?.userRole || null;
+      const isAdmin = cachedUserRole === "admin";
       
       // 먼저 필터 없이 조회 (작성자/관리자 체크를 위해)
       let { data, error } = await supabase
@@ -112,7 +149,7 @@ const ProjectDetailPage = () => {
       if (error && error.message?.includes("is_hidden")) {
         // 컬럼이 없으면 그냥 반환 (기존 동작)
       } else if (error) {
-        // 다른 에러면 필터 적용해서 재시도
+        // 다른 에러면 필터 적용해서 재시도 (단, .single()과 함께 사용할 때는 or()를 사용하지 않음)
         ({ data, error } = await supabase
           .from("projects")
           .select(`
@@ -120,11 +157,10 @@ const ProjectDetailPage = () => {
             profiles (name, avatar_url)
           `)
           .eq("id", id)
-          .or(VISIBILITY_FILTER)
           .single());
       } else if (data) {
         // 프로젝트를 찾았으면 권한 체크
-        const isOwner = currentUserId && data.user_id === currentUserId;
+        const isOwner = cachedUserId && data.user_id === cachedUserId;
         const isHidden = data.is_hidden === true;
         
         // 일반 사용자가 숨겨진 프로젝트에 접근하려고 하면 거부
@@ -137,17 +173,76 @@ const ProjectDetailPage = () => {
       if (!data) throw new Error("프로젝트를 찾을 수 없습니다.");
       return data as Project;
     },
-    enabled: Boolean(id),
+    enabled: Boolean(id), // id만 있으면 바로 실행 (사용자 정보는 선택적)
     staleTime: 30 * 1000, // 30초간 캐시
   });
 
+  // 댓글을 React Query로 병렬 로딩 (프로젝트와 독립적으로 로드)
+  const { data: commentsData } = useQuery<Comment[]>({
+    queryKey: ["projectComments", id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('project_comments')
+        .select(`
+          *,
+          profiles (name, avatar_url)
+        `)
+        .eq('project_id', id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      if (!data) return [];
+      
+      // 사용자 정보를 캐시에서 가져오기
+      const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+      const cachedUserId = cachedUserData?.user?.id || null;
+      
+      return await attachCommentLikes(data as Comment[], cachedUserId);
+    },
+    enabled: Boolean(id), // 프로젝트와 독립적으로 로드
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // 좋아요를 React Query로 병렬 로딩 (프로젝트와 독립적으로 로드)
+  const { data: likesData } = useQuery<Like[]>({
+    queryKey: ["projectLikes", id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('project_likes')
+        .select('id, user_id, project_id')
+        .eq('project_id', id);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: Boolean(id), // 프로젝트와 독립적으로 로드
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // commentsData와 likesData가 로드되면 상태 업데이트
+  useEffect(() => {
+    if (commentsData) {
+      setComments(commentsData);
+      setVisibleComments(10);
+    }
+  }, [commentsData]);
+
+  useEffect(() => {
+    if (likesData) {
+      setLikes(likesData);
+      setIsLiked(likesData.some(like => like.user_id === currentUserId));
+    }
+  }, [likesData, currentUserId]);
+
   useEffect(() => {
     if (project) {
-      fetchComments();
-      fetchLikes();
       incrementViewCount();
     }
-  }, [project, currentUserId]);
+  }, [project]);
 
   const incrementViewCount = async () => {
     if (!project) return;
@@ -159,25 +254,6 @@ const ProjectDetailPage = () => {
       if (error) console.error('Failed to increment view count:', error);
     } catch (error) {
       console.error('Error incrementing view count:', error);
-    }
-  };
-
-  const fetchComments = async () => {
-    if (!project) return;
-
-    const { data, error } = await supabase
-      .from('project_comments')
-      .select(`
-        *,
-        profiles (name, avatar_url)
-      `)
-      .eq('project_id', project.id)
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
-      const enriched = await attachCommentLikes(data as Comment[]);
-      setComments(enriched);
-      setVisibleComments(10);
     }
   };
 
@@ -262,31 +338,36 @@ const ProjectDetailPage = () => {
   const visibleTopLevelComments = structuredComments.slice(0, visibleComments);
   const hasMoreComments = structuredComments.length > visibleComments;
 
-  const fetchLikes = async () => {
-    if (!project) return;
-
-    const { data, error } = await supabase
-      .from('project_likes')
-      .select('id, user_id, project_id')
-      .eq('project_id', project.id);
-
-    if (!error && data) {
-      setLikes(data);
-      setIsLiked(data.some(like => like.user_id === currentUserId));
-    }
-  };
-
-  const attachCommentLikes = async (commentList: Comment[]) => {
+  const attachCommentLikes = async (commentList: Comment[], userId: string | null = null) => {
     if (!commentList.length) return commentList;
 
-    const { data, error } = await (supabase as any)
-      .from("comment_likes")
-      .select("comment_id, user_id")
-      .in("comment_id", commentList.map((c) => c.id));
+    // comment_likes 테이블이 없을 수 있으므로 에러 처리
+    let likeRows: CommentLikeRow[] = [];
+    try {
+      const { data, error } = await (supabase as any)
+        .from("comment_likes")
+        .select("comment_id, user_id")
+        .in("comment_id", commentList.map((c) => c.id));
 
-    const likeRows: CommentLikeRow[] = (data as CommentLikeRow[]) || [];
+      if (error) {
+        // 테이블이 없거나 에러가 발생하면 빈 배열 반환 (조용히 처리)
+        // 개발 환경에서만 경고 출력
+        if (import.meta.env.DEV && error.code !== 'PGRST205') {
+          console.warn("comment_likes 테이블 조회 실패:", error);
+        }
+        return commentList.map((comment) => ({
+          ...comment,
+          likeCount: comment.likeCount ?? 0,
+          userLiked: comment.userLiked ?? false,
+        }));
+      }
 
-    if (error) {
+      likeRows = (data as CommentLikeRow[]) || [];
+    } catch (error) {
+      // 테이블이 존재하지 않을 경우 조용히 처리 (개발 환경에서만 경고)
+      if (import.meta.env.DEV) {
+        console.warn("comment_likes 테이블이 존재하지 않습니다:", error);
+      }
       return commentList.map((comment) => ({
         ...comment,
         likeCount: comment.likeCount ?? 0,
@@ -306,7 +387,7 @@ const ProjectDetailPage = () => {
       };
       likeMap.set(like.comment_id, {
         count: prev.count + 1,
-        userLiked: prev.userLiked || like.user_id === currentUserId,
+        userLiked: prev.userLiked || like.user_id === userId,
       });
     });
 
@@ -350,7 +431,8 @@ const ProjectDetailPage = () => {
         if (error) throw error;
       }
 
-      fetchLikes();
+      // 좋아요 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["projectLikes", id] });
     } catch (error: any) {
       toast({
         title: "오류",
@@ -382,7 +464,8 @@ const ProjectDetailPage = () => {
       });
 
       setNewComment("");
-      fetchComments();
+      // 댓글 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
       setVisibleComments(10);
     } catch (error: any) {
       toast({
@@ -417,7 +500,8 @@ const ProjectDetailPage = () => {
 
       setReplyContent("");
       setReplyingToId(null);
-      await fetchComments();
+      // 댓글 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
       setVisibleComments(10);
     } catch (error: any) {
       toast({
@@ -448,7 +532,8 @@ const ProjectDetailPage = () => {
 
       setEditingCommentId(null);
       setEditingContent("");
-      fetchComments();
+      // 댓글 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
     } catch (error: any) {
       toast({
         title: "오류",
@@ -472,7 +557,8 @@ const ProjectDetailPage = () => {
         description: "댓글이 성공적으로 삭제되었습니다."
       });
 
-      fetchComments();
+      // 댓글 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
     } catch (error: any) {
       toast({
         title: "오류",
@@ -498,13 +584,20 @@ const ProjectDetailPage = () => {
     const alreadyLiked = target.userLiked;
 
     try {
+      // comment_likes 테이블이 없을 수 있으므로 에러 처리
       if (alreadyLiked) {
         const { error } = await (supabase as any)
           .from("comment_likes")
           .delete()
           .eq("comment_id", commentId)
           .eq("user_id", currentUserId);
-        if (error) throw error;
+        if (error) {
+          // 테이블이 없거나 에러가 발생하면 조용히 처리 (개발 환경에서만 경고)
+          if (import.meta.env.DEV && error.code !== 'PGRST205') {
+            console.warn("comment_likes 삭제 실패:", error);
+          }
+          return;
+        }
       } else {
         const { error } = await (supabase as any)
           .from("comment_likes")
@@ -512,16 +605,22 @@ const ProjectDetailPage = () => {
             comment_id: commentId,
             user_id: currentUserId,
           });
-        if (error) throw error;
+        if (error) {
+          // 테이블이 없거나 에러가 발생하면 조용히 처리 (개발 환경에서만 경고)
+          if (import.meta.env.DEV && error.code !== 'PGRST205') {
+            console.warn("comment_likes 삽입 실패:", error);
+          }
+          return;
+        }
       }
 
-      await fetchComments();
+      // 댓글 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
     } catch (error: any) {
-      toast({
-        title: "오류",
-        description: error.message || "공감 처리에 실패했습니다.",
-        variant: "destructive",
-      });
+      // 테이블이 존재하지 않을 경우 조용히 처리 (개발 환경에서만 경고)
+      if (import.meta.env.DEV) {
+        console.warn("comment_likes 테이블이 존재하지 않습니다:", error);
+      }
     }
   };
 
@@ -767,13 +866,21 @@ const ProjectDetailPage = () => {
     );
   };
 
-  if (isLoading) {
+  // 프로젝트가 로드되기 전에도 기본 레이아웃 표시 (더 빠른 느낌)
+  if (isLoading && !project) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="pt-24 pb-20 px-4">
           <div className="container mx-auto max-w-4xl">
-            <p className="text-muted-foreground">로딩 중...</p>
+            <div className="space-y-6">
+              <div className="h-8 bg-muted animate-pulse rounded w-32"></div>
+              <div className="w-full aspect-video bg-muted animate-pulse rounded-lg"></div>
+              <div className="bg-card border border-border rounded-lg p-4 md:p-6 space-y-4">
+                <div className="h-6 bg-muted animate-pulse rounded w-3/4"></div>
+                <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
+              </div>
+            </div>
           </div>
         </div>
         <Footer />
@@ -801,7 +908,7 @@ const ProjectDetailPage = () => {
   const authorName = project.profiles?.name || '익명';
   const authorAvatar = getOptimizedAvatarUrl(project.profiles?.avatar_url);
   const projectDescription = project.description || "";
-  const optimizedProjectImage = getOptimizedImageUrl(project.image_url);
+  const optimizedProjectImage = getOptimizedLargeImageUrl(project.image_url);
   const descriptionExcerpt = getPlainTextExcerpt(projectDescription);
 
   return (
@@ -870,7 +977,8 @@ const ProjectDetailPage = () => {
                   src={optimizedProjectImage}
                   alt={project.title}
                   className="w-full h-full object-cover"
-                  loading="lazy"
+                  loading="eager"
+                  decoding="async"
                 />
               </div>
             )}

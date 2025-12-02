@@ -3,6 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, MessageCircle, Eye } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Project } from "@/types";
+import { getOptimizedAvatarUrl, getOptimizedThumbnailUrl } from "@/lib/imageUtils";
 
 interface PortfolioCardProps {
   id: string;
@@ -25,11 +29,6 @@ const getTextPreview = (html: string, maxLength: number = 150): string => {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 };
 
-const getOptimizedAvatarUrl = (url?: string | null) => {
-  if (!url) return null;
-  return url.includes('supabase.co/storage') ? `${url}?width=96&quality=80` : url;
-};
-
 export const PortfolioCard = memo(({ 
   id,
   title, 
@@ -42,6 +41,7 @@ export const PortfolioCard = memo(({
   viewCount = 0,
   avatarUrl
 }: PortfolioCardProps) => {
+  const queryClient = useQueryClient();
   const plainDescription = getTextPreview(description);
   const initials = student
     .split(' ')
@@ -50,8 +50,63 @@ export const PortfolioCard = memo(({
     .toUpperCase() || 'U';
   const optimizedAvatarUrl = getOptimizedAvatarUrl(avatarUrl);
 
+  // 마우스 호버 시 프로젝트 데이터 프리페칭
+  const handleMouseEnter = () => {
+    // 유효한 ID인지 확인
+    if (!id || id === "example-2" || id.startsWith("example")) {
+      return; // 잘못된 ID는 프리페칭하지 않음
+    }
+    
+    // 캐시된 사용자 정보 가져오기
+    const userData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+    const currentUserId = userData?.user?.id || null;
+    const userRole = userData?.userRole || null;
+    
+    queryClient.prefetchQuery({
+      queryKey: ["project", id],
+      queryFn: async () => {
+        const isAdmin = userRole === "admin";
+        
+        const { data, error } = await supabase
+          .from("projects")
+          .select(`
+            *,
+            profiles (name, avatar_url)
+          `)
+          .eq("id", id)
+          .single();
+        
+        if (error) {
+          // 에러가 발생해도 조용히 처리 (프리페칭이므로)
+          console.warn("프리페칭 실패:", error);
+          throw error;
+        }
+        if (!data) {
+          throw new Error("프로젝트를 찾을 수 없습니다.");
+        }
+        
+        const project = data as Project;
+        const isOwner = currentUserId && project.user_id === currentUserId;
+        const isHidden = project.is_hidden === true;
+        
+        if (isHidden && !isOwner && !isAdmin) {
+          throw new Error("프로젝트를 찾을 수 없습니다.");
+        }
+        
+        return project;
+      },
+      staleTime: 30 * 1000,
+      retry: false, // 프리페칭은 실패해도 재시도하지 않음
+    }).catch(() => {
+      // 프리페칭 실패는 조용히 처리
+    });
+  };
+
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm p-4">
+    <Card 
+      className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm p-4"
+      onMouseEnter={handleMouseEnter}
+    >
       <div className="flex gap-4">
         {/* Avatar on the left */}
         <Avatar className="h-12 w-12 flex-shrink-0">

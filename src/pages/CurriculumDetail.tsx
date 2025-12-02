@@ -187,7 +187,13 @@ const CurriculumDetail = () => {
                   {curriculum.mediaAssets.map((asset, index) => (
                     <Card key={index} className="overflow-hidden hover-scale animate-fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
                       {asset.src ? (
-                        <img src={asset.src} alt={asset.title} className="aspect-square object-cover w-full" />
+                        <img 
+                          src={asset.src} 
+                          alt={asset.title} 
+                          className="aspect-square object-cover w-full" 
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : (
                         <div className="aspect-square bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-6xl">
                           {asset.emoji}
