@@ -150,6 +150,29 @@ const Portfolio = () => {
           return;
         }
 
+        // 현재 사용자 정보 가져오기 (필요할 때만)
+        let currentUser: any | null = null;
+        let currentUserRole: string | null = null;
+        
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            currentUser = session.user;
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .single();
+              currentUserRole = profile?.role || null;
+            } catch {
+              currentUserRole = null;
+            }
+          }
+        } catch {
+          // 사용자 정보 가져오기 실패 시 무시
+        }
+
         // 클라이언트 사이드 필터링 (검색)
         let filteredProjects = projectsData.filter(matchesSearch);
 
@@ -158,8 +181,8 @@ const Portfolio = () => {
           if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
             return true;
           }
-          if (user) {
-            return project.user_id === user.id || userRole === "admin";
+          if (currentUser) {
+            return project.user_id === currentUser.id || currentUserRole === "admin";
           }
           return false;
         });
@@ -214,7 +237,7 @@ const Portfolio = () => {
     };
 
     loadProjects();
-  }, [currentPage, selectedCategory, searchQuery, user, userRole]);
+  }, [currentPage, selectedCategory, searchQuery, buildProjectsQuery]);
 
   // 인기 프로젝트 가져오기
   useEffect(() => {

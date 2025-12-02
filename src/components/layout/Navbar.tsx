@@ -50,59 +50,12 @@ export const Navbar = () => {
   };
 
   useEffect(() => {
-    // Check auth state and user role
+    // Check auth state and user role - 간단하고 빠르게
     const checkUser = async () => {
-      // 타임아웃 설정: 3초 후에는 무조건 버튼 표시
-      const timeoutId = setTimeout(() => {
-        setIsCheckingAuth(false);
-      }, 3000);
-      
       try {
-        // 실제 세션을 확인하여 유효한 사용자만 표시
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError || !session || !session.user) {
-          setUser(null);
-          setUserRole(null);
-          clearTimeout(timeoutId);
-          setIsCheckingAuth(false);
-          return;
-        }
-        
-        const user = session.user;
-        setUser(user);
-        
-        try {
-          // Get user role from profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          
-          if (profileError || !profile) {
-            setUserRole(null);
-          } else {
-            setUserRole(profile?.role || null);
-          }
-        } catch (error) {
-          setUserRole(null);
-        }
-      } catch (error) {
-        setUser(null);
-        setUserRole(null);
-      } finally {
-        clearTimeout(timeoutId);
-        setIsCheckingAuth(false);
-      }
-    };
-    
-    checkUser();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // 세션이 없거나 유효하지 않으면 null로 설정
-        if (!session || !session.user) {
           setUser(null);
           setUserRole(null);
           setIsCheckingAuth(false);
@@ -111,23 +64,52 @@ export const Navbar = () => {
         
         setUser(session.user);
         
-        try {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profileError || !profile) {
-            setUserRole(null);
-          } else {
+        // 프로필 조회는 비동기로 처리 (버튼 표시를 막지 않음)
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
             setUserRole(profile?.role || null);
-          }
-        } catch (error) {
+          })
+          .catch(() => {
+            setUserRole(null);
+          });
+      } catch (error) {
+        setUser(null);
+        setUserRole(null);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    
+    checkUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!session || !session.user) {
+          setUser(null);
           setUserRole(null);
-        } finally {
           setIsCheckingAuth(false);
+          return;
         }
+        
+        setUser(session.user);
+        setIsCheckingAuth(false);
+        
+        // 프로필 조회는 비동기로 처리
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            setUserRole(profile?.role || null);
+          })
+          .catch(() => {
+            setUserRole(null);
+          });
       }
     );
 
