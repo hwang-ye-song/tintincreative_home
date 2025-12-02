@@ -124,109 +124,7 @@ const Portfolio = () => {
     setCurrentPage(1);
   }, [selectedCategory, searchQuery]);
 
-  // 다음 페이지 프리페칭 컴포넌트
-  const PrefetchNextPage = ({ 
-    currentPage, 
-    totalPages, 
-    selectedCategory, 
-    searchQuery,
-    queryClient 
-  }: { 
-    currentPage: number; 
-    totalPages: number; 
-    selectedCategory: string;
-    searchQuery: string;
-    queryClient: ReturnType<typeof useQueryClient>;
-  }) => {
-    const hasPrefetched = useRef(false);
-    
-    useEffect(() => {
-      if (hasPrefetched.current || currentPage >= totalPages) return;
-      
-      // 다음 페이지 데이터 프리페칭
-      const nextPage = currentPage + 1;
-      const pageParam = nextPage - 1;
-      
-      queryClient.prefetchQuery({
-        queryKey: [
-          "projects",
-          {
-            page: nextPage,
-            category: selectedCategory,
-            search: searchQuery,
-          },
-        ],
-        queryFn: async () => {
-          const { data: projectsData, error, count } = await buildProjectsQuery(pageParam);
-          
-          if (error || !projectsData) {
-            return { projects: [] as Project[], totalCount: 0 };
-          }
-          
-          const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
-          const currentUser = cachedUserData?.user ?? null;
-          const currentUserRole = cachedUserData?.userRole ?? null;
-          
-          let filteredProjects = projectsData.filter(matchesSearch);
-          filteredProjects = filteredProjects.filter((project) => {
-            if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
-              return true;
-            }
-            if (currentUser) {
-              return project.user_id === currentUser.id || currentUserRole === "admin";
-            }
-            return false;
-          });
-          
-          const projectIds = filteredProjects.map((p) => p.id);
-          let commentCounts: Record<string, number> = {};
-          let likeCounts: Record<string, number> = {};
-          
-          if (projectIds.length > 0) {
-            const [commentsResult, likesResult] = await Promise.all([
-              supabase
-                .from("project_comments")
-                .select("project_id")
-                .in("project_id", projectIds),
-              supabase
-                .from("project_likes")
-                .select("project_id")
-                .in("project_id", projectIds),
-            ]);
-            
-            if (commentsResult.data) {
-              commentsResult.data.forEach((comment) => {
-                commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
-              });
-            }
-            
-            if (likesResult.data) {
-              likesResult.data.forEach((like) => {
-                likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
-              });
-            }
-          }
-          
-          return {
-            projects: filteredProjects.map((project) => ({
-              ...project,
-              commentCount: commentCounts[project.id] || 0,
-              likeCount: likeCounts[project.id] || 0,
-              view_count: project.view_count || 0,
-            })) as Project[],
-            totalCount: count || 0,
-          };
-        },
-        staleTime: 30 * 1000,
-      }).catch(() => {
-        // 프리페칭 실패는 조용히 처리
-      });
-      
-      hasPrefetched.current = true;
-    }, [currentPage, totalPages, selectedCategory, searchQuery]);
-    
-    return null;
-  };
+  // 다음 페이지 프리페칭 (무한 루프 방지를 위해 제거)
 
   const fetchPopularProjects = async (currentUser?: any, currentUserRole?: string | null) => {
     const { data: projectsData, error } = await supabase
@@ -625,17 +523,6 @@ const Portfolio = () => {
                     />
                   </div>
                 ))}
-                
-                {/* 다음 페이지 데이터 프리페칭 (마지막 3개 항목 근처에 도달하면) */}
-                {currentPage < totalPages && projects.length >= 7 && (
-                  <PrefetchNextPage 
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    selectedCategory={selectedCategory}
-                    searchQuery={searchQuery}
-                    queryClient={queryClient}
-                  />
-                )}
               </div>
 
               {projects.length === 0 && (
