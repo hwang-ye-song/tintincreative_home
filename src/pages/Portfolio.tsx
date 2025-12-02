@@ -219,8 +219,6 @@ const Portfolio = () => {
         page: currentPage,
         category: selectedCategory,
         search: searchQuery,
-        userId: user?.id || null,
-        userRole: userRole || null,
       },
     ],
     queryFn: async () => {
@@ -236,10 +234,30 @@ const Portfolio = () => {
         return { projects: [] as Project[], totalCount: 0 };
       }
 
-      // 쿼리 함수 내에서 사용자 정보를 다시 가져와서 최신 상태 보장
-      // 쿼리 키에 포함되어 있으므로 사용자 정보가 변경되면 자동으로 재실행됨
-      const currentUser = user;
-      const currentUserRole = userRole;
+      // 쿼리 함수 내에서 사용자 정보를 직접 가져와서 최신 상태 보장
+      // 쿼리 키에 포함하지 않으므로 사용자 정보 변경 시 무한 루프 방지
+      let currentUser: any | null = null;
+      let currentUserRole: string | null = null;
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          currentUser = session.user;
+          // 프로필에서 role 가져오기 (에러 무시)
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
+            currentUserRole = profile?.role || null;
+          } catch {
+            currentUserRole = null;
+          }
+        }
+      } catch {
+        // 사용자 정보 가져오기 실패 시 무시
+      }
 
       // 클라이언트 사이드 필터링 (검색)
       let filteredProjects = projectsData.filter(matchesSearch);
