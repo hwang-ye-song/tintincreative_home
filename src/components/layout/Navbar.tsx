@@ -189,16 +189,16 @@ export const Navbar = () => {
             <button onClick={handleConsultationClick} className="cta-btn">
               수강 상담하기
             </button>
-            {!isCheckingAuth && (
-              user ? (
-                <Link to="/mypage">
-                  <Button variant="outline">마이페이지</Button>
-                </Link>
-              ) : (
-                <Link to="/login">
-                  <Button variant="outline">로그인</Button>
-                </Link>
-              )
+            {isCheckingAuth ? (
+              <div className="w-20 h-9" /> // 로딩 중일 때 공간 유지
+            ) : user ? (
+              <Link to="/mypage">
+                <Button variant="outline">마이페이지</Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="outline">로그인</Button>
+              </Link>
             )}
           </div>
 
@@ -243,16 +243,16 @@ export const Navbar = () => {
             <button onClick={handleConsultationClick} className="cta-btn w-full">
               수강 상담하기
             </button>
-            {!isCheckingAuth && (
-              user ? (
-                <Link to="/mypage">
-                  <Button variant="outline" className="w-full">마이페이지</Button>
-                </Link>
-              ) : (
-                <Link to="/login">
-                  <Button variant="outline" className="w-full">로그인</Button>
-                </Link>
-              )
+            {isCheckingAuth ? (
+              <div className="w-full h-10" /> // 로딩 중일 때 공간 유지
+            ) : user ? (
+              <Link to="/mypage">
+                <Button variant="outline" className="w-full">마이페이지</Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="outline" className="w-full">로그인</Button>
+              </Link>
             )}
           </div>
         )}
