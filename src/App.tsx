@@ -43,20 +43,33 @@ const OAuthCallbackHandler = () => {
       const error = hashParams.get('error');
       const errorDescription = hashParams.get('error_description');
 
+      // 해시가 없으면 처리하지 않음 (무한 루프 방지)
+      if (!window.location.hash) {
+        return;
+      }
+
       if (error) {
         console.error('OAuth error:', error, errorDescription);
+        // URL 정리
+        window.history.replaceState({}, document.title, window.location.pathname);
         // 에러가 있으면 로그인 페이지로 리다이렉트
         navigate('/login');
         return;
       }
 
       if (accessToken) {
-        // Supabase가 자동으로 세션을 처리하지만, URL 정리를 위해 세션 확인
+        // Supabase가 자동으로 세션을 처리하므로 잠시 대기
         try {
+          // 세션이 설정될 때까지 대기
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
           if (sessionError) {
             console.error('Session error:', sessionError);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            navigate('/login');
+            return;
           }
 
           // URL에서 토큰 파라미터 제거
@@ -66,21 +79,21 @@ const OAuthCallbackHandler = () => {
             window.location.pathname + window.location.search
           );
 
-          // 홈으로 리다이렉트 (이미 홈이면 리로드)
-          if (window.location.pathname === '/') {
-            window.location.reload();
-          } else {
-            navigate('/');
-          }
+          // 홈으로 리다이렉트 (리로드하지 않고 navigate만 사용)
+          navigate('/', { replace: true });
         } catch (err) {
           console.error('OAuth callback handling error:', err);
+          window.history.replaceState({}, document.title, window.location.pathname);
           navigate('/');
         }
       }
     };
 
-    handleOAuthCallback();
-  }, [navigate]);
+    // 해시가 있을 때만 실행
+    if (window.location.hash) {
+      handleOAuthCallback();
+    }
+  }, [navigate, location.hash]);
 
   return null;
 };
