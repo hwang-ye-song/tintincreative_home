@@ -24,7 +24,7 @@ export const Navbar = () => {
   const [activeSection, setActiveSection] = useState("hero");
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // 초기 인증 확인 중 상태
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false); // 초기값을 false로 설정하여 버튼이 바로 표시되도록
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === "/";
@@ -52,7 +52,10 @@ export const Navbar = () => {
   useEffect(() => {
     // Check auth state and user role
     const checkUser = async () => {
-      setIsCheckingAuth(true);
+      // 타임아웃 설정: 3초 후에는 무조건 버튼 표시
+      const timeoutId = setTimeout(() => {
+        setIsCheckingAuth(false);
+      }, 3000);
       
       try {
         // 실제 세션을 확인하여 유효한 사용자만 표시
@@ -61,6 +64,7 @@ export const Navbar = () => {
         if (sessionError || !session || !session.user) {
           setUser(null);
           setUserRole(null);
+          clearTimeout(timeoutId);
           setIsCheckingAuth(false);
           return;
         }
@@ -88,6 +92,7 @@ export const Navbar = () => {
         setUser(null);
         setUserRole(null);
       } finally {
+        clearTimeout(timeoutId);
         setIsCheckingAuth(false);
       }
     };
