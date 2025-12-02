@@ -23,6 +23,7 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === "/";
@@ -48,12 +49,42 @@ export const Navbar = () => {
   };
 
   useEffect(() => {
-    // Check auth state
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    // Check auth state and user role
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      if (user) {
+        // Get user role from profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        setUserRole(profile?.role || null);
+      } else {
+        setUserRole(null);
+      }
+    };
+    
+    checkUser();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          setUserRole(profile?.role || null);
+        } else {
+          setUserRole(null);
+        }
       }
     );
 
@@ -101,6 +132,13 @@ export const Navbar = () => {
             >
               홈
             </button>
+            {userRole === 'admin' && (
+              <Link to="/admin">
+                <Button variant="ghost" size="sm" className="text-foreground hover:text-primary">
+                  관리자 페이지
+                </Button>
+              </Link>
+            )}
             <button 
               onClick={() => scrollToSection('curriculum')} 
               className={`text-foreground hover:text-primary transition-colors ${activeSection === 'curriculum' ? 'text-primary font-semibold' : ''}`}
@@ -146,6 +184,13 @@ export const Navbar = () => {
             >
               홈
             </button>
+            {userRole === 'admin' && (
+              <Link to="/admin" onClick={() => setIsOpen(false)}>
+                <Button variant="ghost" className="w-full text-left justify-start">
+                  관리자 페이지
+                </Button>
+              </Link>
+            )}
             <button
               onClick={() => scrollToSection('curriculum')}
               className={`block w-full text-left text-foreground hover:text-primary transition-colors ${activeSection === 'curriculum' ? 'text-primary font-semibold' : ''}`}

@@ -691,6 +691,7 @@ const ProjectDetailPage = () => {
   };
 
   const isOwner = currentUserId && project?.user_id === currentUserId;
+  const isAdmin = userRole === 'admin';
 
   const renderComment = (
     comment: CommentWithReplies,
@@ -743,7 +744,7 @@ const ProjectDetailPage = () => {
                     답글
                   </Button>
                 )}
-                {currentUserId === comment.user_id && (
+                {(currentUserId === comment.user_id || isAdmin) && (
                   <>
                     {isEditing ? (
                       <>
@@ -769,22 +770,25 @@ const ProjectDetailPage = () => {
                       </>
                     ) : (
                       <>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingCommentId(comment.id);
-                            setEditingContent(comment.content);
-                          }}
-                          className="h-6 px-2"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
+                        {currentUserId === comment.user_id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingCommentId(comment.id);
+                              setEditingContent(comment.content);
+                            }}
+                            className="h-6 px-2"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleDeleteComment(comment.id)}
                           className="h-6 px-2 text-destructive hover:text-destructive"
+                          title={isAdmin && currentUserId !== comment.user_id ? "관리자 권한으로 삭제" : ""}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -935,36 +939,43 @@ const ProjectDetailPage = () => {
               목록으로
             </Button>
 
-            {isOwner && (
+            {(isOwner || isAdmin) && (
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/portfolio/edit/${id}`)}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  수정
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleToggleVisibility}
-                  disabled={isUpdatingVisibility}
-                >
-                  {isUpdatingVisibility
-                    ? "처리 중..."
-                    : project.is_hidden
-                      ? "공개 전환"
-                      : "숨김 전환"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  삭제
-                </Button>
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/portfolio/edit/${id}`)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    수정
+                  </Button>
+                )}
+                {(isOwner || isAdmin) && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleToggleVisibility}
+                    disabled={isUpdatingVisibility}
+                  >
+                    {isUpdatingVisibility
+                      ? "처리 중..."
+                      : project.is_hidden
+                        ? "공개 전환"
+                        : "숨김 전환"}
+                  </Button>
+                )}
+                {(isOwner || isAdmin) && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                    title={isAdmin && !isOwner ? "관리자 권한으로 삭제" : ""}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    삭제
+                  </Button>
+                )}
               </div>
             )}
           </div>

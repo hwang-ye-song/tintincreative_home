@@ -195,6 +195,68 @@ const AdminPage = () => {
     }
   };
 
+  const deleteProject = async (projectId: string) => {
+    if (!confirm("정말 이 프로젝트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", projectId);
+
+      if (error) throw error;
+
+      toast({
+        title: "성공",
+        description: "프로젝트가 삭제되었습니다.",
+      });
+
+      // 캐시 무효화하여 최신 데이터 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "프로젝트 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteComment = async (commentId: string) => {
+    if (!confirm("정말 이 댓글을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("project_comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "성공",
+        description: "댓글이 삭제되었습니다.",
+      });
+
+      // 캐시 무효화하여 최신 데이터 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["adminComments"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ["projectComments"] });
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "댓글 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -303,6 +365,14 @@ const AdminPage = () => {
                               </>
                             )}
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteProject(project.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            삭제
+                          </Button>
                         </div>
                       </div>
                     </CardHeader>
@@ -344,6 +414,14 @@ const AdminPage = () => {
                                 숨김
                               </>
                             )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteComment(comment.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            삭제
                           </Button>
                         </div>
                       </div>
