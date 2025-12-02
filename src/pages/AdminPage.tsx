@@ -10,158 +10,184 @@ import { useToast } from "@/hooks/use-toast";
 import { Shield, Eye, EyeOff, Trash2, Users, BarChart3 } from "lucide-react";
 import { Project, Comment, Profile } from "@/types";
 import { Helmet } from "react-helmet-async";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const AdminPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [users, setUsers] = useState<Profile[]>([]);
-  const [stats, setStats] = useState({
-    totalProjects: 0,
-    totalComments: 0,
-    totalUsers: 0,
-  });
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    checkAdminAccess();
-  }, []);
-
-  const checkAdminAccess = async () => {
-    try {
+  // 관리자 권한 확인 (React Query)
+  const { data: adminCheck, isLoading: isLoadingAdmin } = useQuery({
+    queryKey: ["adminCheck"],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate("/login");
-        return;
+        return { isAdmin: false, user: null };
       }
 
-      // 임시로 모든 로그인 사용자에게 관리자 권한 부여
-      // 실제 운영 시에는 특정 이메일이나 별도의 권한 시스템 필요
-      setIsAdmin(true);
-      await Promise.all([
-        fetchProjects(),
-        fetchComments(),
-        fetchUsers(),
-        fetchStats(),
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "admin") {
+        toast({
+          title: "권한 없음",
+          description: "관리자만 접근할 수 있습니다.",
+          variant: "destructive",
+        });
+        navigate("/");
+        return { isAdmin: false, user: null };
+      }
+
+      return { isAdmin: true, user };
+    },
+    staleTime: 5 * 60 * 1000, // 5분간 캐시
+  });
+
+  const isAdmin = adminCheck?.isAdmin || false;
+
+  // 프로젝트 목록 가져오기 (React Query)
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
+    queryKey: ["adminProjects"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select(`
+          *,
+          profiles (name, avatar_url)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      return (data || []) as Project[];
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // 댓글 목록 가져오기 (React Query)
+  const { data: comments = [], isLoading: isLoadingComments } = useQuery<Comment[]>({
+    queryKey: ["adminComments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_comments")
+        .select(`
+          *,
+          profiles (name, avatar_url),
+          projects (title)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      return (data || []) as Comment[];
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // 사용자 목록 가져오기 (React Query)
+  const { data: users = [], isLoading: isLoadingUsers } = useQuery<Profile[]>({
+    queryKey: ["adminUsers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      return (data || []) as Profile[];
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // 통계 가져오기 (React Query)
+  const { data: stats = {
+    totalProjects: 0,
+    totalComments: 0,
+    totalUsers: 0,
+    hiddenProjects: 0,
+    hiddenComments: 0,
+  }, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["adminStats"],
+    queryFn: async () => {
+      const [projectsResult, commentsResult, usersResult, hiddenProjectsResult, hiddenCommentsResult] = await Promise.all([
+        supabase.from("projects").select("*", { count: "exact", head: true }),
+        supabase.from("project_comments").select("*", { count: "exact", head: true }),
+        supabase.from("profiles").select("*", { count: "exact", head: true }),
+        supabase.from("projects").select("*", { count: "exact", head: true }).eq("is_hidden", true),
+        supabase.from("project_comments").select("*", { count: "exact", head: true }).eq("is_hidden", true),
       ]);
-    } catch (error: any) {
-      toast({
-        title: "오류",
-        description: error.message || "접근 권한을 확인하는데 실패했습니다.",
-        variant: "destructive",
-      });
-      navigate("/");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const fetchProjects = async () => {
-    const { data, error } = await supabase
-      .from("projects")
-      .select(`
-        *,
-        profiles (name)
-      `)
-      .order("created_at", { ascending: false })
-      .limit(50);
+      return {
+        totalProjects: projectsResult.count || 0,
+        totalComments: commentsResult.count || 0,
+        totalUsers: usersResult.count || 0,
+        hiddenProjects: hiddenProjectsResult.count || 0,
+        hiddenComments: hiddenCommentsResult.count || 0,
+      };
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
 
-    if (!error && data) {
-      setProjects(data as Project[]);
-    }
-  };
+  const loading = isLoadingAdmin || isLoadingProjects || isLoadingComments || isLoadingUsers || isLoadingStats;
 
-  const fetchComments = async () => {
-    const { data, error } = await supabase
-      .from("project_comments")
-      .select(`
-        *,
-        profiles (name),
-        projects (title)
-      `)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (!error && data) {
-      setComments(data as Comment[]);
-    }
-  };
-
-  const fetchUsers = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (!error && data) {
-      setUsers(data as Profile[]);
-    }
-  };
-
-  const fetchStats = async () => {
-    const [projectsResult, commentsResult, usersResult] = await Promise.all([
-      supabase.from("projects").select("*", { count: "exact", head: true }),
-      supabase.from("project_comments").select("*", { count: "exact", head: true }),
-      supabase.from("profiles").select("*", { count: "exact", head: true }),
-    ]);
-
-    setStats({
-      totalProjects: projectsResult.count || 0,
-      totalComments: commentsResult.count || 0,
-      totalUsers: usersResult.count || 0,
-    });
-  };
-
-  const deleteProject = async (projectId: string) => {
-    if (!confirm("정말로 이 프로젝트를 삭제하시겠습니까?")) return;
-    
+  const toggleProjectVisibility = async (projectId: string, currentState: boolean) => {
     try {
       const { error } = await supabase
         .from("projects")
-        .delete()
+        .update({ is_hidden: !currentState })
         .eq("id", projectId);
 
       if (error) throw error;
 
       toast({
         title: "성공",
-        description: "프로젝트가 삭제되었습니다.",
+        description: currentState ? "프로젝트가 공개되었습니다." : "프로젝트가 숨김 처리되었습니다.",
       });
 
-      await Promise.all([fetchProjects(), fetchStats()]);
+      // 캐시 무효화하여 최신 데이터 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] }); // 포트폴리오 페이지 캐시도 무효화
     } catch (error: any) {
       toast({
         title: "오류",
-        description: error.message || "프로젝트 삭제에 실패했습니다.",
+        description: error.message || "프로젝트 상태 변경에 실패했습니다.",
         variant: "destructive",
       });
     }
   };
 
-  const deleteComment = async (commentId: string) => {
-    if (!confirm("정말로 이 댓글을 삭제하시겠습니까?")) return;
-    
+  const toggleCommentVisibility = async (commentId: string, currentState: boolean) => {
     try {
       const { error } = await supabase
         .from("project_comments")
-        .delete()
+        .update({ is_hidden: !currentState })
         .eq("id", commentId);
 
       if (error) throw error;
 
       toast({
         title: "성공",
-        description: "댓글이 삭제되었습니다.",
+        description: currentState ? "댓글이 공개되었습니다." : "댓글이 숨김 처리되었습니다.",
       });
 
-      await Promise.all([fetchComments(), fetchStats()]);
+      // 캐시 무효화하여 최신 데이터 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["adminComments"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
     } catch (error: any) {
       toast({
         title: "오류",
-        description: error.message || "댓글 삭제에 실패했습니다.",
+        description: error.message || "댓글 상태 변경에 실패했습니다.",
         variant: "destructive",
       });
     }
@@ -210,6 +236,9 @@ const AdminPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalProjects}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  숨김: {stats.hiddenProjects}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -218,6 +247,9 @@ const AdminPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalComments}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  숨김: {stats.hiddenComments}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -254,11 +286,20 @@ const AdminPage = () => {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="destructive"
-                            onClick={() => deleteProject(project.id)}
+                            variant={project.is_hidden ? "default" : "outline"}
+                            onClick={() => toggleProjectVisibility(project.id, project.is_hidden || false)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            삭제
+                            {project.is_hidden ? (
+                              <>
+                                <Eye className="mr-2 h-4 w-4" />
+                                공개
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="mr-2 h-4 w-4" />
+                                숨김
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -287,11 +328,20 @@ const AdminPage = () => {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="destructive"
-                            onClick={() => deleteComment(comment.id)}
+                            variant={comment.is_hidden ? "default" : "outline"}
+                            onClick={() => toggleCommentVisibility(comment.id, comment.is_hidden || false)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            삭제
+                            {comment.is_hidden ? (
+                              <>
+                                <Eye className="mr-2 h-4 w-4" />
+                                공개
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="mr-2 h-4 w-4" />
+                                숨김
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -308,7 +358,7 @@ const AdminPage = () => {
                     <CardHeader>
                       <CardTitle className="text-base">{user.name}</CardTitle>
                       <CardDescription>
-                        {user.email}
+                        {user.email} | 역할: {user.role || "student"}
                       </CardDescription>
                     </CardHeader>
                   </Card>

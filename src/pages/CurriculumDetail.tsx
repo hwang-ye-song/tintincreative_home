@@ -36,6 +36,7 @@ const CurriculumDetail = () => {
     queryKey: ["curriculum", curriculumId],
     queryFn: () => fetchCurriculum(curriculumId || ""),
     enabled: !!curriculumId,
+    staleTime: 5 * 60 * 1000, // 5분간 캐시 (커리큘럼은 자주 변경되지 않음)
   });
 
   useEffect(() => {

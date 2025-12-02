@@ -13,14 +13,13 @@ import { LogOut, User, Lock, Edit2, Save, X, Upload, Camera } from "lucide-react
 import { useToast } from "@/hooks/use-toast";
 import { Project, Comment, Profile } from "@/types";
 import { compressAndConvertImage, formatFileSize } from "@/lib/imageUtils";
+import { devLog } from "@/lib/utils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const MyPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   
   // 프로필 수정 관련 상태
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -38,45 +37,51 @@ const MyPage = () => {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordUpdateLoading, setPasswordUpdateLoading] = useState(false);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  // 사용자 정보 가져오기
+  const { data: userData } = useQuery({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return null;
+      }
+      return user;
+    },
+    staleTime: 5 * 60 * 1000, // 5분간 캐시
+  });
 
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+  // 프로필 정보 가져오기 (React Query)
+  const { data: profile, isLoading: isLoadingProfile } = useQuery<Profile>({
+    queryKey: ["profile", userData?.id],
+    queryFn: async () => {
+      if (!userData?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('name, email, avatar_url')
+        .eq('id', userData.id)
+        .single();
 
-    await Promise.all([
-      fetchProfile(user.id),
-      fetchMyProjects(user.id),
-      fetchMyComments(user.id)
-    ]);
-    
-    setLoading(false);
-  };
-
-  const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('name, email, avatar_url')
-      .eq('id', userId)
-      .single();
-
-    if (!error && data) {
-      const profileData = {
-        id: userId,
-        name: (data as any).name,
-        email: (data as any).email,
-        avatar_url: (data as any).avatar_url,
+      if (error) throw error;
+      
+      return {
+        id: userData.id,
+        name: data.name || '',
+        email: data.email || '',
+        avatar_url: data.avatar_url || null,
       } as Profile;
-      setProfile(profileData);
-      setEditedName(profileData.name);
+    },
+    enabled: !!userData?.id,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // 프로필 이름 초기화
+  useEffect(() => {
+    if (profile) {
+      setEditedName(profile.name);
     }
-  };
+  }, [profile]);
 
   const handleUpdateProfile = async () => {
     if (!editedName.trim()) {
@@ -109,7 +114,7 @@ const MyPage = () => {
         .single();
 
       if (error) {
-        console.error('Profile name update error:', error);
+        devLog.error('Profile name update error:', error);
         throw error;
       }
 
@@ -118,7 +123,8 @@ const MyPage = () => {
         description: "프로필이 성공적으로 수정되었습니다.",
       });
 
-      await fetchProfile(user.id);
+      // 캐시 무효화하여 최신 데이터 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
       setIsEditingProfile(false);
     } catch (error: any) {
       toast({
@@ -132,16 +138,16 @@ const MyPage = () => {
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('=== handleAvatarChange 함수 호출됨 ===');
+    devLog.log('=== handleAvatarChange 함수 호출됨 ===');
     const file = e.target.files?.[0];
-    console.log('선택된 파일:', file);
+    devLog.log('선택된 파일:', file);
     
     if (!file) {
-      console.warn('⚠️ 파일이 선택되지 않았습니다.');
+      devLog.warn('⚠️ 파일이 선택되지 않았습니다.');
       return;
     }
 
-    console.log('파일 정보:', {
+    devLog.log('파일 정보:', {
       name: file.name,
       size: file.size,
       type: file.type
@@ -149,7 +155,7 @@ const MyPage = () => {
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      console.error('파일 크기 초과:', file.size, 'bytes');
+      devLog.error('파일 크기 초과:', file.size, 'bytes');
       toast({
         title: "파일 크기 초과",
         description: "이미지는 10MB 이하여야 합니다.",
@@ -159,14 +165,14 @@ const MyPage = () => {
     }
 
     try {
-      console.log('이미지 압축 시작...');
+      devLog.log('이미지 압축 시작...');
       toast({
         title: "이미지 처리 중",
         description: "프로필 이미지를 압축하고 최적화하는 중입니다...",
       });
 
       const compressedFile = await compressAndConvertImage(file);
-      console.log('이미지 압축 완료:', {
+      devLog.log('이미지 압축 완료:', {
         originalSize: file.size,
         compressedSize: compressedFile.size,
         name: compressedFile.name
@@ -174,17 +180,17 @@ const MyPage = () => {
       
       // 상태 업데이트
       setAvatarFile(compressedFile);
-      console.log('avatarFile state 설정됨:', compressedFile);
+      devLog.log('avatarFile state 설정됨:', compressedFile);
       
       // 미리보기 생성
       const reader = new FileReader();
       reader.onloadend = () => {
         const preview = reader.result as string;
-        console.log('미리보기 생성됨');
+        devLog.log('미리보기 생성됨');
         setAvatarPreview(preview);
       };
       reader.onerror = (error) => {
-        console.error('미리보기 생성 실패:', error);
+        devLog.error('미리보기 생성 실패:', error);
       };
       reader.readAsDataURL(compressedFile);
       
@@ -192,8 +198,8 @@ const MyPage = () => {
         title: "이미지 최적화 완료",
         description: `이미지가 ${formatFileSize(compressedFile.size)}로 최적화되었습니다. 업로드 버튼을 클릭하세요.`,
       });
-    } catch (error: any) {
-      console.error("Avatar compression error:", error);
+    } catch (error: unknown) {
+      devLog.error("Avatar compression error:", error);
       toast({
         title: "이미지 처리 실패",
         description: error.message || "이미지 처리 중 오류가 발생했습니다.",
@@ -205,12 +211,12 @@ const MyPage = () => {
   };
 
   const handleAvatarUpload = async () => {
-    console.log('=== handleAvatarUpload 함수 호출됨 ===');
-    console.log('avatarFile:', avatarFile);
-    console.log('avatarFile 존재 여부:', !!avatarFile);
+    devLog.log('=== handleAvatarUpload 함수 호출됨 ===');
+    devLog.log('avatarFile:', avatarFile);
+    devLog.log('avatarFile 존재 여부:', !!avatarFile);
     
     if (!avatarFile) {
-      console.warn('⚠️ avatarFile이 없어서 업로드를 중단합니다.');
+      devLog.warn('⚠️ avatarFile이 없어서 업로드를 중단합니다.');
       toast({
         title: "파일 없음",
         description: "업로드할 이미지를 선택해주세요.",
@@ -219,14 +225,14 @@ const MyPage = () => {
       return;
     }
 
-    console.log('✅ avatarFile 확인 완료, 업로드 시작...');
+    devLog.log('✅ avatarFile 확인 완료, 업로드 시작...');
     setAvatarUploadLoading(true);
     try {
       // 1. 사용자 확인
-      console.log('1. 사용자 확인 중...');
+      devLog.log('1. 사용자 확인 중...');
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) {
-        console.error('User fetch error:', userError);
+        devLog.error('User fetch error:', userError);
         throw new Error(`사용자 확인 실패: ${userError.message}`);
       }
       
@@ -240,23 +246,23 @@ const MyPage = () => {
         return;
       }
 
-      console.log('Starting avatar upload for user:', user.id);
+      devLog.log('Starting avatar upload for user:', user.id);
 
       // 2. Storage 버킷 확인 (선택적 - 에러가 나도 계속 진행)
       try {
         const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
         if (bucketError) {
-          console.warn('Bucket check error:', bucketError);
+          devLog.warn('Bucket check error:', bucketError);
         } else {
           const avatarsBucket = buckets?.find(b => b.id === 'avatars');
           if (!avatarsBucket) {
-            console.warn('avatars bucket not found. Make sure to run the migration SQL.');
+            devLog.warn('avatars bucket not found. Make sure to run the migration SQL.');
           } else {
-            console.log('avatars bucket found:', avatarsBucket);
+            devLog.log('avatars bucket found:', avatarsBucket);
           }
         }
       } catch (bucketCheckError) {
-        console.warn('Error checking buckets:', bucketCheckError);
+        devLog.warn('Error checking buckets:', bucketCheckError);
       }
 
       // 3. 기존 아바타 삭제 (있는 경우)
@@ -265,26 +271,26 @@ const MyPage = () => {
           const oldFileName = profile.avatar_url.split('/').pop();
           if (oldFileName) {
             const oldPath = `${user.id}/${oldFileName}`;
-            console.log('Removing old avatar:', oldPath);
+            devLog.log('Removing old avatar:', oldPath);
             const { error: removeError } = await supabase.storage
               .from('avatars')
               .remove([oldPath]);
             if (removeError) {
-              console.warn('Failed to remove old avatar:', removeError);
+              devLog.warn('Failed to remove old avatar:', removeError);
               // 기존 파일 삭제 실패해도 계속 진행
             } else {
-              console.log('Old avatar removed successfully');
+              devLog.log('Old avatar removed successfully');
             }
           }
         } catch (removeErr) {
-          console.warn('Error removing old avatar:', removeErr);
+          devLog.warn('Error removing old avatar:', removeErr);
           // 계속 진행
         }
       }
 
       // 4. 새 아바타 업로드
       const fileName = `${user.id}/${Date.now()}.webp`;
-      console.log('Uploading file:', fileName, 'Size:', avatarFile.size, 'bytes');
+      devLog.log('Uploading file:', fileName, 'Size:', avatarFile.size, 'bytes');
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
@@ -295,27 +301,27 @@ const MyPage = () => {
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
-        console.error('Upload error details:', {
+        devLog.error('Upload error:', uploadError);
+        devLog.error('Upload error details:', {
           message: uploadError.message,
           error: uploadError,
         });
         throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
       }
 
-      console.log('Upload successful:', uploadData);
+      devLog.log('Upload successful:', uploadData);
 
       // 5. Public URL 생성
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
-      console.log('Public URL generated:', publicUrl);
+      devLog.log('Public URL generated:', publicUrl);
 
       // 6. 프로필 업데이트
-      console.log('Updating profile with avatar_url:', publicUrl);
-      console.log('User ID:', user.id);
-      console.log('Current auth.uid():', (await supabase.auth.getUser()).data.user?.id);
+      devLog.log('Updating profile with avatar_url:', publicUrl);
+      devLog.log('User ID:', user.id);
+      devLog.log('Current auth.uid():', (await supabase.auth.getUser()).data.user?.id);
       
       const { data: updateData, error: updateError } = await supabase
         .from('profiles')
@@ -325,8 +331,8 @@ const MyPage = () => {
         .single();
 
       if (updateError) {
-        console.error('Profile update error:', updateError);
-        console.error('Update error details:', {
+        devLog.error('Profile update error:', updateError);
+        devLog.error('Update error details:', {
           message: updateError.message,
           details: updateError.details,
           hint: updateError.hint,
@@ -335,30 +341,30 @@ const MyPage = () => {
         
         // RLS 정책 위반인지 확인
         if (updateError.code === '42501' || updateError.message?.includes('row-level security')) {
-          throw new Error(`RLS 정책 위반: 프로필 업데이트 권한이 없습니다. 사용자 ID: ${user.id}`);
+          throw new Error('프로필 업데이트 권한이 없습니다.');
         }
         
         throw new Error(`프로필 업데이트 실패: ${updateError.message}`);
       }
 
       if (!updateData) {
-        console.error('Update returned no data');
+        devLog.error('Update returned no data');
         throw new Error('프로필 업데이트는 성공했지만 데이터를 반환받지 못했습니다.');
       }
 
-      console.log('Profile updated successfully:', JSON.stringify(updateData, null, 2));
-      console.log('Updated avatar_url:', updateData.avatar_url);
+      devLog.log('Profile updated successfully:', JSON.stringify(updateData, null, 2));
+      devLog.log('Updated avatar_url:', updateData.avatar_url);
       
       // 업데이트된 데이터 확인
       if (!updateData.avatar_url || updateData.avatar_url !== publicUrl) {
-        console.warn('⚠️ 업데이트된 avatar_url이 예상과 다릅니다!');
-        console.warn('Expected:', publicUrl);
-        console.warn('Got:', updateData.avatar_url);
+        devLog.warn('⚠️ 업데이트된 avatar_url이 예상과 다릅니다!');
+        devLog.warn('Expected:', publicUrl);
+        devLog.warn('Got:', updateData.avatar_url);
       }
 
       // 7. 프로필 정보 다시 불러오기
-      console.log('Refetching profile...');
-      await fetchProfile(user.id);
+      devLog.log('Refetching profile...');
+      queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
 
       toast({
         title: "프로필 이미지 업로드 완료",
@@ -367,8 +373,8 @@ const MyPage = () => {
 
       setAvatarFile(null);
       setAvatarPreview(null);
-    } catch (error: any) {
-      console.error('Avatar upload error:', error);
+    } catch (error: unknown) {
+      devLog.error('Avatar upload error:', error);
       toast({
         title: "오류",
         description: error.message || "프로필 이미지 업로드에 실패했습니다. 콘솔을 확인해주세요.",
@@ -425,55 +431,87 @@ const MyPage = () => {
     }
   };
 
-  const fetchMyProjects = async (userId: string) => {
-    const { data: projectsData, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (!error && projectsData) {
-      const projectsWithCounts = await Promise.all(
-        projectsData.map(async (project) => {
-          const [commentResult, likeResult] = await Promise.all([
-            supabase
-              .from('project_comments')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', project.id),
-            supabase
-              .from('project_likes')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', project.id)
-          ]);
-          
-          return {
-            ...project,
-            commentCount: commentResult.count || 0,
-            likeCount: likeResult.count || 0
-          };
-        })
-      );
+  // 내 프로젝트 가져오기 (React Query)
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
+    queryKey: ["myProjects", userData?.id],
+    queryFn: async () => {
+      if (!userData?.id) return [];
       
-      setProjects(projectsWithCounts as Project[]);
-    }
-  };
+      const { data: projectsData, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', userData.id)
+        .order('created_at', { ascending: false });
 
-  const fetchMyComments = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('project_comments')
-      .select(`
-        id,
-        content,
-        created_at,
-        projects (title)
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      if (error) throw error;
+      if (!projectsData) return [];
 
-    if (!error && data) {
-      setComments(data as Comment[]);
-    }
-  };
+      // N+1 쿼리 최적화: 모든 프로젝트의 댓글/좋아요 개수를 한 번에 조회
+      const projectIds = projectsData.map(p => p.id);
+      
+      let commentCounts: Record<string, number> = {};
+      let likeCounts: Record<string, number> = {};
+      
+      if (projectIds.length > 0) {
+        const [commentsResult, likesResult] = await Promise.all([
+          supabase
+            .from('project_comments')
+            .select('project_id')
+            .in('project_id', projectIds),
+          supabase
+            .from('project_likes')
+            .select('project_id')
+            .in('project_id', projectIds)
+        ]);
+        
+        if (commentsResult.data) {
+          commentsResult.data.forEach(comment => {
+            commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
+          });
+        }
+        
+        if (likesResult.data) {
+          likesResult.data.forEach(like => {
+            likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
+          });
+        }
+      }
+      
+      return projectsData.map((project) => ({
+        ...project,
+        commentCount: commentCounts[project.id] || 0,
+        likeCount: likeCounts[project.id] || 0
+      })) as Project[];
+    },
+    enabled: !!userData?.id,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // 내 댓글 가져오기 (React Query)
+  const { data: comments = [], isLoading: isLoadingComments } = useQuery<Comment[]>({
+    queryKey: ["myComments", userData?.id],
+    queryFn: async () => {
+      if (!userData?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('project_comments')
+        .select(`
+          id,
+          content,
+          created_at,
+          projects (title)
+        `)
+        .eq('user_id', userData.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as Comment[];
+    },
+    enabled: !!userData?.id,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  const loading = isLoadingProfile || isLoadingProjects || isLoadingComments;
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -738,7 +776,7 @@ const MyPage = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  console.log('취소 버튼 클릭됨');
+                                  devLog.log('취소 버튼 클릭됨');
                                   setAvatarFile(null);
                                   setAvatarPreview(null);
                                 }}

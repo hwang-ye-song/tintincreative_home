@@ -1,7 +1,7 @@
-import React from "react";
+import React, { memo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 
 interface PortfolioCardProps {
@@ -14,6 +14,7 @@ interface PortfolioCardProps {
   commentCount?: number;
   likeCount?: number;
   viewCount?: number;
+  avatarUrl?: string | null;
 }
 
 // Utility to strip HTML and get plain text preview
@@ -24,7 +25,12 @@ const getTextPreview = (html: string, maxLength: number = 150): string => {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 };
 
-export const PortfolioCard = ({ 
+const getOptimizedAvatarUrl = (url?: string | null) => {
+  if (!url) return null;
+  return url.includes('supabase.co/storage') ? `${url}?width=96&quality=80` : url;
+};
+
+export const PortfolioCard = memo(({ 
   id,
   title, 
   student, 
@@ -33,16 +39,29 @@ export const PortfolioCard = ({
   tags, 
   commentCount = 0,
   likeCount = 0,
-  viewCount = 0
+  viewCount = 0,
+  avatarUrl
 }: PortfolioCardProps) => {
   const plainDescription = getTextPreview(description);
-  const initials = student.split(' ').map(n => n[0]).join('').toUpperCase();
+  const initials = student
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase() || 'U';
+  const optimizedAvatarUrl = getOptimizedAvatarUrl(avatarUrl);
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm p-4">
       <div className="flex gap-4">
         {/* Avatar on the left */}
         <Avatar className="h-12 w-12 flex-shrink-0">
+          {optimizedAvatarUrl && (
+            <AvatarImage 
+              src={optimizedAvatarUrl} 
+              alt={`${student} 프로필 이미지`}
+              loading="lazy"
+            />
+          )}
           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
             {initials}
           </AvatarFallback>
@@ -101,4 +120,4 @@ export const PortfolioCard = ({
       </div>
     </Card>
   );
-};
+});

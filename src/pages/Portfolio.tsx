@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -9,133 +9,300 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Sparkles, Search } from "lucide-react";
 import { Project } from "@/types";
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+
+const VISIBILITY_FILTER = "is_hidden.is.null,is_hidden.eq.false";
 
 const Portfolio = () => {
   const navigate = useNavigate();
-  const [popularProjects, setPopularProjects] = useState<Project[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
   const [user, setUser] = useState<any>(null);
-  const ITEMS_PER_PAGE = 12;
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
-    fetchPopularProjects().then(setPopularProjects);
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      let userRoleValue: string | null = null;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        userRoleValue = (profile as { role?: string } | null)?.role || null;
+        setUserRole(userRoleValue);
+      }
+      
+      return { user, userRoleValue };
+    };
+    
+    loadUser();
   }, []);
 
-  const fetchProjects = useCallback(async ({ pageParam = 0 }) => {
+  const stripHtml = (html: string | null | undefined) => {
+    if (!html) return "";
+    return html.replace(/<[^>]*>/g, " ");
+  };
+
+  const matchesSearch = (project: { title?: string | null; description?: string | null; tags?: string[] | null }) => {
+    if (!searchQuery) return true;
+    const term = searchQuery.toLowerCase();
+    const inTitle = project.title?.toLowerCase().includes(term);
+    const inDescription = stripHtml(project.description).toLowerCase().includes(term);
+    const inTags = project.tags?.some(tag => tag?.toLowerCase().includes(term));
+    return Boolean(inTitle || inDescription || inTags);
+  };
+
+  const buildProjectsQuery = (
+    pageParam: number,
+    skipVisibilityFilter = false
+  ) => {
     let query = supabase
-      .from('projects')
-      .select(`
+      .from("projects")
+      .select(
+        `
         *,
-        profiles (id, name, email)
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
+        profiles (name, avatar_url)
+      `,
+        { count: "exact" }
+      )
+      .order("created_at", { ascending: false })
       .range(pageParam * ITEMS_PER_PAGE, (pageParam + 1) * ITEMS_PER_PAGE - 1);
 
+    if (!skipVisibilityFilter) {
+      query = query.or(VISIBILITY_FILTER);
+    }
+
     if (selectedCategory !== "전체") {
-      query = query.eq('category', selectedCategory);
+      query = query.eq("category", selectedCategory);
     }
 
-    if (searchQuery) {
-      query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,tags.cs.{${searchQuery}}`);
-    }
-
-    const { data: projectsData, error, count } = await query;
-
-    if (!error && projectsData) {
-      const projectsWithCounts = await Promise.all(
-        projectsData.map(async (project) => {
-          const [commentResult, likeResult] = await Promise.all([
-            supabase
-              .from('project_comments')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', project.id),
-            supabase
-              .from('project_likes')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', project.id)
-          ]);
-          
-          return {
-            ...project,
-            commentCount: commentResult.count || 0,
-            likeCount: likeResult.count || 0,
-            view_count: project.view_count || 0
-          };
-        })
-      );
-      
-      return {
-        data: projectsWithCounts as Project[],
-        nextPage: projectsWithCounts.length === ITEMS_PER_PAGE ? pageParam + 1 : undefined,
-        total: count || 0
-      };
-    }
-    
-    return { data: [], nextPage: undefined, total: 0 };
-  }, [selectedCategory, searchQuery]);
-
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    refetch
-  } = useInfiniteQuery({
-    queryKey: ['projects', selectedCategory, searchQuery],
-    queryFn: fetchProjects,
-    getNextPageParam: (lastPage) => lastPage.nextPage,
-    initialPageParam: 0,
-  });
+    return query;
+  };
 
   useEffect(() => {
-    refetch();
-  }, [selectedCategory, searchQuery, refetch]);
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
 
-  const fetchPopularProjects = async () => {
-    const { data: projectsData, error } = await supabase
-      .from('projects')
-      .select(`
-        *,
-        profiles (id, name, email)
-      `)
-      .order('view_count', { ascending: false })
-      .limit(3);
+  const fetchPopularProjects = async (currentUser?: any, currentUserRole?: string | null) => {
+    const executeQuery = (skipVisibilityFilter = false) => {
+      let query = supabase
+        .from("projects")
+        .select(`
+          *,
+          profiles (name, avatar_url)
+        `)
+        .order("view_count", { ascending: false })
+        .limit(10); // 더 많이 가져와서 필터링
+
+      if (!skipVisibilityFilter) {
+        query = query.or(VISIBILITY_FILTER);
+      }
+
+      return query;
+    };
+
+    let { data: projectsData, error } = await executeQuery();
+
+    if (error && error.message?.includes("is_hidden")) {
+      ({ data: projectsData, error } = await executeQuery(true));
+    }
 
     if (!error && projectsData) {
-      const projectsWithCounts = await Promise.all(
-        projectsData.map(async (project) => {
-          const [commentResult, likeResult] = await Promise.all([
-            supabase
-              .from('project_comments')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', project.id),
-            supabase
-              .from('project_likes')
-              .select('*', { count: 'exact', head: true })
-              .eq('project_id', project.id)
-          ]);
-          
-          return {
-            ...project,
-            commentCount: commentResult.count || 0,
-            likeCount: likeResult.count || 0,
-            view_count: project.view_count || 0
-          };
-        })
-      );
+      // 작성자이거나 관리자인 경우 숨겨진 프로젝트도 포함
+      if (currentUser) {
+        projectsData = projectsData.filter((project) => {
+          if (!project.is_hidden) return true;
+          return project.user_id === currentUser.id || currentUserRole === "admin";
+        });
+      } else {
+        projectsData = projectsData.filter((project) => !project.is_hidden);
+      }
+      
+      // 상위 3개만 선택
+      projectsData = projectsData.slice(0, 3);
+      
+      // N+1 쿼리 최적화: 프로젝트 ID 목록을 얻은 후 댓글/좋아요를 병렬로 조회
+      const projectIds = projectsData.map(p => p.id);
+      
+      let commentCounts: Record<string, number> = {};
+      let likeCounts: Record<string, number> = {};
+      
+      if (projectIds.length > 0) {
+        // 댓글과 좋아요를 병렬로 조회
+        const [commentsResult, likesResult] = await Promise.all([
+          supabase
+            .from('project_comments')
+            .select('project_id')
+            .in('project_id', projectIds),
+          supabase
+            .from('project_likes')
+            .select('project_id')
+            .in('project_id', projectIds)
+        ]);
+        
+        if (commentsResult.data) {
+          commentsResult.data.forEach(comment => {
+            commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
+          });
+        }
+        
+        if (likesResult.data) {
+          likesResult.data.forEach(like => {
+            likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
+          });
+        }
+      }
+      
+      const projectsWithCounts = projectsData.map((project) => ({
+        ...project,
+        commentCount: commentCounts[project.id] || 0,
+        likeCount: likeCounts[project.id] || 0,
+        view_count: project.view_count || 0
+      }));
       
       return projectsWithCounts;
     }
     return [];
   };
 
-  const projects = data?.pages.flatMap(page => page.data) || [];
+  // React Query를 사용하여 프로젝트 리스트 캐싱
+  const {
+    data: projectsData,
+    isLoading,
+  } = useQuery<{ projects: Project[]; totalCount: number }>({
+    queryKey: [
+      "projects",
+      {
+        page: currentPage,
+        category: selectedCategory,
+        search: searchQuery,
+        userId: user?.id ?? null,
+        userRole,
+      },
+    ],
+    queryFn: async () => {
+      const pageParam = currentPage - 1;
+      const executeQuery = (skipVisibilityFilter = false) =>
+        buildProjectsQuery(pageParam, skipVisibilityFilter);
+
+      let { data: projectsData, error, count } = await executeQuery();
+
+      if (error && error.message?.includes("is_hidden")) {
+        ({ data: projectsData, error, count } = await executeQuery(true));
+      }
+
+      if (error || !projectsData) {
+        console.error("Failed to fetch projects:", error);
+        return { projects: [] as Project[], totalCount: 0 };
+      }
+
+      let filteredProjects = projectsData.filter(matchesSearch);
+
+      if (user) {
+        filteredProjects = filteredProjects.filter((project) => {
+          if (!project.is_hidden) return true;
+          return project.user_id === user.id || userRole === "admin";
+        });
+      } else {
+        filteredProjects = filteredProjects.filter((project) => !project.is_hidden);
+      }
+
+      // N+1 쿼리 최적화: 프로젝트 ID 목록을 얻은 후 댓글/좋아요를 병렬로 조회
+      const projectIds = filteredProjects.map((p) => p.id);
+
+      let commentCounts: Record<string, number> = {};
+      let likeCounts: Record<string, number> = {};
+
+      if (projectIds.length > 0) {
+        const [commentsResult, likesResult] = await Promise.all([
+          supabase
+            .from("project_comments")
+            .select("project_id")
+            .in("project_id", projectIds),
+          supabase
+            .from("project_likes")
+            .select("project_id")
+            .in("project_id", projectIds),
+        ]);
+
+        if (commentsResult.data) {
+          commentsResult.data.forEach((comment) => {
+            commentCounts[comment.project_id] =
+              (commentCounts[comment.project_id] || 0) + 1;
+          });
+        }
+
+        if (likesResult.data) {
+          likesResult.data.forEach((like) => {
+            likeCounts[like.project_id] =
+              (likeCounts[like.project_id] || 0) + 1;
+          });
+        }
+      }
+
+      const projectsWithCounts = filteredProjects.map((project) => ({
+        ...project,
+        commentCount: commentCounts[project.id] || 0,
+        likeCount: likeCounts[project.id] || 0,
+        view_count: project.view_count || 0,
+      }));
+
+      return {
+        projects: projectsWithCounts as Project[],
+        totalCount: count || 0,
+      };
+    },
+    staleTime: 30 * 1000, // 30초 동안 캐시 유지
+  });
+
+  const projects = projectsData?.projects ?? [];
+  const totalCount = projectsData?.totalCount ?? 0;
+
+  // 인기 프로젝트 캐싱
+  const {
+    data: popularData,
+    isLoading: isLoadingPopular,
+  } = useQuery<Project[]>({
+    queryKey: [
+      "popularProjects",
+      { userId: user?.id ?? null, userRole },
+    ],
+    queryFn: () => fetchPopularProjects(user, userRole),
+    staleTime: 60 * 1000, // 60초 동안 캐시 유지
+  });
+
+  const popularProjects = popularData ?? [];
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE)),
+    [totalCount]
+  );
+
+  const getPageNumbers = () => {
+    const maxButtons = 5;
+    const pages = [];
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let end = start + maxButtons - 1;
+
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(1, end - maxButtons + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
 
   const getOptimizedImageUrl = (url: string | null) => {
     if (!url) return null;
@@ -205,11 +372,17 @@ const Portfolio = () => {
           </div>
 
           {/* Popular Projects Section */}
-          {popularProjects.length > 0 && (
-            <div className="mb-12 max-w-4xl mx-auto animate-fade-in">
-              <h2 className="font-heading text-base md:text-lg font-bold mb-4 text-center">
-                🔥 인기 프로젝트
-              </h2>
+          <div className="mb-12 max-w-4xl mx-auto animate-fade-in">
+            <h2 className="font-heading text-base md:text-lg font-bold mb-4 text-center">
+              🔥 인기 프로젝트
+            </h2>
+            {isLoadingPopular ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-24 w-full" />
+                ))}
+              </div>
+            ) : popularProjects.length > 0 ? (
               <div className="space-y-3">
                 {popularProjects.map((project) => (
                   <div
@@ -227,12 +400,13 @@ const Portfolio = () => {
                       commentCount={project.commentCount || 0}
                       likeCount={project.likeCount || 0}
                       viewCount={project.view_count || 0}
+                      avatarUrl={project.profiles?.avatar_url || null}
                     />
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : null}
+          </div>
 
           {/* Category Filter */}
           <div className="flex flex-wrap justify-center gap-3 mb-8 animate-fade-in">
@@ -256,9 +430,10 @@ const Portfolio = () => {
 
           {/* Projects List */}
           {isLoading ? (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-muted-foreground">로딩 중...</p>
+            <div className="max-w-4xl mx-auto space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
             </div>
           ) : (
             <>
@@ -280,6 +455,7 @@ const Portfolio = () => {
                       commentCount={project.commentCount || 0}
                       likeCount={project.likeCount || 0}
                       viewCount={project.view_count || 0}
+                      avatarUrl={project.profiles?.avatar_url || null}
                     />
                   </div>
                 ))}
@@ -296,15 +472,36 @@ const Portfolio = () => {
                 </div>
               )}
 
-              {hasNextPage && (
-                <div className="flex justify-center mt-8">
-                  <Button
-                    onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
-                    variant="outline"
-                  >
-                    {isFetchingNextPage ? "로딩 중..." : "더 보기"}
-                  </Button>
+              {projects.length > 0 && totalPages >= 1 && (
+                <div className="flex justify-center mt-10">
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      이전
+                    </Button>
+                    {getPageNumbers().map((page) => (
+                      <Button
+                        key={page}
+                        variant={page === currentPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      다음
+                    </Button>
+                  </div>
                 </div>
               )}
             </>
