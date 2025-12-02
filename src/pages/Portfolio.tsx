@@ -11,7 +11,6 @@ import { Plus, Sparkles, Search } from "lucide-react";
 import { Project } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Supabase의 or() 메서드는 괄호 없이 사용해야 함
 const Portfolio = () => {
@@ -21,70 +20,69 @@ const Portfolio = () => {
   const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
-  const queryClient = useQueryClient();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [popularProjects, setPopularProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPopular, setIsLoadingPopular] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [user, setUser] = useState<any | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
 
   // 페이지 로드 시 스크롤을 맨 위로 이동
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
-  // 사용자 정보를 React Query로 병렬 로딩 (프로젝트 데이터와 독립적으로 로드)
-  // 에러가 발생해도 프로젝트 목록은 표시되도록 retry: false, 에러 무시
-  const { data: userData } = useQuery<{ user: any | null; userRole: string | null }>({
-    queryKey: ["currentUser"],
-    queryFn: async () => {
+  // 사용자 정보 가져오기 (간단하게)
+  useEffect(() => {
+    const checkUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return { user: null, userRole: null };
-
-        // role 컬럼이 없을 수 있으므로 에러 처리
-        // 모든 컬럼을 선택하여 role이 없어도 에러가 발생하지 않도록 함
-        try {
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
-
-          // 에러가 발생하거나 프로필이 없으면 null 반환
-          if (profileError || !profile) {
-            if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
-              console.warn("Profile fetch failed:", profileError);
-            }
-            return {
-              user,
-              userRole: null,
-            };
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
+            setUserRole(profile?.role || null);
+          } catch {
+            setUserRole(null);
           }
-
-          return {
-            user,
-            userRole: (profile as { role?: string } | null)?.role || null,
-          };
-        } catch (profileError: any) {
-          // profiles 테이블이나 role 컬럼이 없을 경우 null 반환 (조용히 처리)
-          // 400 오류는 개발 환경에서만 경고 출력
-          if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
-            console.warn("Profile role fetch failed:", profileError);
-          }
-          return {
-            user,
-            userRole: null,
-          };
+        } else {
+          setUser(null);
+          setUserRole(null);
         }
-      } catch (error) {
-        console.warn("User fetch failed:", error);
-        return { user: null, userRole: null };
+      } catch {
+        setUser(null);
+        setUserRole(null);
       }
-    },
-    staleTime: 5 * 60 * 1000, // 5분간 캐시
-    retry: false,
-    refetchOnMount: false, // 마운트 시 리페치 비활성화
-    refetchOnWindowFocus: false, // 윈도우 포커스 시 리페치 비활성화
-  });
+    };
+    
+    checkUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            setUserRole(profile?.role || null);
+          })
+          .catch(() => setUserRole(null));
+      } else {
+        setUser(null);
+        setUserRole(null);
+      }
+    });
 
-  const user = userData?.user ?? null;
-  const userRole = userData?.userRole ?? null;
+    return () => subscription.unsubscribe();
+  }, []);
 
   const stripHtml = (html: string | null | undefined) => {
     if (!html) return "";
@@ -100,31 +98,141 @@ const Portfolio = () => {
     return Boolean(inTitle || inDescription || inTags);
   };
 
-  const buildProjectsQuery = (pageParam: number) => {
-    let query = supabase
-      .from("projects")
-      .select(
-        `
-        *,
-        profiles (name, avatar_url)
-      `,
-        { count: "exact" }
-      )
-      .order("created_at", { ascending: false })
-      .range(pageParam * ITEMS_PER_PAGE, (pageParam + 1) * ITEMS_PER_PAGE - 1);
+  const buildProjectsQuery = useMemo(() => {
+    return (pageParam: number) => {
+      let query = supabase
+        .from("projects")
+        .select(
+          `
+          *,
+          profiles (name, avatar_url)
+        `,
+          { count: "exact" }
+        )
+        .order("created_at", { ascending: false })
+        .range(pageParam * ITEMS_PER_PAGE, (pageParam + 1) * ITEMS_PER_PAGE - 1);
 
-    if (selectedCategory !== "전체") {
-      query = query.eq("category", selectedCategory);
-    }
+      if (selectedCategory !== "전체") {
+        query = query.eq("category", selectedCategory);
+      }
 
-    return query;
-  };
+      return query;
+    };
+  }, [selectedCategory]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, searchQuery]);
 
-  // 다음 페이지 프리페칭 (무한 루프 방지를 위해 제거)
+  // 프로젝트 데이터 가져오기 (간단하게)
+  useEffect(() => {
+    const loadProjects = async () => {
+      setIsLoading(true);
+      setIsError(false);
+      try {
+        const pageParam = currentPage - 1;
+        const query = buildProjectsQuery(pageParam);
+        const { data: projectsData, error, count } = await query;
+
+        if (error) {
+          console.error("Failed to fetch projects:", error);
+          setProjects([]);
+          setTotalCount(0);
+          setIsError(true);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!projectsData) {
+          setProjects([]);
+          setTotalCount(0);
+          setIsLoading(false);
+          return;
+        }
+
+        // 클라이언트 사이드 필터링 (검색)
+        let filteredProjects = projectsData.filter(matchesSearch);
+
+        // 가시성 필터링
+        filteredProjects = filteredProjects.filter((project) => {
+          if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
+            return true;
+          }
+          if (user) {
+            return project.user_id === user.id || userRole === "admin";
+          }
+          return false;
+        });
+
+        // 댓글/좋아요 수 가져오기
+        const projectIds = filteredProjects.map((p) => p.id);
+        let commentCounts: Record<string, number> = {};
+        let likeCounts: Record<string, number> = {};
+
+        if (projectIds.length > 0) {
+          const [commentsResult, likesResult] = await Promise.all([
+            supabase
+              .from("project_comments")
+              .select("project_id")
+              .in("project_id", projectIds),
+            supabase
+              .from("project_likes")
+              .select("project_id")
+              .in("project_id", projectIds),
+          ]);
+
+          if (commentsResult.data) {
+            commentsResult.data.forEach((comment) => {
+              commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
+            });
+          }
+
+          if (likesResult.data) {
+            likesResult.data.forEach((like) => {
+              likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
+            });
+          }
+        }
+
+        const projectsWithCounts = filteredProjects.map((project) => ({
+          ...project,
+          commentCount: commentCounts[project.id] || 0,
+          likeCount: likeCounts[project.id] || 0,
+          view_count: project.view_count || 0,
+        })) as Project[];
+
+        setProjects(projectsWithCounts);
+        setTotalCount(count || 0);
+      } catch (error) {
+        console.error("Error loading projects:", error);
+        setProjects([]);
+        setTotalCount(0);
+        setIsError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, [currentPage, selectedCategory, searchQuery, user, userRole]);
+
+  // 인기 프로젝트 가져오기
+  useEffect(() => {
+    const loadPopularProjects = async () => {
+      setIsLoadingPopular(true);
+      try {
+        const result = await fetchPopularProjects(user, userRole);
+        setPopularProjects(result);
+      } catch (error) {
+        console.error("Error loading popular projects:", error);
+        setPopularProjects([]);
+      } finally {
+        setIsLoadingPopular(false);
+      }
+    };
+
+    loadPopularProjects();
+  }, [user, userRole]);
 
   const fetchPopularProjects = async (currentUser?: any, currentUserRole?: string | null) => {
     const { data: projectsData, error } = await supabase
@@ -207,144 +315,6 @@ const Portfolio = () => {
       return projectsWithCounts;
   };
 
-  // React Query를 사용하여 프로젝트 리스트 캐싱
-  const {
-    data: projectsData,
-    isLoading,
-    isError,
-  } = useQuery<{ projects: Project[]; totalCount: number }>({
-    queryKey: [
-      "projects",
-      {
-        page: currentPage,
-        category: selectedCategory,
-        search: searchQuery,
-      },
-    ],
-    queryFn: async () => {
-      const pageParam = currentPage - 1;
-      const { data: projectsData, error, count } = await buildProjectsQuery(pageParam);
-
-      if (error) {
-        console.error("Failed to fetch projects:", error);
-        return { projects: [] as Project[], totalCount: 0 };
-      }
-
-      if (!projectsData) {
-        return { projects: [] as Project[], totalCount: 0 };
-      }
-
-      // 쿼리 함수 내에서 사용자 정보를 직접 가져와서 최신 상태 보장
-      // 쿼리 키에 포함하지 않으므로 사용자 정보 변경 시 무한 루프 방지
-      let currentUser: any | null = null;
-      let currentUserRole: string | null = null;
-      
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          currentUser = session.user;
-          // 프로필에서 role 가져오기 (에러 무시)
-          try {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .single();
-            currentUserRole = profile?.role || null;
-          } catch {
-            currentUserRole = null;
-          }
-        }
-      } catch {
-        // 사용자 정보 가져오기 실패 시 무시
-      }
-
-      // 클라이언트 사이드 필터링 (검색)
-      let filteredProjects = projectsData.filter(matchesSearch);
-
-      // 가시성 필터링 (클라이언트 사이드) - 모든 프로젝트를 먼저 보여주고 나중에 필터링
-      filteredProjects = filteredProjects.filter((project) => {
-        // is_hidden이 undefined, null이거나 false면 공개로 간주
-        if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
-          return true;
-        }
-        // 숨겨진 프로젝트는 작성자나 관리자만 볼 수 있음
-        if (currentUser) {
-          return project.user_id === currentUser.id || currentUserRole === "admin";
-        }
-        return false;
-      });
-
-      // N+1 쿼리 최적화: 프로젝트 ID 목록을 얻은 후 댓글/좋아요를 병렬로 조회
-      const projectIds = filteredProjects.map((p) => p.id);
-
-      let commentCounts: Record<string, number> = {};
-      let likeCounts: Record<string, number> = {};
-
-      if (projectIds.length > 0) {
-        const [commentsResult, likesResult] = await Promise.all([
-          supabase
-            .from("project_comments")
-            .select("project_id")
-            .in("project_id", projectIds),
-          supabase
-            .from("project_likes")
-            .select("project_id")
-            .in("project_id", projectIds),
-        ]);
-
-        if (commentsResult.data) {
-          commentsResult.data.forEach((comment) => {
-            commentCounts[comment.project_id] =
-              (commentCounts[comment.project_id] || 0) + 1;
-          });
-        }
-
-        if (likesResult.data) {
-          likesResult.data.forEach((like) => {
-            likeCounts[like.project_id] =
-              (likeCounts[like.project_id] || 0) + 1;
-          });
-        }
-      }
-
-      const projectsWithCounts = filteredProjects.map((project) => ({
-        ...project,
-        commentCount: commentCounts[project.id] || 0,
-        likeCount: likeCounts[project.id] || 0,
-        view_count: project.view_count || 0,
-      }));
-
-      return {
-        projects: projectsWithCounts as Project[],
-        totalCount: count || 0,
-      };
-    },
-    staleTime: 30 * 1000, // 30초 동안 캐시 유지
-    retry: 1, // 실패 시 1번만 재시도
-    refetchOnMount: false, // 마운트 시 리페치 비활성화
-    refetchOnWindowFocus: false, // 윈도우 포커스 시 리페치 비활성화
-  });
-
-  const projects = projectsData?.projects ?? [];
-  const totalCount = projectsData?.totalCount ?? 0;
-
-  // 인기 프로젝트 캐싱 (사용자 정보와 독립적으로 로드)
-  const {
-    data: popularData,
-    isLoading: isLoadingPopular,
-  } = useQuery<Project[]>({
-    queryKey: ["popularProjects", user?.id, userRole],
-    queryFn: async () => {
-      return fetchPopularProjects(user, userRole);
-    },
-    staleTime: 120 * 1000, // 120초 동안 캐시 유지 (인기 프로젝트는 더 오래 캐시)
-    enabled: true, // 항상 활성화
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
-
-  const popularProjects = popularData ?? [];
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE)),
@@ -485,7 +455,7 @@ const Portfolio = () => {
           </h2>
 
           {/* Projects List */}
-          {isLoading && !projectsData ? (
+          {isLoading ? (
             <div className="max-w-4xl mx-auto space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-24 w-full" />
