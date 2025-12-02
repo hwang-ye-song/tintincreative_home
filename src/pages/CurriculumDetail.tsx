@@ -1,6 +1,5 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -52,17 +51,33 @@ const fetchCurriculum = async (id: string): Promise<Curriculum | null> => {
 };
 
 const CurriculumDetail = () => {
-  const { id } = useParams<{ id: string }>();
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
   const { id: curriculumId } = useParams<{ id: string }>();
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const { data: curriculum, isLoading, error } = useQuery({
-    queryKey: ["curriculum", curriculumId],
-    queryFn: () => fetchCurriculum(curriculumId || ""),
-    enabled: !!curriculumId,
-    staleTime: 5 * 60 * 1000, // 5분간 캐시 (커리큘럼은 자주 변경되지 않음)
-  });
+  useEffect(() => {
+    const loadCurriculum = async () => {
+      if (!curriculumId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await fetchCurriculum(curriculumId);
+        setCurriculum(data);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCurriculum();
+  }, [curriculumId]);
 
   useEffect(() => {
     const handleScroll = () => {
