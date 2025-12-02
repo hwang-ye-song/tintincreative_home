@@ -51,18 +51,37 @@ export const Navbar = () => {
   useEffect(() => {
     // Check auth state and user role
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // 실제 세션을 확인하여 유효한 사용자만 표시
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        setUser(null);
+        setUserRole(null);
+        return;
+      }
+      
+      const user = session.user;
       setUser(user);
       
       if (user) {
-        // Get user role from profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        
-        setUserRole(profile?.role || null);
+        try {
+          // Get user role from profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          
+          if (profileError || !profile) {
+            // 프로필이 없어도 사용자는 유효하므로 null로 설정
+            setUserRole(null);
+          } else {
+            setUserRole(profile?.role || null);
+          }
+        } catch (error) {
+          // 프로필 조회 실패 시 role만 null로 설정
+          setUserRole(null);
+        }
       } else {
         setUserRole(null);
       }
@@ -72,17 +91,28 @@ export const Navbar = () => {
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null);
+        // 세션이 없거나 유효하지 않으면 null로 설정
+        if (!session || !session.user) {
+          setUser(null);
+          setUserRole(null);
+          return;
+        }
         
-        if (session?.user) {
-          const { data: profile } = await supabase
+        setUser(session.user);
+        
+        try {
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', session.user.id)
             .single();
           
-          setUserRole(profile?.role || null);
-        } else {
+          if (profileError || !profile) {
+            setUserRole(null);
+          } else {
+            setUserRole(profile?.role || null);
+          }
+        } catch (error) {
           setUserRole(null);
         }
       }
