@@ -116,10 +116,8 @@ const Login = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      // 프로덕션 환경에서는 Vercel 도메인으로 리다이렉트
-      const redirectUrl = import.meta.env.PROD 
-        ? 'https://tintincreativehomepage.vercel.app/'
-        : `${window.location.origin}/`;
+      // 현재 사이트의 origin을 사용하여 리다이렉트 (로컬/프로덕션 모두 자동 처리)
+      const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
