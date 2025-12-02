@@ -247,8 +247,8 @@ const Portfolio = () => {
           return true;
         }
         // 숨겨진 프로젝트는 작성자나 관리자만 볼 수 있음
-        if (currentUser) {
-          return project.user_id === currentUser.id || currentUserRole === "admin";
+        if (user) {
+          return project.user_id === user.id || userRole === "admin";
         }
         return false;
       });
