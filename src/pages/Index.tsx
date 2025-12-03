@@ -20,10 +20,22 @@ const Index = () => {
     const target = params.get("section");
 
     if (target) {
-      const element = document.getElementById(target);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      // 약간의 지연을 두어 DOM이 완전히 렌더링된 후 스크롤
+      setTimeout(() => {
+        const element = document.getElementById(target);
+        if (element) {
+          // Navbar 높이를 고려한 offset 계산
+          const navbar = document.querySelector('nav');
+          const navbarHeight = navbar ? navbar.offsetHeight : 80;
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
       window.history.replaceState({}, "", location.pathname);
     }
   }, [location]);
@@ -31,7 +43,16 @@ const Index = () => {
   const scrollToCurriculum = () => {
     const element = document.getElementById("curriculum");
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Navbar 높이를 고려한 offset 계산
+      const navbar = document.querySelector('nav');
+      const navbarHeight = navbar ? navbar.offsetHeight : 80;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
   };
 

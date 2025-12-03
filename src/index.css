@@ -217,6 +217,7 @@ All colors MUST be HSL.
 
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 80px; /* Navbar 높이만큼 padding 추가 */
   }
 }
 
