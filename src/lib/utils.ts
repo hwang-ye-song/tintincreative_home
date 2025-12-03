@@ -20,3 +20,30 @@ export const devLog = {
     console.error(...args);
   },
 };
+
+// 부드러운 스크롤 애니메이션 함수
+export function smoothScrollTo(targetY: number, duration: number = 800) {
+  const startY = window.pageYOffset;
+  const distance = targetY - startY;
+  let startTime: number | null = null;
+
+  // Easing function (ease-in-out-cubic)
+  function easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function animation(currentTime: number) {
+    if (startTime === null) startTime = currentTime;
+    const timeElapsed = currentTime - startTime;
+    const progress = Math.min(timeElapsed / duration, 1);
+    const ease = easeInOutCubic(progress);
+
+    window.scrollTo(0, startY + distance * ease);
+
+    if (progress < 1) {
+      requestAnimationFrame(animation);
+    }
+  }
+
+  requestAnimationFrame(animation);
+}

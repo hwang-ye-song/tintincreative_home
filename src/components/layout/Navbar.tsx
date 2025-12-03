@@ -4,6 +4,7 @@ import { Menu, X, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { smoothScrollTo } from "@/lib/utils";
 
 // 구글 폼 URL - 환경 변수에서 가져오거나 직접 설정
 // 편집 링크를 제출 링크로 변환 (edit -> viewform)
@@ -44,10 +45,8 @@ export const Navbar = () => {
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+      // 커스텀 부드러운 스크롤 사용
+      smoothScrollTo(offsetPosition, 800);
       setIsOpen(false);
     }
   };

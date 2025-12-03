@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import { smoothScrollTo } from "@/lib/utils";
 
 const Index = () => {
   const location = useLocation();
@@ -30,10 +31,8 @@ const Index = () => {
           const elementPosition = element.getBoundingClientRect().top;
           const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
 
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-          });
+          // 커스텀 부드러운 스크롤 사용
+          smoothScrollTo(offsetPosition, 800);
         }
       }, 100);
       window.history.replaceState({}, "", location.pathname);
@@ -49,10 +48,8 @@ const Index = () => {
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+      // 커스텀 부드러운 스크롤 사용
+      smoothScrollTo(offsetPosition, 800);
     }
   };
 
