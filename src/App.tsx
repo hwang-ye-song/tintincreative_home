@@ -17,6 +17,7 @@ import Login from "./pages/Login";
 import MyPage from "./pages/MyPage";
 import AdminPage from "./pages/AdminPage";
 import AINativeWebMasterClass from "./pages/AINativeWebMasterClass";
+import AINativeWebMasterClass3 from "./pages/AINativeWebMasterClass3";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -115,6 +116,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/curriculum/application-2" element={<AINativeWebMasterClass />} />
+            <Route path="/curriculum/application-3" element={<AINativeWebMasterClass3 />} />
             <Route path="/curriculum/:id" element={<CurriculumDetail />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/portfolio/create" element={<CreateProject />} />
