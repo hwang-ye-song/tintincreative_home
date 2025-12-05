@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -15,6 +15,10 @@ import { smoothScrollTo } from "@/lib/utils";
 const Index = () => {
   const location = useLocation();
   const [selectedCategory, setSelectedCategory] = useState("전체");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -142,6 +146,31 @@ const Index = () => {
     ? curriculumData 
     : curriculumData.filter(curriculum => curriculum.category === selectedCategory);
 
+  // 드래그 스크롤 핸들러
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+    setScrollLeft(scrollContainerRef.current.scrollLeft);
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startX) * 2; // 스크롤 속도 조절
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
   return (
     <div className="min-h-screen">
       <Helmet>
@@ -173,7 +202,8 @@ const Index = () => {
           {/* Curriculum Stages Container */}
           <div className="w-full max-w-7xl flex flex-col md:flex-row items-stretch justify-center gap-6 relative z-20 mb-16 px-4 md:px-0">
             {/* STAGE 1 Card */}
-            <div className="flex-1 relative p-8 flex flex-col items-center text-center group animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-8 flex flex-col items-center text-center group animate-fade-in"
+                 style={{ flexBasis: 0 }}
                  style={{
                    background: 'linear-gradient(165deg, rgba(255, 255, 255, 0.8), rgba(240, 245, 255, 0.5))',
                    backdropFilter: 'blur(25px)',
@@ -247,9 +277,10 @@ const Index = () => {
             </div>
             
             {/* STAGE 2 Card */}
-            <div className="flex-1 relative p-8 flex flex-col items-center text-center animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-8 flex flex-col items-center text-center animate-fade-in"
                  style={{
                    animationDelay: '0.1s',
+                   flexBasis: 0,
                    background: 'linear-gradient(165deg, rgba(255, 255, 255, 0.8), rgba(240, 245, 255, 0.5))',
                    backdropFilter: 'blur(25px)',
                    WebkitBackdropFilter: 'blur(25px)',
@@ -342,9 +373,10 @@ const Index = () => {
             </div>
             
             {/* STAGE 3 Card */}
-            <div className="flex-1 relative p-8 flex flex-col items-center text-center animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-8 flex flex-col items-center text-center animate-fade-in"
                  style={{
                    animationDelay: '0.2s',
+                   flexBasis: 0,
                    background: 'linear-gradient(165deg, rgba(255, 255, 255, 0.8), rgba(240, 245, 255, 0.5))',
                    backdropFilter: 'blur(25px)',
                    WebkitBackdropFilter: 'blur(25px)',
@@ -458,7 +490,18 @@ const Index = () => {
           </div>
           
           {/* Curriculum Carousel */}
-          <div className="overflow-x-auto pb-4">
+          <div 
+            ref={scrollContainerRef}
+            className="overflow-x-auto pb-4 cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            style={{ 
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
             <div className="flex gap-6 min-w-full snap-x snap-mandatory">
               {filteredCurriculums.map((curriculum, index) => (
                 <div

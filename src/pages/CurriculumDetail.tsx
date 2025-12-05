@@ -156,7 +156,7 @@ const CurriculumDetail = () => {
                 <Badge className="mb-4">{curriculum.level}</Badge>
                 <h1 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold mb-4">{curriculum.title}</h1>
                 <p className="text-xl md:text-2xl text-primary font-medium mb-4">{curriculum.subtitle}</p>
-                <p className="text-base md:text-lg text-muted-foreground">{curriculum.description}</p>
+                <p className="text-base md:text-lg text-muted-foreground mb-6">{curriculum.description}</p>
               </div>
 
               {/* Three-Stage Roadmap */}

@@ -16,6 +16,7 @@ import Faculty from "./pages/Faculty";
 import Login from "./pages/Login";
 import MyPage from "./pages/MyPage";
 import AdminPage from "./pages/AdminPage";
+import AINativeWebMasterClass from "./pages/AINativeWebMasterClass";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -113,6 +114,7 @@ const App = () => (
           <OAuthCallbackHandler />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/curriculum/application-2" element={<AINativeWebMasterClass />} />
             <Route path="/curriculum/:id" element={<CurriculumDetail />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/portfolio/create" element={<CreateProject />} />
