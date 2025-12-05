@@ -202,9 +202,9 @@ const Index = () => {
           {/* Curriculum Stages Container */}
           <div className="w-full max-w-7xl flex flex-col md:flex-row items-stretch justify-center gap-6 relative z-20 mb-16 px-4 md:px-0">
             {/* STAGE 1 Card */}
-            <div className="flex-1 min-w-0 relative p-8 flex flex-col items-center text-center group animate-fade-in"
-                 style={{ flexBasis: 0 }}
+            <div className="flex-1 min-w-0 relative p-4 md:p-6 lg:p-8 flex flex-col items-center text-center group animate-fade-in"
                  style={{
+                   flexBasis: 0,
                    background: 'linear-gradient(165deg, rgba(255, 255, 255, 0.8), rgba(240, 245, 255, 0.5))',
                    backdropFilter: 'blur(25px)',
                    WebkitBackdropFilter: 'blur(25px)',
@@ -225,33 +225,33 @@ const Index = () => {
                    }}></div>
               
               <div className="relative z-10 w-full">
-                <div className="mb-3">
-                  <span className="font-extrabold text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 1</span>
+                <div className="mb-2 md:mb-3">
+                  <span className="font-extrabold text-sm md:text-base lg:text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 1</span>
                 </div>
-                <h2 className="text-3xl font-extrabold mb-2" style={{ color: '#3b267d' }}>AI BASIC</h2>
-                <p className="text-muted-foreground font-semibold mb-10 text-lg">(기초 다지기)</p>
+                <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold mb-1 md:mb-2" style={{ color: '#3b267d' }}>AI BASIC</h2>
+                <p className="text-muted-foreground font-semibold mb-6 md:mb-8 lg:mb-10 text-xs md:text-sm lg:text-lg">(기초 다지기)</p>
                 
                 {/* Stage 1 Visuals */}
-                <div className="flex justify-center items-center gap-6 mb-10 h-28">
-                  <div className="w-24 h-24 rounded-2xl border-2 flex items-center justify-center"
+                <div className="flex justify-center items-center gap-2 md:gap-3 lg:gap-4 xl:gap-6 mb-6 md:mb-8 lg:mb-10 h-20 md:h-24 lg:h-28">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-xl md:rounded-2xl border-2 flex items-center justify-center"
                        style={{
                          background: 'rgba(219, 234, 254, 0.5)',
                          borderColor: 'rgba(147, 197, 253, 0.5)',
                          boxShadow: '0 0 20px rgba(59, 130, 246, 0.2)',
                        }}>
-                    <Code className="h-12 w-12 text-primary" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} />
+                    <Code className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 lg:h-12 lg:w-12 text-primary" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} />
                   </div>
-                  <div className="w-24 h-24 rounded-full border-2 flex items-center justify-center animate-pulse"
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full border-2 flex items-center justify-center animate-pulse"
                        style={{
                          background: 'rgba(243, 232, 255, 0.5)',
                          borderColor: 'rgba(196, 181, 253, 0.5)',
                          boxShadow: '0 0 20px rgba(168, 85, 247, 0.2)',
                        }}>
-                    <Lightbulb className="h-12 w-12 text-accent" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} />
+                    <Lightbulb className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 lg:h-12 lg:w-12 text-accent" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} />
                   </div>
                 </div>
                 
-                <p className="text-foreground/70 font-medium leading-relaxed mt-auto">
+                <p className="text-foreground/70 font-medium leading-relaxed mt-auto text-xs md:text-sm lg:text-base">
                   AI 블록코딩 기초를 탄탄히<br />
                   입문하는 기초 강의의 정석
                 </p>
@@ -260,14 +260,14 @@ const Index = () => {
             
             {/* Arrow 1 */}
             <div className="flex items-center justify-center z-10 md:-mx-3">
-              <ArrowRight className="h-10 w-10 hidden md:block" 
+              <ArrowRight className="h-6 w-6 md:h-8 md:w-8 lg:h-10 lg:w-10 hidden md:block" 
                           style={{
                             background: 'linear-gradient(to right, #60a5fa, #a78bfa)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                             filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.5))',
                           }} />
-              <ChevronDown className="h-10 w-10 block md:hidden py-4"
+              <ChevronDown className="h-6 w-6 block md:hidden py-4"
                           style={{
                             background: 'linear-gradient(to bottom, #60a5fa, #a78bfa)',
                             WebkitBackgroundClip: 'text',
@@ -277,7 +277,7 @@ const Index = () => {
             </div>
             
             {/* STAGE 2 Card */}
-            <div className="flex-1 min-w-0 relative p-8 flex flex-col items-center text-center animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-4 md:p-6 lg:p-8 flex flex-col items-center text-center animate-fade-in"
                  style={{
                    animationDelay: '0.1s',
                    flexBasis: 0,
@@ -301,53 +301,53 @@ const Index = () => {
                    }}></div>
               
               <div className="relative z-10 w-full">
-                <div className="mb-3">
-                  <span className="font-extrabold text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 2</span>
+                <div className="mb-2 md:mb-3">
+                  <span className="font-extrabold text-sm md:text-base lg:text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 2</span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-extrabold mb-2 break-keep leading-tight" style={{ color: '#3b267d' }}>SERVICE & AGENT AI</h2>
-                <p className="text-muted-foreground font-semibold mb-10 text-lg">(소프트웨어 AI 통합)</p>
+                <h2 className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-extrabold mb-1 md:mb-2 break-keep leading-tight" style={{ color: '#3b267d' }}>SERVICE & AGENT AI</h2>
+                <p className="text-muted-foreground font-semibold mb-6 md:mb-8 lg:mb-10 text-xs md:text-sm lg:text-lg">(소프트웨어 AI 통합)</p>
                 
                 {/* Stage 2 Visuals */}
-                <div className="flex justify-center items-center relative mb-10 h-28 w-full">
+                <div className="flex justify-center items-center relative mb-6 md:mb-8 lg:mb-10 h-20 md:h-24 lg:h-28 w-full overflow-hidden">
                   {/* Phone Frame */}
-                  <div className="w-20 h-32 rounded-[2rem] flex flex-col items-center justify-start absolute left-1/2 transform -translate-x-14 z-10 shadow-lg"
+                  <div className="w-12 h-20 sm:w-14 sm:h-22 md:w-16 md:h-24 lg:w-20 lg:h-32 rounded-[1.5rem] md:rounded-[1.75rem] lg:rounded-[2rem] flex flex-col items-center justify-start absolute left-1/2 transform -translate-x-[2.5rem] sm:-translate-x-[3rem] md:-translate-x-[3.5rem] lg:-translate-x-14 z-10 shadow-lg"
                        style={{
-                         border: '5px solid rgba(96, 165, 250, 0.8)',
+                         border: '2px solid rgba(96, 165, 250, 0.8)',
                          background: 'rgba(255, 255, 255, 0.8)',
                        }}>
-                    <div className="w-10 h-1.5 rounded-full mt-3" style={{ background: 'rgba(191, 219, 254, 1)' }}></div>
-                    <div className="mt-5 w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(219, 234, 254, 1)' }}>
-                      <MessageSquare className="h-6 w-6 text-primary" />
+                    <div className="w-5 h-0.5 sm:w-6 sm:h-1 md:w-8 md:h-1.5 lg:w-10 lg:h-1.5 rounded-full mt-1.5 sm:mt-2 md:mt-2.5 lg:mt-3" style={{ background: 'rgba(191, 219, 254, 1)' }}></div>
+                    <div className="mt-2 sm:mt-3 md:mt-4 lg:mt-5 w-6 h-6 sm:w-7 sm:h-7 md:w-10 md:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center" style={{ background: 'rgba(219, 234, 254, 1)' }}>
+                      <MessageSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-5 md:w-5 lg:h-6 lg:w-6 text-primary" />
                     </div>
                   </div>
                   
                   {/* Logic Flow */}
-                  <div className="absolute left-1/2 transform translate-x-4 flex flex-col gap-3 z-0">
-                    <div className="w-14 h-12 rounded-xl flex items-center justify-center shadow-sm"
+                  <div className="absolute left-1/2 transform translate-x-1.5 sm:translate-x-2 md:translate-x-3 lg:translate-x-4 flex flex-col gap-1.5 sm:gap-2 md:gap-2.5 lg:gap-3 z-0">
+                    <div className="w-8 h-7 sm:w-9 sm:h-8 md:w-12 md:h-10 lg:w-14 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center shadow-sm"
                          style={{
                            border: '2px solid rgba(196, 181, 253, 0.6)',
                            background: 'rgba(255, 255, 255, 0.8)',
                          }}>
-                      <MessageSquare className="h-5 w-5 text-accent" />
+                      <MessageSquare className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 text-accent" />
                     </div>
-                    <div className="w-1 h-6 mx-auto" style={{ background: 'rgba(196, 181, 253, 0.5)' }}></div>
-                    <div className="w-14 h-12 rounded-xl flex items-center justify-center shadow-sm"
+                    <div className="w-0.5 h-3 sm:h-4 md:h-5 lg:h-6 mx-auto" style={{ background: 'rgba(196, 181, 253, 0.5)' }}></div>
+                    <div className="w-8 h-7 sm:w-9 sm:h-8 md:w-12 md:h-10 lg:w-14 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center shadow-sm"
                          style={{
                            border: '2px solid rgba(196, 181, 253, 0.6)',
                            background: 'rgba(255, 255, 255, 0.8)',
                          }}>
-                      <Box className="h-5 w-5 text-accent" />
+                      <Box className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 text-accent" />
                     </div>
                   </div>
                   
                   {/* Connecting Lines */}
-                  <svg className="absolute w-24 h-24 left-1/2 -translate-x-8" style={{ zIndex: -1, filter: 'drop-shadow(0 0 5px rgba(96, 165, 250, 0.5))' }}>
-                    <path d="M25 50 C 40 30, 60 30, 75 35" stroke="#60a5fa" strokeWidth="3" fill="none" strokeLinecap="round" opacity={0.6} />
-                    <path d="M25 50 C 40 70, 60 70, 75 65" stroke="#60a5fa" strokeWidth="3" fill="none" strokeLinecap="round" opacity={0.6} />
+                  <svg className="absolute w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 left-1/2 -translate-x-5 sm:-translate-x-6 md:-translate-x-7 lg:-translate-x-8" style={{ zIndex: -1, filter: 'drop-shadow(0 0 5px rgba(96, 165, 250, 0.5))' }}>
+                    <path d="M25 50 C 40 30, 60 30, 75 35" stroke="#60a5fa" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity={0.6} />
+                    <path d="M25 50 C 40 70, 60 70, 75 65" stroke="#60a5fa" strokeWidth="1.5" fill="none" strokeLinecap="round" opacity={0.6} />
                   </svg>
                 </div>
                 
-                <p className="text-foreground/70 font-medium leading-relaxed mt-auto pt-4">
+                <p className="text-foreground/70 font-medium leading-relaxed mt-auto pt-2 md:pt-3 lg:pt-4 text-xs md:text-sm lg:text-base">
                   AI 전용헤어 챗봇구축<br />
                   AI(소프트웨어 AI 통합)
                 </p>
@@ -356,14 +356,14 @@ const Index = () => {
             
             {/* Arrow 2 */}
             <div className="flex items-center justify-center z-10 md:-mx-3">
-              <ArrowRight className="h-10 w-10 hidden md:block"
+              <ArrowRight className="h-6 w-6 md:h-8 md:w-8 lg:h-10 lg:w-10 hidden md:block"
                           style={{
                             background: 'linear-gradient(to right, #60a5fa, #a78bfa)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                             filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.5))',
                           }} />
-              <ChevronDown className="h-10 w-10 block md:hidden py-4"
+              <ChevronDown className="h-6 w-6 block md:hidden py-4"
                           style={{
                             background: 'linear-gradient(to bottom, #60a5fa, #a78bfa)',
                             WebkitBackgroundClip: 'text',
@@ -373,7 +373,7 @@ const Index = () => {
             </div>
             
             {/* STAGE 3 Card */}
-            <div className="flex-1 min-w-0 relative p-8 flex flex-col items-center text-center animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-4 md:p-6 lg:p-8 flex flex-col items-center text-center animate-fade-in"
                  style={{
                    animationDelay: '0.2s',
                    flexBasis: 0,
@@ -397,43 +397,43 @@ const Index = () => {
                    }}></div>
               
               <div className="relative z-10 w-full">
-                <div className="mb-3">
-                  <span className="font-extrabold text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 3</span>
+                <div className="mb-2 md:mb-3">
+                  <span className="font-extrabold text-sm md:text-base lg:text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 3</span>
                 </div>
-                <h2 className="text-3xl font-extrabold mb-2" style={{ color: '#3b267d' }}>PHYSICAL AI</h2>
-                <p className="text-muted-foreground font-semibold mb-10 text-lg">(실전 하드웨어 적용)</p>
+                <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold mb-1 md:mb-2" style={{ color: '#3b267d' }}>PHYSICAL AI</h2>
+                <p className="text-muted-foreground font-semibold mb-6 md:mb-8 lg:mb-10 text-xs md:text-sm lg:text-lg">(실전 하드웨어 적용)</p>
                 
                 {/* Stage 3 Visuals */}
-                <div className="flex justify-center gap-6 mb-6 w-full px-4 h-28 items-end">
+                <div className="flex justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-5 lg:mb-6 w-full px-2 md:px-3 lg:px-4 h-20 md:h-24 lg:h-28 items-end">
                   {/* R1 Mini Box */}
                   <div className="flex flex-col items-center transform rotate-[-5deg]">
-                    <div className="w-24 h-20 rounded-xl shadow-xl flex items-center justify-center relative overflow-hidden border-b-[6px]"
+                    <div className="w-14 h-12 sm:w-16 sm:h-14 md:w-20 md:h-16 lg:w-24 lg:h-20 rounded-lg sm:rounded-xl shadow-xl flex items-center justify-center relative overflow-hidden border-b-[3px] sm:border-b-[4px] md:border-b-[5px] lg:border-b-[6px]"
                          style={{
                            background: 'linear-gradient(to bottom right, #374151, #111827)',
                            borderBottomColor: '#030712',
                          }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/10"></div>
-                      <span className="text-gray-200 font-bold text-lg tracking-wider font-mono relative z-10">R1</span>
+                      <span className="text-gray-200 font-bold text-[10px] sm:text-xs md:text-sm lg:text-lg tracking-wider font-mono relative z-10">R1</span>
                     </div>
-                    <span className="text-sm font-bold mt-3" style={{ color: '#374151' }}>R1 mini</span>
+                    <span className="text-[10px] sm:text-xs md:text-sm font-bold mt-1.5 sm:mt-2 md:mt-3" style={{ color: '#374151' }}>R1 mini</span>
                   </div>
                   
                   {/* LeRobot */}
                   <div className="flex flex-col items-center">
-                    <div className="w-24 h-24 relative flex items-center justify-center">
-                      <Bot className="h-16 w-16" style={{ 
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 relative flex items-center justify-center">
+                      <Bot className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-16 lg:w-16" style={{ 
                         background: 'linear-gradient(to bottom, #9ca3af, #4b5563)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
                       }} />
-                      <div className="absolute bottom-2 w-16 h-4 rounded-full blur-md" style={{ background: 'rgba(59, 130, 246, 0.3)' }}></div>
+                      <div className="absolute bottom-1 sm:bottom-1 md:bottom-1.5 lg:bottom-2 w-8 h-1.5 sm:w-10 sm:h-2 md:w-12 md:h-3 lg:w-16 lg:h-4 rounded-full blur-md" style={{ background: 'rgba(59, 130, 246, 0.3)' }}></div>
                     </div>
-                    <span className="text-sm font-bold mt-3" style={{ color: '#374151' }}>LeRobot</span>
+                    <span className="text-[10px] sm:text-xs md:text-sm font-bold mt-1.5 sm:mt-2 md:mt-3" style={{ color: '#374151' }}>LeRobot</span>
                   </div>
                 </div>
                 
-                <p className="text-foreground/70 font-medium leading-relaxed mt-auto">
+                <p className="text-foreground/70 font-medium leading-relaxed mt-auto text-xs md:text-sm lg:text-base">
                   LeRobot (R1) 키트를 활용한<br />
                   실전 (실전 하드웨어 적용)
                 </p>

@@ -51,6 +51,17 @@ export const Navbar = () => {
     }
   };
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (isHome) {
+      // 홈 페이지에 있으면 맨 위로 즉시 부드럽게 스크롤
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // 다른 페이지에 있으면 홈으로 이동
+      navigate('/');
+    }
+  };
+
   const handleConsultationClick = () => {
     // 구글 폼을 새 창에서 열기
     window.open(GOOGLE_FORM_URL, '_blank', 'noopener,noreferrer');
@@ -152,7 +163,7 @@ export const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2">
             <Bot className="h-6 w-6 text-primary" />
             <span className="logo-gradient">REALIZE</span>
           </Link>

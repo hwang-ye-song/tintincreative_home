@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
 
 interface Particle {
   x: number;
@@ -179,11 +178,6 @@ export const HeroCanvas = () => {
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </a>
             </Button>
-            <Link to="/curriculum/basic">
-              <Button size="lg" variant="outline" className="hover-scale backdrop-blur-sm">
-                커리큘럼 탐색
-              </Button>
-            </Link>
           </div>
         </div>
       </div>
