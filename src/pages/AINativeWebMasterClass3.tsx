@@ -116,21 +116,111 @@ const AINativeWebMasterClass3 = () => {
           background: linear-gradient(to bottom, #f0f9ff, #ffffff);
         }
         .hero-content {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 60px;
+          display: flex;
+          flex-direction: row;
+          gap: 20px;
           align-items: center;
+          flex-wrap: nowrap;
+        }
+        .hero-text {
+          flex: 1.2;
+          min-width: 0;
         }
         .hero-text .main-desc {
           font-size: 20px;
           color: #334155;
           margin-bottom: 40px;
         }
+        .hero-img-box {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
         .hero-img-box img {
           width: 100%;
+          height: auto;
           border-radius: 16px;
           box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
           background: #fff;
+          object-fit: contain;
+        }
+        .hero-note {
+          margin-top: 20px;
+          font-size: 14px;
+          color: #64748b;
+        }
+        @media (max-width: 992px) {
+          .hero-content {
+            gap: 20px;
+          }
+          .hero-text {
+            flex: 1.1;
+          }
+          .hero-text .main-desc {
+            font-size: 18px;
+            margin-bottom: 30px;
+          }
+        }
+        @media (max-width: 768px) {
+          .hero-content {
+            gap: 15px;
+          }
+          .hero-text {
+            flex: 1;
+          }
+          .hero-text .main-desc {
+            font-size: 15px;
+            margin-bottom: 20px;
+          }
+          .main-btn {
+            font-size: 16px;
+            padding: 14px 28px;
+          }
+          .hero-note {
+            font-size: 11px;
+            margin-top: 12px;
+          }
+          h1 {
+            font-size: 28px !important;
+            margin-bottom: 16px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .hero-content {
+            gap: 10px;
+          }
+          .hero-text {
+            flex: 0.9;
+          }
+          .hero-img-box {
+            flex: 1;
+          }
+          .hero-text .main-desc {
+            font-size: 12px;
+            margin-bottom: 16px;
+            line-height: 1.5;
+          }
+          .main-btn {
+            font-size: 14px;
+            padding: 12px 24px;
+          }
+          .hero-note {
+            font-size: 10px;
+            margin-top: 10px;
+          }
+          h1 {
+            font-size: 20px !important;
+            margin-bottom: 12px !important;
+            line-height: 1.3 !important;
+          }
+          .tag-badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            margin-bottom: 12px;
+          }
         }
         #necessity {
           background-color: #fff;
@@ -412,12 +502,11 @@ const AINativeWebMasterClass3 = () => {
         @media (max-width: 992px) {
           h1 { font-size: 40px; }
           h2 { font-size: 32px; }
-          .hero-content, .curriculum-wrapper, .tech-container {
+          .curriculum-wrapper, .tech-container {
             grid-template-columns: 1fr;
             gap: 40px;
           }
           .curr-sidebar { position: static; margin-bottom: 20px; }
-          .hero-img-box { order: -1; }
           .nav-links { display: none; }
           .pro-features { flex-direction: column; gap: 10px; }
           .track-row.cols-2, .track-row.cols-3 { grid-template-columns: 1fr; }
@@ -443,10 +532,20 @@ const AINativeWebMasterClass3 = () => {
                 기획부터 배포까지 가장 빠르게 배우는 실전형 강의입니다.
               </p>
               <a href="#curriculum" className="main-btn">커리큘럼 확인하기</a>
-              <p style={{ marginTop: '20px', fontSize: '14px', color: '#64748b' }}>* 사전 지식 없어도 수강 가능합니다.</p>
+              <p className="hero-note">* 사전 지식 없어도 수강 가능합니다.</p>
             </div>
             <div className="hero-img-box">
-              <img src="http://googleusercontent.com/image_collection/image_retrieval/2397849696168222048" alt="Web Development Interface" />
+              <img src="/images/homepage_make_1.png" alt="AI Native Web Development - 디자인 툴 없이, 코딩 없이, 3주 만에 완성" onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                // 확장자 자동 시도
+                if (target.src.endsWith('.png')) {
+                  target.src = '/images/homepage_make_1.jpg';
+                } else if (target.src.endsWith('.jpg')) {
+                  target.src = '/images/homepage_make_1.webp';
+                } else {
+                  target.src = '/images/homepage_make_1.png';
+                }
+              }} />
             </div>
           </div>
         </section>

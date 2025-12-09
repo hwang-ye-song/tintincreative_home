@@ -502,11 +502,11 @@ const Index = () => {
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            <div className="flex gap-6 min-w-full snap-x snap-mandatory">
+            <div className="flex gap-4 sm:gap-5 md:gap-6 min-w-full snap-x snap-mandatory">
               {filteredCurriculums.map((curriculum, index) => (
                 <div
                   key={`${selectedCategory}-${curriculum.id}`}
-                  className="min-w-[280px] md:min-w-[320px] snap-start"
+                  className="min-w-[240px] sm:min-w-[260px] md:min-w-[280px] lg:min-w-[320px] snap-start"
                   style={{
                     animation: 'fadeInScale 0.5s ease-out forwards',
                     animationDelay: `${index * 0.1}s`,
