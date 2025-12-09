@@ -1,14 +1,348 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { PortfolioCard } from "@/components/PortfolioCard";
+import { supabase } from "@/integrations/supabase/client";
+import { Project } from "@/types";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Plus, X, ArrowUp, ArrowDown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const AINativeWebMasterClass3 = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [relatedProjects, setRelatedProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [sectionTexts, setSectionTexts] = useState({
+    badge: "Student Projects",
+    title: "관련 학생 프로젝트",
+    description: "이 커리큘럼을 수강한 학생들의 프로젝트를 확인해보세요"
+  });
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+  const [isEditingTexts, setIsEditingTexts] = useState(false);
+  const [isSavingTexts, setIsSavingTexts] = useState(false);
+  const [isEditingProjects, setIsEditingProjects] = useState(false);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [isLoadingAllProjects, setIsLoadingAllProjects] = useState(false);
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
+  const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+  const [projectInput, setProjectInput] = useState("");
+  const [showProjectInput, setShowProjectInput] = useState(false);
+
   useEffect(() => {
     // 페이지 로드 시 상단으로 스크롤
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // 관리자 여부 확인
+  useEffect(() => {
+    const checkAdmin = async () => {
+      setIsCheckingAdmin(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsAdmin(false);
+          return;
+        }
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+        setIsAdmin((profile as { role?: string })?.role === "admin");
+      } catch (error) {
+        console.error("Failed to check admin:", error);
+        setIsAdmin(false);
+      } finally {
+        setIsCheckingAdmin(false);
+      }
+    };
+
+    checkAdmin();
+  }, []);
+
+  // 섹션 텍스트 가져오기
+  useEffect(() => {
+    const loadSectionTexts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("curriculums")
+          .select("projects_section_badge, projects_section_title, projects_section_description")
+          .eq("id", "application-3")
+          .single();
+
+        if (!error && data) {
+          setSectionTexts({
+            badge: data.projects_section_badge || "Student Projects",
+            title: data.projects_section_title || "관련 학생 프로젝트",
+            description: data.projects_section_description || "이 커리큘럼을 수강한 학생들의 프로젝트를 확인해보세요"
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load section texts:", error);
+      }
+    };
+
+    loadSectionTexts();
+  }, []);
+
+  // 섹션 텍스트 저장
+  const saveSectionTexts = async () => {
+    setIsSavingTexts(true);
+    try {
+      const { error } = await supabase
+        .from("curriculums")
+        .update({
+          projects_section_badge: sectionTexts.badge,
+          projects_section_title: sectionTexts.title,
+          projects_section_description: sectionTexts.description,
+        })
+        .eq("id", "application-3");
+
+      if (error) {
+        console.error("Failed to save section texts:", error);
+        alert("저장에 실패했습니다.");
+        return;
+      }
+
+      alert("저장되었습니다.");
+      setIsEditingTexts(false);
+    } catch (error) {
+      console.error("Failed to save section texts:", error);
+      alert("저장에 실패했습니다.");
+    } finally {
+      setIsSavingTexts(false);
+    }
+  };
+
+  // 공용 프로젝트 로더
+  const fetchRelatedProjects = async () => {
+    setIsLoadingProjects(true);
+    try {
+      const { data: curriculumProjects, error: curriculumError } = await supabase
+        .from("curriculum_projects")
+        .select(`
+          project_id,
+          display_order
+        `)
+        .eq("curriculum_id", "application-3")
+        .order("display_order", { ascending: true });
+
+      if (curriculumError) {
+        console.error("Failed to fetch curriculum projects:", curriculumError);
+      }
+
+      let projectsData: any[] = [];
+
+      if (!curriculumProjects || curriculumProjects.length === 0) {
+        setRelatedProjects([]);
+        return;
+      }
+
+      const projectIds = curriculumProjects.map((cp) => cp.project_id);
+      const { data, error } = await supabase
+        .from("projects")
+        .select(`
+          *,
+          profiles (name, avatar_url)
+        `)
+        .in("id", projectIds)
+        .eq("is_hidden", false);
+
+      if (error) throw error;
+
+      if (data) {
+        const projectMap = new Map(data.map((p) => [p.id, p]));
+        projectsData = curriculumProjects
+          .map((cp) => projectMap.get(cp.project_id))
+          .filter((p) => p !== undefined) as any[];
+      }
+
+      if (!projectsData || projectsData.length === 0) {
+        setRelatedProjects([]);
+        return;
+      }
+
+      const projectIdsForCounts = projectsData.map((p) => p.id);
+      let commentCounts: Record<string, number> = {};
+      let likeCounts: Record<string, number> = {};
+
+      if (projectIdsForCounts.length > 0) {
+        const [commentsResult, likesResult] = await Promise.all([
+          supabase.from("project_comments").select("project_id").in("project_id", projectIdsForCounts),
+          supabase.from("project_likes").select("project_id").in("project_id", projectIdsForCounts),
+        ]);
+
+        commentsResult.data?.forEach((comment) => {
+          commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
+        });
+
+        likesResult.data?.forEach((like) => {
+          likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
+        });
+      }
+
+      const projectsWithCounts = projectsData.map((project) => ({
+        ...project,
+        commentCount: commentCounts[project.id] || 0,
+        likeCount: likeCounts[project.id] || 0,
+        view_count: project.view_count || 0,
+      })) as Project[];
+
+      setRelatedProjects(projectsWithCounts);
+    } catch (error) {
+      console.error("Error loading related projects:", error);
+      setRelatedProjects([]);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRelatedProjects();
+  }, []);
+
+  // 프로젝트 추가
+  const addProjectToCurriculum = async (projectId: string) => {
+    try {
+      const { error } = await supabase
+        .from("curriculum_projects")
+        .insert({
+          curriculum_id: "application-3",
+          project_id: projectId,
+          display_order: relatedProjects.length,
+        });
+
+      if (error) throw error;
+
+      toast({ title: "성공", description: "프로젝트가 추가되었습니다." });
+      setShowProjectSelector(false);
+      await fetchRelatedProjects();
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "프로젝트 추가에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 프로젝트 제거
+  const removeProjectFromCurriculum = async (projectId: string) => {
+    try {
+      const { error } = await supabase
+        .from("curriculum_projects")
+        .delete()
+        .eq("curriculum_id", "application-3")
+        .eq("project_id", projectId);
+
+      if (error) throw error;
+
+      toast({ title: "성공", description: "프로젝트가 제거되었습니다." });
+      await fetchRelatedProjects();
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "프로젝트 제거에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 순서 변경
+  const updateProjectOrder = async (projectId: string, targetIndex: number) => {
+    if (isUpdatingOrder) return;
+    setIsUpdatingOrder(true);
+    try {
+      const newList = [...relatedProjects];
+      const currentIndex = newList.findIndex((p) => p.id === projectId);
+      if (currentIndex === -1 || targetIndex < 0 || targetIndex >= newList.length) return;
+      const [moved] = newList.splice(currentIndex, 1);
+      newList.splice(targetIndex, 0, moved);
+      setRelatedProjects(newList);
+
+      await Promise.all(
+        newList.map((p, idx) =>
+          supabase
+            .from("curriculum_projects")
+            .update({ display_order: idx })
+            .eq("curriculum_id", "application-3")
+            .eq("project_id", p.id)
+        )
+      );
+      // 최신 순서 재확인
+      await fetchRelatedProjects();
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "순서 변경에 실패했습니다.",
+        variant: "destructive",
+      });
+      fetchRelatedProjects();
+    } finally {
+      setIsUpdatingOrder(false);
+    }
+  };
+
+  // URL 또는 ID로 프로젝트 추가
+  const addProjectByInput = async () => {
+    const raw = projectInput.trim();
+    if (!raw) {
+      toast({ title: "입력 필요", description: "프로젝트 URL 또는 ID를 입력하세요.", variant: "destructive" });
+      return;
+    }
+
+    // URL에서 ID 추출
+    let projectId = raw;
+    try {
+      if (raw.includes("/")) {
+        const url = new URL(raw, window.location.origin);
+        const parts = url.pathname.split("/").filter(Boolean);
+        projectId = parts[parts.length - 1];
+      }
+      projectId = projectId.split("?")[0].split("#")[0];
+    } catch {
+      // URL 파싱 실패 시 그대로 사용
+    }
+
+    if (!projectId) {
+      toast({ title: "잘못된 입력", description: "프로젝트 ID를 확인하세요.", variant: "destructive" });
+      return;
+    }
+
+    // 중복 체크
+    if (relatedProjects.some((p) => p.id === projectId)) {
+      toast({ title: "이미 추가됨", description: "이미 연결된 프로젝트입니다." });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*, profiles (name, avatar_url)")
+        .eq("id", projectId)
+        .eq("is_hidden", false)
+        .single();
+
+      if (error || !data) {
+        toast({ title: "찾을 수 없음", description: "프로젝트가 존재하지 않거나 숨김 상태입니다.", variant: "destructive" });
+        return;
+      }
+
+      await addProjectToCurriculum(projectId);
+      setProjectInput("");
+      setShowProjectInput(false);
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "프로젝트를 추가할 수 없습니다.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <>
@@ -515,6 +849,23 @@ const AINativeWebMasterClass3 = () => {
         @media (max-width: 768px) {
           .use-case-grid { grid-template-columns: 1fr; }
         }
+        .related-projects-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 20px;
+          margin-bottom: 40px;
+        }
+        @media (max-width: 768px) {
+          .related-projects-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+        @media (max-width: 480px) {
+          .related-projects-grid {
+            gap: 12px;
+          }
+        }
       `}</style>
       <link rel="stylesheet" as="style" crossOrigin="anonymous" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
@@ -731,35 +1082,319 @@ const AINativeWebMasterClass3 = () => {
           </div>
         </section>
 
-        {/* PRO COURSE CTA */}
-        <section id="pro" className="section">
+        {/* RELATED PROJECTS SECTION */}
+        <section className="section bg-light">
           <div className="container">
-            <div className="pro-box">
-              <h2>진짜 돈을 버는 기술을 배웁니다.</h2>
-              <p style={{ marginTop: '16px', opacity: 0.9 }}>
-                4주차 심화 과정에서는 실제 창업이 가능한 수준의<br />
-                결제 시스템과 보안 기술을 다룹니다.
-              </p>
-              <ul className="pro-features">
-                <li><i className="fa-solid fa-credit-card"></i> 신용카드 승인/취소</li>
-                <li><i className="fa-solid fa-shield-halved"></i> API 보안 관리</li>
-                <li><i className="fa-solid fa-store"></i> 쇼핑몰 구축 A to Z</li>
-              </ul>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', gap: '12px' }}>
+              <div style={{ textAlign: 'left' }}>
+                <div className="tag-badge" style={{ background: '#f3e8ff', color: '#7B61FF' }}>{sectionTexts.badge}</div>
+                <h2 style={{ marginTop: '12px' }}>{sectionTexts.title}</h2>
+                <p style={{ marginTop: '10px', fontSize: '18px', color: '#64748b' }}>
+                  {sectionTexts.description}
+                </p>
+              </div>
+              {isAdmin && !isCheckingAdmin && (
+                <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  {!isEditingProjects ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsEditingProjects(true)}
+                    >
+                      프로젝트 수정
+                    </Button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setIsEditingProjects(false);
+                          setShowProjectSelector(false);
+                        }}
+                      >
+                        완료
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {isEditingTexts && (
+              <div className="card" style={{ marginBottom: '24px', padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">태그 배지 텍스트</label>
+                    <input
+                      type="text"
+                      value={sectionTexts.badge}
+                      onChange={(e) => setSectionTexts({ ...sectionTexts, badge: e.target.value })}
+                      className="w-full p-2 border rounded-md"
+                      placeholder="예: Student Projects"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">섹션 제목</label>
+                    <input
+                      type="text"
+                      value={sectionTexts.title}
+                      onChange={(e) => setSectionTexts({ ...sectionTexts, title: e.target.value })}
+                      className="w-full p-2 border rounded-md"
+                      placeholder="예: 관련 학생 프로젝트"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">섹션 설명</label>
+                    <textarea
+                      value={sectionTexts.description}
+                      onChange={(e) => setSectionTexts({ ...sectionTexts, description: e.target.value })}
+                      className="w-full p-2 border rounded-md min-h-[80px]"
+                      placeholder="예: 이 커리큘럼을 수강한 학생들의 프로젝트를 확인해보세요"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {isEditingProjects && isAdmin && (
+              <div style={{ marginBottom: '24px', padding: '16px', border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '8px', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>프로젝트 관리</h3>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowProjectSelector(!showProjectSelector)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      프로젝트 목록에서 추가
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowProjectInput(!showProjectInput)}
+                    >
+                      링크로 불러오기
+                    </Button>
+                  </div>
+                </div>
+
+                {showProjectInput && (
+                  <div style={{ marginBottom: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      value={projectInput}
+                      onChange={(e) => setProjectInput(e.target.value)}
+                      placeholder="프로젝트 URL 또는 ID"
+                      className="w-full md:w-auto flex-1 p-2 border rounded-md"
+                    />
+                    <Button size="sm" onClick={addProjectByInput}>추가</Button>
+                  </div>
+                )}
+
+                {showProjectSelector && (
+                  <div style={{ marginBottom: '16px', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', maxHeight: '300px', overflowY: 'auto' }}>
+                    {isLoadingAllProjects ? (
+                      <p style={{ textAlign: 'center', color: '#64748b' }}>로딩 중...</p>
+                    ) : (
+                      <div style={{ display: 'grid', gap: '8px' }}>
+                        {allProjects
+                          .filter((p) => !relatedProjects.some((rp) => rp.id === p.id))
+                          .map((project) => (
+                            <div
+                              key={project.id}
+                              onClick={() => addProjectToCurriculum(project.id)}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '8px 12px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                transition: 'background 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                            >
+                              <div>
+                                <p style={{ fontWeight: 500, fontSize: '14px' }}>{project.title}</p>
+                                <p style={{ fontSize: '12px', color: '#64748b' }}>
+                                  {project.profiles?.name || '익명'}
+                                </p>
+                              </div>
+                              <Plus className="h-4 w-4" style={{ color: '#64748b' }} />
+                            </div>
+                          ))}
+                        {allProjects.filter((p) => !relatedProjects.some((rp) => rp.id === p.id)).length === 0 && (
+                          <p style={{ textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                            추가할 수 있는 프로젝트가 없습니다.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isLoadingProjects ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <p style={{ color: '#64748b' }}>프로젝트를 불러오는 중...</p>
+              </div>
+            ) : relatedProjects.length > 0 ? (
+              <>
+                <div className="related-projects-grid">
+                  {relatedProjects.map((project, index) => (
+                    <div
+                      key={project.id}
+                      style={{ position: 'relative' }}
+                    >
+                      {isEditingProjects && isAdmin && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          zIndex: 10,
+                          display: 'flex',
+                          gap: '4px',
+                          background: 'rgba(255, 255, 255, 0.95)',
+                          padding: '4px',
+                          borderRadius: '6px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}>
+                          {index > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateProjectOrder(project.id, index - 1);
+                              }}
+                              style={{
+                                padding: '4px',
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                borderRadius: '4px'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <ArrowUp className="h-4 w-4" style={{ color: '#64748b' }} />
+                            </button>
+                          )}
+                          {index < relatedProjects.length - 1 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateProjectOrder(project.id, index + 1);
+                              }}
+                              style={{
+                                padding: '4px',
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                borderRadius: '4px'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <ArrowDown className="h-4 w-4" style={{ color: '#64748b' }} />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm("이 프로젝트를 제거하시겠습니까?")) {
+                                removeProjectFromCurriculum(project.id);
+                              }
+                            }}
+                            style={{
+                              padding: '4px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <X className="h-4 w-4" style={{ color: '#ef4444' }} />
+                          </button>
+                        </div>
+                      )}
+                      <div
+                        onClick={() => !isEditingProjects && navigate(`/portfolio/${project.id}`)}
+                        style={{ cursor: isEditingProjects ? 'default' : 'pointer' }}
+                      >
+                        <PortfolioCard
+                          id={project.id}
+                          title={project.title || ''}
+                          student={project.profiles?.name || '익명'}
+                          description={project.description || ''}
+                          category={project.category || 'AI 활용'}
+                          tags={project.tags || []}
+                          commentCount={project.commentCount || 0}
+                          likeCount={project.likeCount || 0}
+                          viewCount={project.view_count || 0}
+                          avatarUrl={project.profiles?.avatar_url || null}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                  <Link to="/portfolio?category=전체&tag=홈페이지">
+                    <Button 
+                      size="lg" 
+                      className="main-btn"
+                      style={{ 
+                        background: '#00AFFF',
+                        color: '#fff',
+                        padding: '18px 40px',
+                        fontSize: '18px',
+                        fontWeight: 700,
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 4px 12px rgba(0, 175, 255, 0.3)'
+                      }}
+                    >
+                      모든 프로젝트 보기
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <p style={{ color: '#64748b', marginBottom: '20px' }}>아직 등록된 프로젝트가 없습니다.</p>
+                <Link to="/portfolio?category=AI 활용">
+                  <Button 
+                    size="lg" 
+                    className="main-btn"
+                    style={{ 
+                      background: '#00AFFF',
+                      color: '#fff',
+                      padding: '18px 40px',
+                      fontSize: '18px',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: '0 4px 12px rgba(0, 175, 255, 0.3)'
+                    }}
+                  >
+                    포트폴리오 페이지로 이동
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </section>
 
-        {/* FOOTER CTA */}
-        <section id="apply">
-          <div className="container">
-            <h2 style={{ fontSize: '48px', marginBottom: '24px' }}>지금 시작하세요.</h2>
-            <p style={{ fontSize: '20px', color: '#64748b', marginBottom: '40px' }}>
-              AI Native 개발자로 성장하는 가장 빠른 길,<br />
-              Realize Academy가 함께합니다.
-            </p>
-            <a href="#" className="main-btn">수강 신청하기</a>
-          </div>
-        </section>
       </div>
       <Footer />
     </>

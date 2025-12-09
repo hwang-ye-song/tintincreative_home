@@ -1,6 +1,6 @@
 import React from "react";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PortfolioCard } from "@/components/PortfolioCard";
@@ -15,8 +15,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Supabase의 or() 메서드는 괄호 없이 사용해야 함
 const Portfolio = () => {
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState("전체");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [initialParams] = React.useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      category: params.get('category') || '전체',
+      tag: params.get('tag') || ''
+    };
+  });
+  const [selectedCategory, setSelectedCategory] = useState(initialParams.category);
+  const [searchQuery, setSearchQuery] = useState(initialParams.tag || "");
   const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
