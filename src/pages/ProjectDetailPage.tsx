@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { ArrowLeft, Pencil, Trash2, Heart, Edit2, X, Eye, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Heart, Edit2, X, Eye, ThumbsUp, Video, File, Download, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
@@ -60,6 +60,7 @@ const ProjectDetailPage = () => {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
+  const [isUpdatingBest, setIsUpdatingBest] = useState(false);
 
   // 사용자 정보를 React Query로 병렬 로딩
   // 에러가 발생해도 프로젝트는 표시되도록 에러 처리
@@ -690,6 +691,40 @@ const ProjectDetailPage = () => {
     }
   };
 
+  const handleToggleBest = async () => {
+    if (!id || !project) return;
+
+    setIsUpdatingBest(true);
+    try {
+      const nextBest = !project.is_best;
+      const { error } = await supabase
+        .from("projects")
+        .update({ is_best: nextBest, category: nextBest ? "BEST" : project.category } as any)
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({
+        title: nextBest ? "BEST 지정 완료" : "BEST 해제 완료",
+        description: nextBest
+          ? "프로젝트가 BEST로 지정되었습니다."
+          : "프로젝트가 BEST에서 해제되었습니다.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      await refetch();
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "BEST 상태 변경에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingBest(false);
+    }
+  };
+
   const isOwner = currentUserId && project?.user_id === currentUserId;
   const isAdmin = userRole === 'admin';
 
@@ -951,6 +986,21 @@ const ProjectDetailPage = () => {
                     수정
                   </Button>
                 )}
+                {isAdmin && (
+                  <Button
+                    variant={project.is_best ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleToggleBest}
+                    disabled={isUpdatingBest}
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {isUpdatingBest
+                      ? "처리 중..."
+                      : project.is_best
+                        ? "BEST 해제"
+                        : "BEST 지정"}
+                  </Button>
+                )}
                 {(isOwner || isAdmin) && (
                   <Button
                     variant="secondary"
@@ -1042,13 +1092,29 @@ const ProjectDetailPage = () => {
                 )}
               </div>
 
-              {project.category && (
-                <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {project.category && (
                   <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                     {project.category}
                   </Badge>
-                </div>
-              )}
+                )}
+                {isAdmin && (
+                  <Button
+                    variant={project.is_best ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleToggleBest}
+                    disabled={isUpdatingBest}
+                    className="h-7 text-xs"
+                  >
+                    <Sparkles className="mr-1.5 h-3 w-3" />
+                    {isUpdatingBest
+                      ? "처리 중..."
+                      : project.is_best
+                        ? "BEST 해제"
+                        : "BEST 지정"}
+                  </Button>
+                )}
+              </div>
 
               {project.tags && project.tags.length > 0 && (
                 <div>
@@ -1070,6 +1136,71 @@ const ProjectDetailPage = () => {
                 dangerouslySetInnerHTML={{ __html: projectDescription || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>" }}
               />
             </div>
+
+            {/* Video Section */}
+            {project.video_url && (
+              <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+                <h3 className="text-xs md:text-sm font-medium mb-3 flex items-center gap-2">
+                  <Video className="h-4 w-4" />
+                  프로젝트 영상
+                </h3>
+                <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
+                  {project.video_url.includes('youtube.com') || project.video_url.includes('youtu.be') ? (
+                    <iframe
+                      src={project.video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : project.video_url.includes('vimeo.com') ? (
+                    <iframe
+                      src={project.video_url.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                      className="w-full h-full"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={project.video_url}
+                      controls
+                      className="w-full h-full"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Attachments Section */}
+            {project.attachments && Array.isArray(project.attachments) && project.attachments.length > 0 && (
+              <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+                <h3 className="text-xs md:text-sm font-medium mb-3 flex items-center gap-2">
+                  <File className="h-4 w-4" />
+                  첨부 파일 ({project.attachments.length})
+                </h3>
+                <div className="space-y-2">
+                  {project.attachments.map((attachment: any, index: number) => (
+                    <a
+                      key={index}
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-3 bg-muted hover:bg-muted/80 rounded-md transition-colors group"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <File className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{attachment.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {attachment.size ? `${(attachment.size / 1024).toFixed(2)} KB` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <Download className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Comments Section */}
             <div className="bg-card border border-border rounded-lg p-4 md:p-6">

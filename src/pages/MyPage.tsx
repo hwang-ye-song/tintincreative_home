@@ -650,15 +650,17 @@ const MyPage = () => {
                     >
                       <PortfolioCard
                         id={project.id}
-                        title={project.title}
+                        title={project.title || "제목 없음"}
                         student={profile?.name || "익명"}
-                        description={project.description}
+                        description={project.description || ""}
                         category={project.category || "기타"}
                         tags={project.tags || []}
                         commentCount={project.commentCount || 0}
                         likeCount={project.likeCount || 0}
                         viewCount={project.view_count || 0}
                         avatarUrl={profile?.avatar_url || null}
+                        imageUrl={project.image_url || null}
+                        videoUrl={project.video_url || null}
                       />
                     </div>
                   ))}

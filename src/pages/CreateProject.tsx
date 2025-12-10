@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -9,13 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, Plus, ArrowLeft } from "lucide-react";
+import { X, Plus, ArrowLeft, File, Video, Trash2 } from "lucide-react";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import imageCompression from "browser-image-compression";
+import { ProjectAttachment } from "@/types";
 
-const CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
+const BASE_CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_FILE_SIZE = 100 * 1024 * 1024; // 100MB for videos
 const MAX_IMAGE_WIDTH = 1920;
 const MAX_IMAGE_HEIGHT = 1080;
 const IMAGE_QUALITY = 0.8;
@@ -28,8 +30,32 @@ const CreateProject = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
+  const categories = isAdmin ? ["BEST", ...BASE_CATEGORIES] : BASE_CATEGORIES;
+
+  // 관리자 여부 확인
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        setIsAdmin(profile?.role === "admin");
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+    fetchRole();
+  }, []);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,6 +103,36 @@ const CreateProject = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
+  const handleVideoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setVideoUrl(e.target.value);
+  };
+
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "파일 크기 초과",
+          description: `${file.name}은(는) 10MB 이하여야 합니다.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      return true;
+    });
+    setAttachmentFiles([...attachmentFiles, ...validFiles]);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachmentFiles(attachmentFiles.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -112,6 +168,51 @@ const CreateProject = () => {
         imageUrl = publicUrl;
       }
 
+      // Upload attachments
+      let attachments: ProjectAttachment[] = [];
+      if (attachmentFiles.length > 0) {
+        setUploadingAttachments(true);
+        try {
+          const uploadPromises = attachmentFiles.map(async (file) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from('project-files')
+              .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('project-files')
+              .getPublicUrl(fileName);
+
+            return {
+              name: file.name,
+              url: publicUrl,
+              size: file.size,
+              type: file.type
+            };
+          });
+
+          attachments = await Promise.all(uploadPromises);
+        } catch (error: any) {
+          throw new Error(`파일 업로드 실패: ${error.message}`);
+        } finally {
+          setUploadingAttachments(false);
+        }
+      }
+
+      if (category === "BEST" && !isAdmin) {
+        toast({
+          title: "권한 없음",
+          description: "BEST 카테고리는 관리자만 지정할 수 있습니다.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
       const { error: insertError } = await supabase
         .from('projects')
         .insert({
@@ -120,8 +221,11 @@ const CreateProject = () => {
           category,
           tags,
           image_url: imageUrl,
+          video_url: videoUrl.trim() || null,
+          attachments: attachments.length > 0 ? attachments : null,
           user_id: user.id,
-          is_hidden: false
+          is_hidden: false,
+          is_best: category === "BEST" ? true : undefined
         });
 
       if (insertError) throw insertError;
@@ -192,7 +296,7 @@ const CreateProject = () => {
                     <SelectValue placeholder="카테고리를 선택하세요" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border border-border z-50">
-                    {CATEGORIES.map((cat) => (
+                    {categories.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
                       </SelectItem>
@@ -256,6 +360,62 @@ const CreateProject = () => {
                   </p>
                 )}
               </div>
+
+              <div>
+                <Label htmlFor="video" className="text-base font-semibold">영상 URL (선택사항)</Label>
+                <Input
+                  id="video"
+                  type="url"
+                  value={videoUrl}
+                  onChange={handleVideoUrlChange}
+                  placeholder="YouTube, Vimeo 등의 영상 URL을 입력하세요"
+                  className="mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  YouTube, Vimeo 등의 공유 링크를 입력하거나 직접 업로드한 영상의 URL을 입력하세요
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="attachments" className="text-base font-semibold">첨부 파일 (최대 10MB/파일)</Label>
+                <Input
+                  id="attachments"
+                  type="file"
+                  multiple
+                  onChange={handleAttachmentChange}
+                  className="mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  여러 파일을 선택할 수 있습니다. 각 파일은 최대 10MB까지 업로드 가능합니다.
+                </p>
+                {attachmentFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {attachmentFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-muted rounded-md"
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <File className="h-4 w-4 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => removeAttachment(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="bg-card border border-border rounded-lg p-6">
@@ -280,8 +440,8 @@ const CreateProject = () => {
                   >
                     취소
                   </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "등록 중..." : "프로젝트 등록"}
+                  <Button type="submit" disabled={loading || uploadingAttachments}>
+                    {loading || uploadingAttachments ? "등록 중..." : "프로젝트 등록"}
                   </Button>
                 </div>
               </form>

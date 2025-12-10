@@ -1327,7 +1327,7 @@ const AINativeWebMasterClass3 = () => {
                       >
                         <PortfolioCard
                           id={project.id}
-                          title={project.title || ''}
+                          title={project.title || '제목 없음'}
                           student={project.profiles?.name || '익명'}
                           description={project.description || ''}
                           category={project.category || 'AI 활용'}
@@ -1336,6 +1336,8 @@ const AINativeWebMasterClass3 = () => {
                           likeCount={project.likeCount || 0}
                           viewCount={project.view_count || 0}
                           avatarUrl={project.profiles?.avatar_url || null}
+                          imageUrl={project.image_url || null}
+                          videoUrl={project.video_url || null}
                         />
                       </div>
                     </div>

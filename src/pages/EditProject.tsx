@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, Plus, ArrowLeft } from "lucide-react";
+import { X, Plus, ArrowLeft, File, Video, Trash2 } from "lucide-react";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import imageCompression from "browser-image-compression";
+import { ProjectAttachment } from "@/types";
 
 const CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -30,6 +31,10 @@ const EditProject = () => {
   const [tagInput, setTagInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [currentAttachments, setCurrentAttachments] = useState<ProjectAttachment[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const { toast } = useToast();
@@ -73,6 +78,8 @@ const EditProject = () => {
         setCategory(project.category || "");
         setTags(project.tags || []);
         setCurrentImageUrl(project.image_url);
+        setVideoUrl(project.video_url || "");
+        setCurrentAttachments(project.attachments || []);
       } catch (error: any) {
         toast({
           title: "오류",
@@ -134,6 +141,40 @@ const EditProject = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
+  const handleVideoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setVideoUrl(e.target.value);
+  };
+
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "파일 크기 초과",
+          description: `${file.name}은(는) 10MB 이하여야 합니다.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      return true;
+    });
+    setAttachmentFiles([...attachmentFiles, ...validFiles]);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachmentFiles(attachmentFiles.filter((_, i) => i !== index));
+  };
+
+  const removeCurrentAttachment = (index: number) => {
+    setCurrentAttachments(currentAttachments.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -169,6 +210,42 @@ const EditProject = () => {
         imageUrl = publicUrl;
       }
 
+      // Upload new attachments
+      let newAttachments: ProjectAttachment[] = [...currentAttachments];
+      if (attachmentFiles.length > 0) {
+        setUploadingAttachments(true);
+        try {
+          const uploadPromises = attachmentFiles.map(async (file) => {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from('project-files')
+              .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+              .from('project-files')
+              .getPublicUrl(fileName);
+
+            return {
+              name: file.name,
+              url: publicUrl,
+              size: file.size,
+              type: file.type
+            };
+          });
+
+          const uploadedAttachments = await Promise.all(uploadPromises);
+          newAttachments = [...currentAttachments, ...uploadedAttachments];
+        } catch (error: any) {
+          throw new Error(`파일 업로드 실패: ${error.message}`);
+        } finally {
+          setUploadingAttachments(false);
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('projects')
         .update({
@@ -176,7 +253,9 @@ const EditProject = () => {
           description,
           category,
           tags,
-          image_url: imageUrl
+          image_url: imageUrl,
+          video_url: videoUrl.trim() || null,
+          attachments: newAttachments.length > 0 ? newAttachments : null
         })
         .eq('id', id);
 
@@ -331,6 +410,93 @@ const EditProject = () => {
                       </p>
                     )}
                   </div>
+
+                  <div>
+                    <Label htmlFor="video" className="text-base font-semibold">영상 URL (선택사항)</Label>
+                    <Input
+                      id="video"
+                      type="url"
+                      value={videoUrl}
+                      onChange={handleVideoUrlChange}
+                      placeholder="YouTube, Vimeo 등의 영상 URL을 입력하세요"
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      YouTube, Vimeo 등의 공유 링크를 입력하거나 직접 업로드한 영상의 URL을 입력하세요
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="attachments" className="text-base font-semibold">첨부 파일 (최대 10MB/파일)</Label>
+                    <Input
+                      id="attachments"
+                      type="file"
+                      multiple
+                      onChange={handleAttachmentChange}
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      여러 파일을 선택할 수 있습니다. 각 파일은 최대 10MB까지 업로드 가능합니다.
+                    </p>
+                    {currentAttachments.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm font-medium">현재 첨부 파일:</p>
+                        {currentAttachments.map((attachment, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 bg-muted rounded-md"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <File className="h-4 w-4 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{attachment.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {attachment.size ? formatFileSize(attachment.size) : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0"
+                              onClick={() => removeCurrentAttachment(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {attachmentFiles.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-sm font-medium">새로 추가할 파일:</p>
+                        {attachmentFiles.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 bg-muted rounded-md"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <File className="h-4 w-4 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{file.name}</p>
+                                <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 flex-shrink-0"
+                              onClick={() => removeAttachment(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-card border border-border rounded-lg p-6">
@@ -355,8 +521,8 @@ const EditProject = () => {
                   >
                     취소
                   </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "수정 중..." : "프로젝트 수정"}
+                  <Button type="submit" disabled={loading || uploadingAttachments}>
+                    {loading || uploadingAttachments ? "수정 중..." : "프로젝트 수정"}
                   </Button>
                 </div>
               </form>

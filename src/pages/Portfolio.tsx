@@ -18,19 +18,17 @@ const Portfolio = () => {
   const [initialParams] = React.useState(() => {
     const params = new URLSearchParams(window.location.search);
     return {
-      category: params.get('category') || '전체',
+      category: params.get('category') || 'BEST',
       tag: params.get('tag') || ''
     };
   });
   const [selectedCategory, setSelectedCategory] = useState(initialParams.category);
   const [searchQuery, setSearchQuery] = useState(initialParams.tag || "");
-  const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
+  const categories = ["BEST", "전체", "AI 기초", "AI 활용", "로봇"];
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   const [projects, setProjects] = useState<Project[]>([]);
-  const [popularProjects, setPopularProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingPopular, setIsLoadingPopular] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [user, setUser] = useState<any | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -119,7 +117,9 @@ const Portfolio = () => {
         .order("created_at", { ascending: false })
         .range(pageParam * ITEMS_PER_PAGE, (pageParam + 1) * ITEMS_PER_PAGE - 1);
 
-      if (selectedCategory !== "전체") {
+      if (selectedCategory === "BEST") {
+        query = query.eq("is_best", true);
+      } else if (selectedCategory !== "전체") {
         query = query.eq("category", selectedCategory);
       }
 
@@ -246,104 +246,6 @@ const Portfolio = () => {
     loadProjects();
   }, [currentPage, selectedCategory, searchQuery, buildProjectsQuery]);
 
-  // 인기 프로젝트 가져오기
-  useEffect(() => {
-    const loadPopularProjects = async () => {
-      setIsLoadingPopular(true);
-      try {
-        const result = await fetchPopularProjects(user, userRole);
-        setPopularProjects(result);
-      } catch (error) {
-        console.error("Error loading popular projects:", error);
-        setPopularProjects([]);
-      } finally {
-        setIsLoadingPopular(false);
-      }
-    };
-
-    loadPopularProjects();
-  }, [user, userRole]);
-
-  const fetchPopularProjects = async (currentUser?: any, currentUserRole?: string | null) => {
-    const { data: projectsData, error } = await supabase
-      .from("projects")
-      .select(`
-        *,
-        profiles (name, avatar_url)
-      `)
-      .order("view_count", { ascending: false })
-      .limit(20); // 더 많이 가져와서 필터링
-
-    if (error) {
-      console.error("Failed to fetch popular projects:", error);
-      return [];
-    }
-
-    if (!projectsData) {
-      return [];
-    }
-
-    // 작성자이거나 관리자인 경우 숨겨진 프로젝트도 포함
-    let filteredProjects = projectsData;
-    if (currentUser) {
-      filteredProjects = filteredProjects.filter((project) => {
-        // is_hidden이 undefined, null이거나 false면 공개
-        if (project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false) {
-          return true;
-        }
-        // 숨겨진 프로젝트는 작성자나 관리자만 볼 수 있음
-        return project.user_id === currentUser.id || currentUserRole === "admin";
-      });
-    } else {
-      filteredProjects = filteredProjects.filter((project) => 
-        project.is_hidden === undefined || project.is_hidden === null || project.is_hidden === false
-      );
-    }
-    
-    // 상위 3개만 선택
-    filteredProjects = filteredProjects.slice(0, 3);
-      
-      // N+1 쿼리 최적화: 프로젝트 ID 목록을 얻은 후 댓글/좋아요를 병렬로 조회
-      const projectIds = filteredProjects.map(p => p.id);
-      
-      let commentCounts: Record<string, number> = {};
-      let likeCounts: Record<string, number> = {};
-      
-      if (projectIds.length > 0) {
-        // 댓글과 좋아요를 병렬로 조회
-        const [commentsResult, likesResult] = await Promise.all([
-          supabase
-            .from('project_comments')
-            .select('project_id')
-            .in('project_id', projectIds),
-          supabase
-            .from('project_likes')
-            .select('project_id')
-            .in('project_id', projectIds)
-        ]);
-        
-        if (commentsResult.data) {
-          commentsResult.data.forEach(comment => {
-            commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
-          });
-        }
-        
-        if (likesResult.data) {
-          likesResult.data.forEach(like => {
-            likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
-          });
-        }
-      }
-      
-      const projectsWithCounts = filteredProjects.map((project) => ({
-        ...project,
-        commentCount: commentCounts[project.id] || 0,
-        likeCount: likeCounts[project.id] || 0,
-        view_count: project.view_count || 0
-      }));
-      
-      return projectsWithCounts;
-  };
 
 
   const totalPages = useMemo(
@@ -427,43 +329,6 @@ const Portfolio = () => {
             </div>
           </div>
 
-          {/* Popular Projects Section */}
-          <div className="mb-12 max-w-4xl mx-auto animate-fade-in">
-            <h2 className="font-heading text-base md:text-lg font-bold mb-4 text-center">
-              🔥 인기 프로젝트
-            </h2>
-            {isLoadingPopular ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-24 w-full" />
-                ))}
-              </div>
-            ) : popularProjects.length > 0 ? (
-              <div className="space-y-3">
-                {popularProjects.map((project) => (
-                  <div
-                    key={project.id}
-                    onClick={() => navigate(`/portfolio/${project.id}`)}
-                    className="cursor-pointer"
-                  >
-                    <PortfolioCard
-                      id={project.id}
-                      title={project.title}
-                      description={project.description}
-                      category={project.category || "기타"}
-                      tags={project.tags || []}
-                      student={project.profiles?.name || "익명"}
-                      commentCount={project.commentCount || 0}
-                      likeCount={project.likeCount || 0}
-                      viewCount={project.view_count || 0}
-                      avatarUrl={project.profiles?.avatar_url || null}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
           {/* Category Filter */}
           <div className="flex flex-wrap justify-center gap-3 mb-8 animate-fade-in">
             {categories.map((category, index) => (
@@ -480,15 +345,15 @@ const Portfolio = () => {
             ))}
           </div>
 
-          <h2 className="font-heading text-sm md:text-base font-semibold mb-4 text-center max-w-4xl mx-auto">
+          <h2 className="font-heading text-sm md:text-base font-semibold mb-4 text-center max-w-7xl mx-auto">
             모든 프로젝트
           </h2>
 
           {/* Projects List */}
           {isLoading ? (
-            <div className="max-w-4xl mx-auto space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-24 w-full" />
+            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-64 w-full" />
               ))}
             </div>
           ) : isError ? (
@@ -502,7 +367,7 @@ const Portfolio = () => {
             </div>
           ) : (
             <>
-              <div className="max-w-4xl mx-auto space-y-3">
+              <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projects.map((project, index) => (
                   <div
                     key={project.id}
@@ -512,15 +377,17 @@ const Portfolio = () => {
                   >
                     <PortfolioCard
                       id={project.id}
-                      title={project.title}
+                      title={project.title || "제목 없음"}
                       student={project.profiles?.name || "익명"}
-                      description={project.description}
+                      description={project.description || ""}
                       category={project.category || "기타"}
                       tags={project.tags || []}
                       commentCount={project.commentCount || 0}
                       likeCount={project.likeCount || 0}
                       viewCount={project.view_count || 0}
                       avatarUrl={project.profiles?.avatar_url || null}
+                      imageUrl={project.image_url || null}
+                      videoUrl={project.video_url || null}
                     />
                   </div>
                 ))}

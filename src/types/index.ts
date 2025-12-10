@@ -16,12 +16,15 @@ export interface Project {
   category: string | null;
   tags: string[] | null;
   image_url: string | null;
+  video_url?: string | null;
+  attachments?: ProjectAttachment[];
   created_at: string;
   user_id: string;
   view_count?: number;
   commentCount?: number;
   likeCount?: number;
   is_hidden?: boolean;
+  is_best?: boolean;
   profiles?: Partial<Profile>;
 }
 

@@ -255,6 +255,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_hidden: boolean
+          is_best: boolean
           tags: string[] | null
           title: string
           user_id: string
@@ -267,6 +268,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_hidden?: boolean
+          is_best?: boolean
           tags?: string[] | null
           title: string
           user_id: string
@@ -279,6 +281,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_hidden?: boolean
+          is_best?: boolean
           tags?: string[] | null
           title?: string
           user_id?: string

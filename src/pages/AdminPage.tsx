@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Trash2, Users } from "lucide-react";
+import { Shield, Eye, EyeOff, Trash2, Users, Sparkles } from "lucide-react";
 import { Project, Comment, Profile } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -194,6 +194,31 @@ const AdminPage = () => {
     }
   };
 
+  const toggleBestProject = async (projectId: string, currentState: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({ is_best: !currentState } as any)
+        .eq("id", projectId);
+
+      if (error) throw error;
+
+      toast({
+        title: "성공",
+        description: currentState ? "BEST에서 해제되었습니다." : "BEST로 지정되었습니다.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "BEST 설정에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteProject = async (projectId: string) => {
     if (!confirm("정말 이 프로젝트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
       return;
@@ -347,6 +372,14 @@ const AdminPage = () => {
                           </CardDescription>
                         </div>
                         <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={project.is_best ? "default" : "outline"}
+                            onClick={() => toggleBestProject(project.id, project.is_best || false)}
+                          >
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            {project.is_best ? "BEST 해제" : "BEST 지정"}
+                          </Button>
                           <Button
                             size="sm"
                             variant={project.is_hidden ? "default" : "outline"}
