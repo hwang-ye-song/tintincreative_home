@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { CurriculumCard } from "@/components/CurriculumCard";
@@ -8,17 +8,105 @@ import { FacultyCard } from "@/components/FacultyCard";
 import { HeroCanvas } from "@/components/HeroCanvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown } from "lucide-react";
+import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown, Pencil } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { smoothScrollTo } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { Project } from "@/types";
+import { getOptimizedThumbnailUrl } from "@/lib/imageUtils";
 
 const Index = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+
+  // 관리자 권한 확인 및 프로젝트 데이터 로드
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // 관리자 권한 확인
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          try {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", user.id)
+              .single();
+            setIsAdmin(profile?.role === "admin");
+          } catch {
+            setIsAdmin(false);
+          }
+        }
+
+        // 홈페이지에 표시할 프로젝트만 가져오기 (관리자가 설정한 best of best)
+        const { data: projects, error } = await supabase
+          .from("projects")
+          .select(`
+            *,
+            profiles (name, avatar_url)
+          `)
+          .eq("is_hidden", false)
+          .eq("is_featured_home", true)
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (error) throw error;
+
+        // 댓글/좋아요 수 가져오기
+        if (projects && projects.length > 0) {
+          const projectIds = projects.map((p) => p.id);
+          const [commentsResult, likesResult] = await Promise.all([
+            supabase
+              .from("project_comments")
+              .select("project_id")
+              .in("project_id", projectIds),
+            supabase
+              .from("project_likes")
+              .select("project_id")
+              .in("project_id", projectIds),
+          ]);
+
+          const commentCounts: Record<string, number> = {};
+          const likeCounts: Record<string, number> = {};
+
+          if (commentsResult.data) {
+            commentsResult.data.forEach((comment) => {
+              commentCounts[comment.project_id] = (commentCounts[comment.project_id] || 0) + 1;
+            });
+          }
+
+          if (likesResult.data) {
+            likesResult.data.forEach((like) => {
+              likeCounts[like.project_id] = (likeCounts[like.project_id] || 0) + 1;
+            });
+          }
+
+          const projectsWithCounts = projects.map((project) => ({
+            ...project,
+            commentCount: commentCounts[project.id] || 0,
+            likeCount: likeCounts[project.id] || 0,
+            view_count: project.view_count || 0,
+          })) as Project[];
+
+          setFeaturedProjects(projectsWithCounts);
+        }
+      } catch (error) {
+        console.error("Error loading featured projects:", error);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -534,52 +622,123 @@ const Index = () => {
       <section id="portfolio" className="py-20 px-4">
         <div className="container mx-auto">
           <div className="text-center mb-12 animate-fade-in">
-            <h2 className="font-heading text-4xl font-bold mb-4">학생 프로젝트</h2>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <h2 className="font-heading text-4xl font-bold">학생 프로젝트</h2>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/admin?tab=featured")}
+                  className="mt-1"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  수정하기
+                </Button>
+              )}
+            </div>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               우리 학생들의 놀라운 작품들을 확인하세요
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div className="animate-fade-in hover-scale">
-              <PortfolioCard
-                id="example-1"
-                title="스마트 홈 도우미"
-                student="김민준"
-                description="음성으로 제어되는 홈 자동화 시스템"
-                category="AI"
-                tags={[]}
-                commentCount={0}
-                likeCount={0}
-                viewCount={0}
-              />
-            </div>
-            <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
-              <PortfolioCard
-                id="example-2"
-                title="자율 주행 자동차"
-                student="이서연"
-                description="컴퓨터 비전을 활용한 미니 자율주행차"
-                category="로봇"
-                tags={[]}
-                commentCount={0}
-                likeCount={0}
-                viewCount={0}
-              />
-            </div>
-            <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
-              <PortfolioCard
-                id="example-3"
-                title="감정 분석 챗봇"
-                student="박지우"
-                description="사용자 감정을 이해하는 AI 챗봇"
-                category="NLP"
-                tags={[]}
-                commentCount={0}
-                likeCount={0}
-                viewCount={0}
-              />
-            </div>
+            {isLoadingProjects ? (
+              // 로딩 중일 때 플레이스홀더 표시
+              <>
+                {[0, 1, 2].map((index) => (
+                  <div key={index} className="animate-fade-in hover-scale" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <div className="h-64 bg-muted animate-pulse rounded-lg" />
+                  </div>
+                ))}
+              </>
+            ) : featuredProjects.length > 0 ? (
+              // 실제 프로젝트 데이터 표시
+              featuredProjects.map((project, index) => (
+                <div
+                  key={project.id}
+                  className="animate-fade-in hover-scale relative group"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div
+                    onClick={() => !isAdmin && navigate(`/portfolio/${project.id}`)}
+                    className={isAdmin ? "" : "cursor-pointer"}
+                  >
+                    <PortfolioCard
+                      id={project.id}
+                      title={project.title || "제목 없음"}
+                      student={(project.profiles as any)?.name || "익명"}
+                      description={project.description || ""}
+                      category={project.category || "기타"}
+                      tags={project.tags || []}
+                      commentCount={project.commentCount || 0}
+                      likeCount={project.likeCount || 0}
+                      viewCount={project.view_count || 0}
+                      avatarUrl={(project.profiles as any)?.avatar_url || null}
+                      imageUrl={project.image_url ? getOptimizedThumbnailUrl(project.image_url) : null}
+                      videoUrl={project.video_url || null}
+                      isBest={project.is_best || false}
+                    />
+                  </div>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/90 backdrop-blur-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/portfolio/edit/${project.id}`);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3 mr-1" />
+                      수정
+                    </Button>
+                  )}
+                </div>
+              ))
+            ) : (
+              // 프로젝트가 없을 때 기본 예제 표시
+              <>
+                <div className="animate-fade-in hover-scale">
+                  <PortfolioCard
+                    id="example-1"
+                    title="스마트 홈 도우미"
+                    student="김민준"
+                    description="음성으로 제어되는 홈 자동화 시스템"
+                    category="AI"
+                    tags={[]}
+                    commentCount={0}
+                    likeCount={0}
+                    viewCount={0}
+                  />
+                </div>
+                <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
+                  <PortfolioCard
+                    id="example-2"
+                    title="자율 주행 자동차"
+                    student="이서연"
+                    description="컴퓨터 비전을 활용한 미니 자율주행차"
+                    category="로봇"
+                    tags={[]}
+                    commentCount={0}
+                    likeCount={0}
+                    viewCount={0}
+                  />
+                </div>
+                <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
+                  <PortfolioCard
+                    id="example-3"
+                    title="감정 분석 챗봇"
+                    student="박지우"
+                    description="사용자 감정을 이해하는 AI 챗봇"
+                    category="NLP"
+                    tags={[]}
+                    commentCount={0}
+                    likeCount={0}
+                    viewCount={0}
+                  />
+                </div>
+              </>
+            )}
           </div>
           
           <div className="text-center animate-fade-in">

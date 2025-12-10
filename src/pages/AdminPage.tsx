@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Trash2, Users, Sparkles } from "lucide-react";
+import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home } from "lucide-react";
 import { Project, Comment, Profile } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,8 @@ const AdminPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "projects";
 
   // 관리자 권한 확인 (React Query)
   const { data: adminCheck, isLoading: isLoadingAdmin } = useQuery({
@@ -222,6 +224,33 @@ const AdminPage = () => {
     }
   };
 
+  const toggleFeaturedHome = async (projectId: string, currentState: boolean) => {
+    try {
+      const nextFeatured = !currentState;
+      
+      const { error } = await supabase
+        .from("projects")
+        .update({ is_featured_home: nextFeatured } as any)
+        .eq("id", projectId);
+
+      if (error) throw error;
+
+      toast({
+        title: "성공",
+        description: currentState ? "홈페이지에서 제거되었습니다." : "홈페이지에 표시됩니다.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    } catch (error: any) {
+      toast({
+        title: "오류",
+        description: error.message || "홈페이지 표시 설정에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteProject = async (projectId: string) => {
     if (!confirm("정말 이 프로젝트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
       return;
@@ -354,9 +383,10 @@ const AdminPage = () => {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="projects" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue={defaultTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="projects">프로젝트 관리</TabsTrigger>
+              <TabsTrigger value="featured">홈페이지 프로젝트</TabsTrigger>
               <TabsTrigger value="comments">댓글 관리</TabsTrigger>
               <TabsTrigger value="users">사용자 관리</TabsTrigger>
             </TabsList>
@@ -407,6 +437,41 @@ const AdminPage = () => {
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             삭제
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="featured" className="mt-6">
+              <div className="mb-4 p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  홈페이지에 표시할 프로젝트를 선택하세요. 최대 3개까지 선택할 수 있으며, 선택된 프로젝트는 홈페이지의 "학생 프로젝트" 섹션에 표시됩니다.
+                </p>
+              </div>
+              <div className="space-y-4">
+                {projects.map((project) => (
+                  <Card key={project.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-base">{project.title}</CardTitle>
+                          <CardDescription>
+                            작성자: {project.profiles?.name || "익명"} | 
+                            {new Date(project.created_at).toLocaleDateString("ko-KR")}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={(project.is_featured_home || false) ? "default" : "outline"}
+                            onClick={() => toggleFeaturedHome(project.id, project.is_featured_home || false)}
+                          >
+                            <Home className="mr-2 h-4 w-4" />
+                            {(project.is_featured_home || false) ? "홈에서 제거" : "홈에 표시"}
                           </Button>
                         </div>
                       </div>

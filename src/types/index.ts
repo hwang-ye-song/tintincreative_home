@@ -25,6 +25,7 @@ export interface Project {
   likeCount?: number;
   is_hidden?: boolean;
   is_best?: boolean;
+  is_featured_home?: boolean;
   profiles?: Partial<Profile>;
 }
 

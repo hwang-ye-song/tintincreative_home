@@ -94,13 +94,21 @@ const Portfolio = () => {
     return html.replace(/<[^>]*>/g, " ");
   };
 
-  const matchesSearch = (project: { title?: string | null; description?: string | null; tags?: string[] | null }) => {
+  const matchesSearch = (project: { 
+    title?: string | null; 
+    description?: string | null; 
+    tags?: string[] | null;
+    user_id?: string;
+    profiles?: { name?: string } | null;
+  }) => {
     if (!searchQuery) return true;
-    const term = searchQuery.toLowerCase();
+    const term = searchQuery.toLowerCase().trim();
     const inTitle = project.title?.toLowerCase().includes(term);
     const inDescription = stripHtml(project.description).toLowerCase().includes(term);
     const inTags = project.tags?.some(tag => tag?.toLowerCase().includes(term));
-    return Boolean(inTitle || inDescription || inTags);
+    const inUserId = project.user_id?.toLowerCase().includes(term);
+    const inUserName = (project.profiles as any)?.name?.toLowerCase().includes(term);
+    return Boolean(inTitle || inDescription || inTags || inUserId || inUserName);
   };
 
   const buildProjectsQuery = useMemo(() => {

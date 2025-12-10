@@ -851,19 +851,20 @@ const AINativeWebMasterClass3 = () => {
         }
         .related-projects-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 32px;
           margin-bottom: 40px;
+        }
+        @media (max-width: 1024px) {
+          .related-projects-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+          }
         }
         @media (max-width: 768px) {
           .related-projects-grid {
             grid-template-columns: 1fr;
             gap: 16px;
-          }
-        }
-        @media (max-width: 480px) {
-          .related-projects-grid {
-            gap: 12px;
           }
         }
       `}</style>
