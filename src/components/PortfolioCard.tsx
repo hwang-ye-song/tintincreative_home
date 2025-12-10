@@ -2,7 +2,7 @@ import React, { memo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Eye, Play } from "lucide-react";
+import { Heart, MessageCircle, Eye, Play, Sparkles } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/types";
@@ -21,6 +21,7 @@ interface PortfolioCardProps {
   avatarUrl?: string | null;
   imageUrl?: string | null;
   videoUrl?: string | null;
+  isBest?: boolean;
 }
 
 // Utility to strip HTML and get plain text preview
@@ -44,7 +45,8 @@ export const PortfolioCard = memo(({
   viewCount = 0,
   avatarUrl,
   imageUrl,
-  videoUrl
+  videoUrl,
+  isBest = false
 }: PortfolioCardProps) => {
   const queryClient = useQueryClient();
   const plainDescription = getTextPreview(description);
@@ -170,8 +172,17 @@ export const PortfolioCard = memo(({
               {title}
             </h3>
             
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 flex-wrap">
               <span>{student}</span>
+              {isBest && (
+                <>
+                  <span>•</span>
+                  <Badge variant="default" className="bg-yellow-500/90 text-yellow-50 border-0 text-xs px-1.5 py-0 flex items-center gap-1">
+                    <Sparkles className="h-2.5 w-2.5" />
+                    BEST
+                  </Badge>
+                </>
+              )}
               {category && (
                 <>
                   <span>•</span>

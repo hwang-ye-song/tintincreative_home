@@ -213,19 +213,23 @@ const CreateProject = () => {
         return;
       }
 
+      // BEST 카테고리를 선택한 경우, 카테고리는 null로 설정하고 is_best만 true로 설정
+      const finalCategory = category === "BEST" ? null : category;
+      const finalIsBest = category === "BEST" ? true : undefined;
+
       const { error: insertError } = await supabase
         .from('projects')
         .insert({
           title,
           description,
-          category,
+          category: finalCategory,
           tags,
           image_url: imageUrl,
           video_url: videoUrl.trim() || null,
           attachments: attachments.length > 0 ? attachments : null,
           user_id: user.id,
           is_hidden: false,
-          is_best: category === "BEST" ? true : undefined
+          is_best: finalIsBest
         });
 
       if (insertError) throw insertError;

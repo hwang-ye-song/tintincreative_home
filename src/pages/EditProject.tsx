@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import imageCompression from "browser-image-compression";
 import { ProjectAttachment } from "@/types";
 
-const CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
+const BASE_CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_IMAGE_WIDTH = 1920;
 const MAX_IMAGE_HEIGHT = 1080;
@@ -37,6 +37,7 @@ const EditProject = () => {
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,6 +56,20 @@ const EditProject = () => {
           return;
         }
 
+        // 관리자 여부 확인 (먼저 확인)
+        let userIsAdmin = false;
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
+          userIsAdmin = profile?.role === "admin";
+          setIsAdmin(userIsAdmin);
+        } catch {
+          setIsAdmin(false);
+        }
+
         const { data: project, error } = await supabase
           .from('projects')
           .select('*')
@@ -63,7 +78,9 @@ const EditProject = () => {
 
         if (error) throw error;
 
-        if (project.user_id !== user.id) {
+        // 작성자이거나 관리자인지 확인 (isAdmin 상태 대신 변수 사용)
+        const isOwner = project.user_id === user.id;
+        if (!isOwner && !userIsAdmin) {
           toast({
             title: "권한 없음",
             description: "자신의 프로젝트만 수정할 수 있습니다.",
@@ -246,17 +263,28 @@ const EditProject = () => {
         }
       }
 
+      // BEST 카테고리를 선택한 경우, 카테고리는 null로 설정하고 is_best만 true로 설정
+      const finalCategory = category === "BEST" ? null : category;
+      const finalIsBest = category === "BEST" ? true : undefined;
+
+      const updateData: any = {
+        title,
+        description,
+        category: finalCategory,
+        tags,
+        image_url: imageUrl,
+        video_url: videoUrl.trim() || null,
+        attachments: newAttachments.length > 0 ? newAttachments : null,
+      };
+
+      // BEST 상태가 변경되는 경우에만 is_best 업데이트
+      if (finalIsBest !== undefined) {
+        updateData.is_best = finalIsBest;
+      }
+
       const { error: updateError } = await supabase
         .from('projects')
-        .update({
-          title,
-          description,
-          category,
-          tags,
-          image_url: imageUrl,
-          video_url: videoUrl.trim() || null,
-          attachments: newAttachments.length > 0 ? newAttachments : null
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (updateError) throw updateError;
@@ -340,13 +368,13 @@ const EditProject = () => {
                       <SelectTrigger className="mt-2">
                         <SelectValue placeholder="카테고리를 선택하세요" />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border border-border z-50">
-                        {CATEGORIES.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                  <SelectContent className="bg-popover border border-border z-50">
+                    {(isAdmin ? ["BEST", ...BASE_CATEGORIES] : BASE_CATEGORIES).map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                     </Select>
                   </div>
 

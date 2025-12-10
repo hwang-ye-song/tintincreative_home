@@ -196,9 +196,12 @@ const AdminPage = () => {
 
   const toggleBestProject = async (projectId: string, currentState: boolean) => {
     try {
+      const nextBest = !currentState;
+      
+      // 카테고리는 변경하지 않고 is_best만 변경
       const { error } = await supabase
         .from("projects")
-        .update({ is_best: !currentState } as any)
+        .update({ is_best: nextBest } as any)
         .eq("id", projectId);
 
       if (error) throw error;

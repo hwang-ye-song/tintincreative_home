@@ -105,6 +105,7 @@ const Portfolio = () => {
 
   const buildProjectsQuery = useMemo(() => {
     return (pageParam: number) => {
+      // 페이지네이션을 위해 더 많은 데이터를 가져옴 (클라이언트 사이드에서 정렬 및 페이지네이션)
       let query = supabase
         .from("projects")
         .select(
@@ -115,7 +116,7 @@ const Portfolio = () => {
           { count: "exact" }
         )
         .order("created_at", { ascending: false })
-        .range(pageParam * ITEMS_PER_PAGE, (pageParam + 1) * ITEMS_PER_PAGE - 1);
+        .limit(1000); // 충분한 데이터를 가져옴
 
       if (selectedCategory === "BEST") {
         query = query.eq("is_best", true);
@@ -194,6 +195,15 @@ const Portfolio = () => {
           return false;
         });
 
+        // BEST 프로젝트를 최상단에 배치하고, 그 다음 최신순으로 정렬
+        filteredProjects.sort((a, b) => {
+          // BEST 프로젝트를 먼저
+          if (a.is_best && !b.is_best) return -1;
+          if (!a.is_best && b.is_best) return 1;
+          // 둘 다 BEST이거나 둘 다 아닌 경우, 최신순으로 정렬
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
         // 댓글/좋아요 수 가져오기
         const projectIds = filteredProjects.map((p) => p.id);
         let commentCounts: Record<string, number> = {};
@@ -224,7 +234,12 @@ const Portfolio = () => {
           }
         }
 
-        const projectsWithCounts = filteredProjects.map((project) => ({
+        // 페이지네이션 적용 (정렬 후)
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
+
+        const projectsWithCounts = paginatedProjects.map((project) => ({
           ...project,
           commentCount: commentCounts[project.id] || 0,
           likeCount: likeCounts[project.id] || 0,
@@ -232,7 +247,8 @@ const Portfolio = () => {
         })) as Project[];
 
         setProjects(projectsWithCounts);
-        setTotalCount(count || 0);
+        // 필터링된 전체 개수로 설정
+        setTotalCount(filteredProjects.length);
       } catch (error) {
         console.error("Error loading projects:", error);
         setProjects([]);
@@ -388,6 +404,7 @@ const Portfolio = () => {
                       avatarUrl={project.profiles?.avatar_url || null}
                       imageUrl={project.image_url || null}
                       videoUrl={project.video_url || null}
+                      isBest={project.is_best || false}
                     />
                   </div>
                 ))}

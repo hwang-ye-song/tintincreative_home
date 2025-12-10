@@ -697,9 +697,11 @@ const ProjectDetailPage = () => {
     setIsUpdatingBest(true);
     try {
       const nextBest = !project.is_best;
+      
+      // 카테고리는 변경하지 않고 is_best만 변경
       const { error } = await supabase
         .from("projects")
-        .update({ is_best: nextBest, category: nextBest ? "BEST" : project.category } as any)
+        .update({ is_best: nextBest } as any)
         .eq("id", id);
 
       if (error) throw error;
@@ -978,7 +980,7 @@ const ProjectDetailPage = () => {
 
             {(isOwner || isAdmin) && (
               <div className="flex flex-wrap gap-2">
-                {isOwner && (
+                {(isOwner || isAdmin) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -1095,6 +1097,12 @@ const ProjectDetailPage = () => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                {project.is_best && (
+                  <Badge variant="default" className="bg-yellow-500/90 text-yellow-50 border-0 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    BEST
+                  </Badge>
+                )}
                 {project.category && (
                   <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                     {project.category}

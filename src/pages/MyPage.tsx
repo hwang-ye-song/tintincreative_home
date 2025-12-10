@@ -661,6 +661,7 @@ const MyPage = () => {
                         avatarUrl={profile?.avatar_url || null}
                         imageUrl={project.image_url || null}
                         videoUrl={project.video_url || null}
+                        isBest={project.is_best || false}
                       />
                     </div>
                   ))}
