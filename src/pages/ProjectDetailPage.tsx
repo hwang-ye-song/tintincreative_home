@@ -725,8 +725,10 @@ const ProjectDetailPage = () => {
     }
   };
 
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map((e) => e.trim()).filter(Boolean);
+  const isAdminEmail = userData?.user?.email && adminEmails.includes(userData.user.email);
   const isOwner = currentUserId && project?.user_id === currentUserId;
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'admin' || isAdminEmail;
 
   const renderComment = (
     comment: CommentWithReplies,
