@@ -195,7 +195,7 @@ const Index = () => {
       level: "중급",
       duration: "18주",
       icon: <Smartphone className="h-6 w-6" />,
-      image: "/images/ai_agent.jpg",
+      image: "/images/homepage_make_1.jpg",
       category: "AI 활용",
     },
     {
