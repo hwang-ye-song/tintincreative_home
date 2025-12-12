@@ -24,7 +24,7 @@ const Portfolio = () => {
   });
   const [selectedCategory, setSelectedCategory] = useState(initialParams.category);
   const [searchQuery, setSearchQuery] = useState(initialParams.tag || "");
-  const categories = ["BEST", "전체", "AI 기초", "AI 활용", "로봇"];
+  const categories = ["BEST", "전체", "AI 기초", "AI 활용", "로봇", "기타"];
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
   const [projects, setProjects] = useState<Project[]>([]);

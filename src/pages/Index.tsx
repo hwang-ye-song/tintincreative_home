@@ -660,8 +660,8 @@ const Index = () => {
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <div
-                    onClick={() => !isAdmin && navigate(`/portfolio/${project.id}`)}
-                    className={isAdmin ? "" : "cursor-pointer"}
+                    onClick={() => navigate(`/portfolio/${project.id}`)}
+                    className="cursor-pointer"
                   >
                     <PortfolioCard
                       id={project.id}
@@ -698,45 +698,45 @@ const Index = () => {
             ) : (
               // 프로젝트가 없을 때 기본 예제 표시
               <>
-                <div className="animate-fade-in hover-scale">
-                  <PortfolioCard
-                    id="example-1"
-                    title="스마트 홈 도우미"
-                    student="김민준"
-                    description="음성으로 제어되는 홈 자동화 시스템"
-                    category="AI"
-                    tags={[]}
-                    commentCount={0}
-                    likeCount={0}
-                    viewCount={0}
-                  />
-                </div>
-                <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
-                  <PortfolioCard
-                    id="example-2"
-                    title="자율 주행 자동차"
-                    student="이서연"
-                    description="컴퓨터 비전을 활용한 미니 자율주행차"
-                    category="로봇"
-                    tags={[]}
-                    commentCount={0}
-                    likeCount={0}
-                    viewCount={0}
-                  />
-                </div>
-                <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
-                  <PortfolioCard
-                    id="example-3"
-                    title="감정 분석 챗봇"
-                    student="박지우"
-                    description="사용자 감정을 이해하는 AI 챗봇"
-                    category="NLP"
-                    tags={[]}
-                    commentCount={0}
-                    likeCount={0}
-                    viewCount={0}
-                  />
-                </div>
+            <div className="animate-fade-in hover-scale">
+              <PortfolioCard
+                id="example-1"
+                title="스마트 홈 도우미"
+                student="김민준"
+                description="음성으로 제어되는 홈 자동화 시스템"
+                category="AI"
+                tags={[]}
+                commentCount={0}
+                likeCount={0}
+                viewCount={0}
+              />
+            </div>
+            <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
+              <PortfolioCard
+                id="example-2"
+                title="자율 주행 자동차"
+                student="이서연"
+                description="컴퓨터 비전을 활용한 미니 자율주행차"
+                category="로봇"
+                tags={[]}
+                commentCount={0}
+                likeCount={0}
+                viewCount={0}
+              />
+            </div>
+            <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
+              <PortfolioCard
+                id="example-3"
+                title="감정 분석 챗봇"
+                student="박지우"
+                description="사용자 감정을 이해하는 AI 챗봇"
+                category="NLP"
+                tags={[]}
+                commentCount={0}
+                likeCount={0}
+                viewCount={0}
+              />
+            </div>
               </>
             )}
           </div>

@@ -1138,16 +1138,7 @@ const ProjectDetailPage = () => {
               )}
             </div>
 
-            {/* Project Description */}
-            <div className="bg-card border border-border rounded-lg p-4 md:p-6">
-              <h3 className="text-xs md:text-sm font-medium mb-3">프로젝트 설명</h3>
-              <div 
-                className="prose prose-sm max-w-none dark:prose-invert text-xs md:text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: projectDescription || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>" }}
-              />
-            </div>
-
-            {/* Video Section */}
+            {/* Video Section - 본문보다 먼저 표시 */}
             {project.video_url && (
               <div className="bg-card border border-border rounded-lg p-4 md:p-6">
                 <h3 className="text-xs md:text-sm font-medium mb-3 flex items-center gap-2">
@@ -1179,6 +1170,15 @@ const ProjectDetailPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Project Description */}
+            <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+              <h3 className="text-xs md:text-sm font-medium mb-3">프로젝트 설명</h3>
+              <div 
+                className="prose prose-sm max-w-none dark:prose-invert text-xs md:text-sm leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: projectDescription || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>" }}
+              />
+            </div>
 
             {/* Attachments Section */}
             {project.attachments && Array.isArray(project.attachments) && project.attachments.length > 0 && (

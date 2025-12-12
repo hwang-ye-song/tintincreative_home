@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import { getOptimizedAvatarUrl, getOptimizedThumbnailUrl } from "@/lib/imageUtils";
+import { extractYouTubeVideoId, getYouTubeThumbnailUrl, extractFirstImageFromHtml } from "@/lib/utils";
 
 interface PortfolioCardProps {
   id: string;
@@ -56,8 +57,31 @@ export const PortfolioCard = memo(({
     .join('')
     .toUpperCase() || 'U';
   const optimizedAvatarUrl = getOptimizedAvatarUrl(avatarUrl);
-  const thumbnailUrl = getOptimizedThumbnailUrl(imageUrl);
-  const hasMedia = thumbnailUrl || videoUrl;
+  const uploadedThumbnailUrl = getOptimizedThumbnailUrl(imageUrl);
+  
+  // 썸네일 우선순위: 1. 이미지 등록 > 2. 유튜브 영상 썸네일 > 3. 본문의 이미지
+  let finalThumbnailUrl: string | null = null;
+  
+  // 1순위: 이미지 등록
+  if (uploadedThumbnailUrl) {
+    finalThumbnailUrl = uploadedThumbnailUrl;
+  }
+  // 2순위: 유튜브 영상 썸네일 (이미지 등록이 없을 때만)
+  else if (videoUrl) {
+    const videoId = extractYouTubeVideoId(videoUrl);
+    if (videoId) {
+      finalThumbnailUrl = getYouTubeThumbnailUrl(videoId, 'hqdefault');
+    }
+  }
+  // 3순위: 본문의 이미지 (이미지 등록과 유튜브 썸네일이 없을 때만)
+  else if (description) {
+    const contentImageUrl = extractFirstImageFromHtml(description);
+    if (contentImageUrl) {
+      finalThumbnailUrl = getOptimizedThumbnailUrl(contentImageUrl);
+    }
+  }
+  
+  const hasMedia = finalThumbnailUrl || videoUrl;
 
   // 마우스 호버 시 프로젝트 데이터 프리페칭
   const handleMouseEnter = () => {
@@ -118,12 +142,29 @@ export const PortfolioCard = memo(({
     >
       {/* Thumbnail Section (YouTube style) */}
       <div className="relative w-full aspect-video bg-muted overflow-hidden">
-        {thumbnailUrl ? (
+        {finalThumbnailUrl ? (
           <img
-            src={thumbnailUrl}
+            src={finalThumbnailUrl}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
+            onError={(e) => {
+              // YouTube 썸네일 로드 실패 시 플레이스홀더로 대체
+              if (finalThumbnailUrl?.includes('youtube.com')) {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML = `
+                    <div class="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                      <svg class="h-16 w-16 text-primary/50" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  `;
+                }
+              }
+            }}
           />
         ) : videoUrl ? (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">

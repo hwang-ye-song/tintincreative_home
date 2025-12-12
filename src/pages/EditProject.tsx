@@ -14,8 +14,9 @@ import { TiptapEditor } from "@/components/TiptapEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import imageCompression from "browser-image-compression";
 import { ProjectAttachment } from "@/types";
+import { convertYouTubeUrlToEmbed } from "@/lib/utils";
 
-const BASE_CATEGORIES = ["AI 기초", "AI 활용", "로봇"];
+const BASE_CATEGORIES = ["AI 기초", "AI 활용", "로봇", "기타"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_IMAGE_WIDTH = 1920;
 const MAX_IMAGE_HEIGHT = 1080;
@@ -197,6 +198,17 @@ const EditProject = () => {
     setLoading(true);
 
     try {
+      // 카테고리 필수 검증
+      if (!category || category.trim() === "") {
+        toast({
+          title: "카테고리 선택 필요",
+          description: "프로젝트 카테고리를 선택해주세요.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({
@@ -267,13 +279,18 @@ const EditProject = () => {
       const finalCategory = category === "BEST" ? null : category;
       const finalIsBest = category === "BEST" ? true : undefined;
 
+      // 유튜브 URL을 embed 형식으로 변환
+      const processedVideoUrl = videoUrl.trim() 
+        ? convertYouTubeUrlToEmbed(videoUrl.trim())
+        : null;
+
       const updateData: any = {
         title,
         description,
         category: finalCategory,
         tags,
         image_url: imageUrl,
-        video_url: videoUrl.trim() || null,
+        video_url: processedVideoUrl,
         attachments: newAttachments.length > 0 ? newAttachments : null,
       };
 
@@ -419,7 +436,7 @@ const EditProject = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="image" className="text-base font-semibold">프로젝트 이미지 (최대 10MB)</Label>
+                    <Label htmlFor="image" className="text-base font-semibold">프로젝트 대표 이미지 (최대 10MB)</Label>
                     <Input
                       id="image"
                       type="file"

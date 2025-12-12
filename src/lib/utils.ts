@@ -47,3 +47,83 @@ export function smoothScrollTo(targetY: number, duration: number = 800) {
 
   requestAnimationFrame(animation);
 }
+
+// 유튜브 URL을 embed 형식으로 변환
+export function convertYouTubeUrlToEmbed(url: string): string {
+  if (!url || !url.trim()) return url;
+  
+  const trimmedUrl = url.trim();
+  
+  // 이미 embed 형식이면 그대로 반환
+  if (trimmedUrl.includes('youtube.com/embed/')) {
+    return trimmedUrl;
+  }
+  
+  // youtube.com/watch?v= 형식
+  const watchMatch = trimmedUrl.match(/youtube\.com\/watch\?v=([^&]+)/);
+  if (watchMatch) {
+    const videoId = watchMatch[1];
+    // 추가 쿼리 파라미터 처리 (예: &t=30s)
+    const timeMatch = trimmedUrl.match(/[&?]t=(\d+)s?/);
+    const timeParam = timeMatch ? `?start=${timeMatch[1]}` : '';
+    return `https://www.youtube.com/embed/${videoId}${timeParam}`;
+  }
+  
+  // youtu.be/ 형식
+  const shortMatch = trimmedUrl.match(/youtu\.be\/([^?&]+)/);
+  if (shortMatch) {
+    const videoId = shortMatch[1];
+    // 추가 쿼리 파라미터 처리
+    const timeMatch = trimmedUrl.match(/[?&]t=(\d+)s?/);
+    const timeParam = timeMatch ? `?start=${timeMatch[1]}` : '';
+    return `https://www.youtube.com/embed/${videoId}${timeParam}`;
+  }
+  
+  // 변환할 수 없는 URL은 그대로 반환
+  return trimmedUrl;
+}
+
+// YouTube URL에서 비디오 ID 추출
+export function extractYouTubeVideoId(url: string): string | null {
+  if (!url || !url.trim()) return null;
+  
+  const trimmedUrl = url.trim();
+  
+  // youtube.com/watch?v= 형식
+  const watchMatch = trimmedUrl.match(/youtube\.com\/watch\?v=([^&]+)/);
+  if (watchMatch) {
+    return watchMatch[1];
+  }
+  
+  // youtube.com/embed/ 형식
+  const embedMatch = trimmedUrl.match(/youtube\.com\/embed\/([^?&]+)/);
+  if (embedMatch) {
+    return embedMatch[1];
+  }
+  
+  // youtu.be/ 형식
+  const shortMatch = trimmedUrl.match(/youtu\.be\/([^?&]+)/);
+  if (shortMatch) {
+    return shortMatch[1];
+  }
+  
+  return null;
+}
+
+// YouTube 비디오 ID로 썸네일 URL 생성
+export function getYouTubeThumbnailUrl(videoId: string, quality: 'maxresdefault' | 'hqdefault' | 'mqdefault' = 'hqdefault'): string {
+  return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+}
+
+// HTML 본문에서 첫 번째 이미지 URL 추출
+export function extractFirstImageFromHtml(html: string | null | undefined): string | null {
+  if (!html) return null;
+  
+  // img 태그에서 src 속성 추출
+  const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (imgMatch && imgMatch[1]) {
+    return imgMatch[1];
+  }
+  
+  return null;
+}
