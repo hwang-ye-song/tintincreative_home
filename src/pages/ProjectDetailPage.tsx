@@ -40,6 +40,65 @@ const getPlainTextExcerpt = (html?: string | null, length: number = 160) => {
 type CommentWithReplies = Comment & { replies?: Comment[] };
 type CommentLikeRow = { comment_id: string; user_id: string };
 
+// 작성자의 다른 글 목록 컴포넌트
+const AuthorOtherProjects = ({ userId, currentProjectId }: { userId: string; currentProjectId: string }) => {
+  const navigate = useNavigate();
+  
+  const { data: allProjects, isLoading } = useQuery({
+    queryKey: ["authorProjects", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, created_at")
+        .eq("user_id", userId)
+        .eq("is_hidden", false)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  if (isLoading) return null;
+  if (!allProjects || allProjects.length === 0) return null;
+
+  return (
+    <div className="mt-12 pt-8 border-t">
+      <h3 className="text-lg font-semibold mb-4">이 작성자의 다른 글</h3>
+      <div className="overflow-x-auto pb-4">
+        <div className="flex gap-3 min-w-full">
+          {allProjects.map((project) => {
+            const isCurrent = project.id === currentProjectId;
+            return (
+              <button
+                key={project.id}
+                onClick={() => navigate(`/portfolio/${project.id}`)}
+                className={`flex-shrink-0 px-4 py-2 rounded-lg transition-colors text-left min-w-[200px] max-w-[300px] ${
+                  isCurrent 
+                    ? "bg-primary/10 border-2 border-primary cursor-pointer hover:bg-primary/20" 
+                    : "bg-muted hover:bg-muted/80 cursor-pointer"
+                }`}
+              >
+                <p className={`text-sm font-medium line-clamp-2 ${isCurrent ? "text-primary" : ""}`}>
+                  {project.title || "제목 없음"}
+                  {isCurrent && <span className="ml-2 text-xs">(현재 글)</span>}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDistanceToNow(new Date(project.created_at), {
+                    addSuffix: true,
+                    locale: ko,
+                  })}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProjectDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1280,6 +1339,11 @@ const ProjectDetailPage = () => {
               )}
             </div>
           </div>
+
+          {/* 작성자의 다른 글 목록 */}
+          {project?.user_id && (
+            <AuthorOtherProjects userId={project.user_id} currentProjectId={project.id} />
+          )}
         </div>
       </div>
 

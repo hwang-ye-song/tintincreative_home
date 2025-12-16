@@ -134,9 +134,9 @@ const Index = () => {
   const scrollToCurriculum = () => {
     const element = document.getElementById("curriculum");
     if (element) {
-      // Navbar 높이를 고려한 offset 계산
+      // Navbar 높이를 고려하여 정확한 위치로 스크롤 (포트폴리오와 동일)
       const navbar = document.querySelector('nav');
-      const navbarHeight = navbar ? navbar.offsetHeight : 80;
+      const navbarHeight = navbar ? navbar.offsetHeight : 64;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
 
@@ -550,17 +550,17 @@ const Index = () => {
       </section>
 
       {/* Curriculum Section */}
-      <section id="curriculum" className="py-20 px-4 bg-muted/30">
+      <section id="curriculum" className="pt-12 pb-12 px-4 bg-muted/30">
         <div className="container mx-auto">
-          <div className="text-center mb-12 animate-fade-in">
-            <h2 className="font-heading text-4xl font-bold mb-4">커리큘럼 상세</h2>
+          <div className="text-center mb-4 animate-fade-in">
+            <h2 className="font-heading text-4xl font-bold mb-2">커리큘럼 상세</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               각 단계별 상세 커리큘럼을 확인하고 학습을 시작하세요
             </p>
           </div>
           
           {/* Category Filter */}
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
+          <div className="flex flex-wrap justify-center gap-3 mb-4">
             {categories.map((category) => (
               <Button
                 key={category}
@@ -590,11 +590,11 @@ const Index = () => {
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            <div className="flex gap-4 sm:gap-5 md:gap-6 min-w-full snap-x snap-mandatory">
+            <div className="flex gap-3 sm:gap-4 md:gap-5 min-w-full snap-x snap-mandatory">
               {filteredCurriculums.map((curriculum, index) => (
                 <div
                   key={`${selectedCategory}-${curriculum.id}`}
-                  className="min-w-[240px] sm:min-w-[260px] md:min-w-[280px] lg:min-w-[320px] snap-start"
+                  className="min-w-[280px] sm:min-w-[300px] md:min-w-[320px] lg:min-w-[340px] snap-start"
                   style={{
                     animation: 'fadeInScale 0.5s ease-out forwards',
                     animationDelay: `${index * 0.1}s`,
@@ -619,10 +619,10 @@ const Index = () => {
       </section>
 
       {/* Portfolio Preview */}
-      <section id="portfolio" className="py-20 px-4">
+      <section id="portfolio" className="pt-12 pb-12 px-4">
         <div className="container mx-auto">
-          <div className="text-center mb-12 animate-fade-in">
-            <div className="flex items-center justify-center gap-4 mb-4">
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="flex items-center justify-center gap-4 mb-3">
               <h2 className="font-heading text-4xl font-bold">학생 프로젝트</h2>
               {isAdmin && (
                 <Button
@@ -641,7 +641,7 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
             {isLoadingProjects ? (
               // 로딩 중일 때 플레이스홀더 표시
               <>
@@ -741,7 +741,7 @@ const Index = () => {
             )}
           </div>
           
-          <div className="text-center animate-fade-in">
+          <div className="text-center animate-fade-in mt-4">
             <Link to="/portfolio" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Button variant="outline" size="lg" className="hover-scale">
                 모든 프로젝트 보기
