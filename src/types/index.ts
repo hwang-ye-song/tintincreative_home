@@ -86,3 +86,11 @@ export interface Curriculum {
   updated_at?: string;
 }
 
+export interface ProjectAttachment {
+  name: string;
+  url: string;
+  size: number;
+  type?: string;
+  password?: string; // 최대 4자리 비밀번호
+}
+

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { X, Plus, ArrowLeft, File, Video, Trash2 } from "lucide-react";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import imageCompression from "browser-image-compression";
 import { ProjectAttachment } from "@/types";
 import { convertYouTubeUrlToEmbed } from "@/lib/utils";
@@ -34,6 +35,10 @@ const EditProject = () => {
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [attachmentPasswords, setAttachmentPasswords] = useState<Record<number, string>>({});
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentFileIndex, setCurrentFileIndex] = useState<number | null>(null);
+  const [tempPassword, setTempPassword] = useState("");
   const [currentAttachments, setCurrentAttachments] = useState<ProjectAttachment[]>([]);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -176,11 +181,70 @@ const EditProject = () => {
       }
       return true;
     });
-    setAttachmentFiles([...attachmentFiles, ...validFiles]);
+    if (validFiles.length > 0) {
+      // 첫 번째 파일에 대해 비밀번호 설정 다이얼로그 표시
+      const newFiles = [...attachmentFiles, ...validFiles];
+      setAttachmentFiles(newFiles);
+      setCurrentFileIndex(attachmentFiles.length); // 새로 추가된 첫 번째 파일 인덱스
+      setTempPassword("");
+      setPasswordDialogOpen(true);
+    }
+    
+    // input 초기화
+    e.target.value = "";
+  };
+
+  const handlePasswordDialogConfirm = (skip: boolean = false) => {
+    if (currentFileIndex !== null) {
+      if (!skip && tempPassword.trim()) {
+        // 비밀번호가 4자리 이하인지 확인
+        if (tempPassword.length > 4) {
+          toast({
+            title: "비밀번호 오류",
+            description: "비밀번호는 최대 4자리까지 설정할 수 있습니다.",
+            variant: "destructive"
+          });
+          return;
+        }
+        setAttachmentPasswords({
+          ...attachmentPasswords,
+          [currentFileIndex]: tempPassword.trim()
+        });
+      }
+      
+      // 다음 파일이 있으면 계속, 없으면 닫기
+      const nextIndex = currentFileIndex + 1;
+      if (nextIndex < attachmentFiles.length) {
+        setCurrentFileIndex(nextIndex);
+        setTempPassword(attachmentPasswords[nextIndex] || "");
+      } else {
+        setPasswordDialogOpen(false);
+        setCurrentFileIndex(null);
+        setTempPassword("");
+      }
+    }
+  };
+
+  const handlePasswordDialogSkip = () => {
+    handlePasswordDialogConfirm(true);
   };
 
   const removeAttachment = (index: number) => {
     setAttachmentFiles(attachmentFiles.filter((_, i) => i !== index));
+    // 비밀번호도 함께 제거
+    const newPasswords = { ...attachmentPasswords };
+    delete newPasswords[index];
+    // 인덱스 재정렬
+    const reorderedPasswords: Record<number, string> = {};
+    Object.keys(newPasswords).forEach(key => {
+      const oldIndex = parseInt(key);
+      if (oldIndex > index) {
+        reorderedPasswords[oldIndex - 1] = newPasswords[oldIndex];
+      } else if (oldIndex < index) {
+        reorderedPasswords[oldIndex] = newPasswords[oldIndex];
+      }
+    });
+    setAttachmentPasswords(reorderedPasswords);
   };
 
   const removeCurrentAttachment = (index: number) => {
@@ -244,7 +308,7 @@ const EditProject = () => {
       if (attachmentFiles.length > 0) {
         setUploadingAttachments(true);
         try {
-          const uploadPromises = attachmentFiles.map(async (file) => {
+          const uploadPromises = attachmentFiles.map(async (file, index) => {
             const fileExt = file.name.split('.').pop();
             const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
             
@@ -262,7 +326,8 @@ const EditProject = () => {
               name: file.name,
               url: publicUrl,
               size: file.size,
-              type: file.type
+              type: file.type,
+              password: attachmentPasswords[index] || undefined
             };
           });
 
@@ -525,7 +590,12 @@ const EditProject = () => {
                               <File className="h-4 w-4 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{file.name}</p>
-                                <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatFileSize(file.size)}
+                                  {attachmentPasswords[index] && (
+                                    <span className="ml-2 text-primary">🔒 비밀번호 설정됨</span>
+                                  )}
+                                </p>
                               </div>
                             </div>
                             <Button
@@ -606,6 +676,53 @@ const EditProject = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* 비밀번호 설정 다이얼로그 */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>파일 비밀번호 설정</DialogTitle>
+            <DialogDescription>
+              {currentFileIndex !== null && attachmentFiles[currentFileIndex] && (
+                <>
+                  파일: <strong>{attachmentFiles[currentFileIndex].name}</strong>
+                  <br />
+                  비밀번호를 설정하면 다운로드 시 비밀번호가 필요합니다. (최대 4자리)
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="password">비밀번호 (선택사항, 최대 4자리)</Label>
+              <Input
+                id="password"
+                type="text"
+                maxLength={4}
+                value={tempPassword}
+                onChange={(e) => setTempPassword(e.target.value)}
+                placeholder="비밀번호 입력 (최대 4자리)"
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePasswordDialogSkip}
+            >
+              그냥 업로드
+            </Button>
+            <Button
+              type="button"
+              onClick={() => handlePasswordDialogConfirm(false)}
+            >
+              비밀번호 추가
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>

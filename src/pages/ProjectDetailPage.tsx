@@ -18,6 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
@@ -120,6 +123,9 @@ const ProjectDetailPage = () => {
   const [editingContent, setEditingContent] = useState("");
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
   const [isUpdatingBest, setIsUpdatingBest] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentAttachment, setCurrentAttachment] = useState<any | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
 
   // 사용자 정보를 React Query로 병렬 로딩
   // 에러가 발생해도 프로젝트는 표시되도록 에러 처리
@@ -1248,12 +1254,18 @@ const ProjectDetailPage = () => {
                 </h3>
                 <div className="space-y-2">
                   {project.attachments.map((attachment: any, index: number) => (
-                    <a
+                    <div
                       key={index}
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between p-3 bg-muted hover:bg-muted/80 rounded-md transition-colors group"
+                      onClick={() => {
+                        if (attachment.password) {
+                          setCurrentAttachment(attachment);
+                          setPasswordInput("");
+                          setPasswordDialogOpen(true);
+                        } else {
+                          window.open(attachment.url, '_blank');
+                        }
+                      }}
+                      className="flex items-center justify-between p-3 bg-muted hover:bg-muted/80 rounded-md transition-colors group cursor-pointer"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <File className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
@@ -1261,11 +1273,14 @@ const ProjectDetailPage = () => {
                           <p className="text-sm font-medium truncate">{attachment.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {attachment.size ? `${(attachment.size / 1024).toFixed(2)} KB` : ''}
+                            {attachment.password && (
+                              <span className="ml-2 text-primary">🔒 비밀번호 보호</span>
+                            )}
                           </p>
                         </div>
                       </div>
                       <Download className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
-                    </a>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1369,6 +1384,87 @@ const ProjectDetailPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 비밀번호 확인 다이얼로그 */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>파일 다운로드</DialogTitle>
+            <DialogDescription>
+              {currentAttachment && (
+                <>
+                  파일: <strong>{currentAttachment.name}</strong>
+                  <br />
+                  이 파일은 비밀번호로 보호되어 있습니다. 다운로드하려면 비밀번호를 입력하세요.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="download-password">비밀번호</Label>
+              <Input
+                id="download-password"
+                type="text"
+                maxLength={4}
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="비밀번호 입력 (최대 4자리)"
+                className="mt-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && currentAttachment) {
+                    if (passwordInput === currentAttachment.password) {
+                      window.open(currentAttachment.url, '_blank');
+                      setPasswordDialogOpen(false);
+                      setPasswordInput("");
+                      setCurrentAttachment(null);
+                    } else {
+                      toast({
+                        title: "비밀번호 오류",
+                        description: "비밀번호가 일치하지 않습니다.",
+                        variant: "destructive"
+                      });
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPasswordDialogOpen(false);
+                setPasswordInput("");
+                setCurrentAttachment(null);
+              }}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!currentAttachment) return;
+                if (passwordInput === currentAttachment.password) {
+                  window.open(currentAttachment.url, '_blank');
+                  setPasswordDialogOpen(false);
+                  setPasswordInput("");
+                  setCurrentAttachment(null);
+                } else {
+                  toast({
+                    title: "비밀번호 오류",
+                    description: "비밀번호가 일치하지 않습니다.",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            >
+              다운로드
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
