@@ -3,6 +3,7 @@
  */
 
 import imageCompression from "browser-image-compression";
+import { devLog } from "./utils";
 
 /**
  * Supabase Storage 이미지 URL 최적화
@@ -138,7 +139,8 @@ export const compressAndConvertImage = async (
       reader.readAsDataURL(compressedFile);
     });
   } catch (error) {
-    console.error("Image compression error:", error);
+    // 이미지 압축 에러는 호출하는 쪽에서 처리하므로 여기서는 로그만
+    devLog.error("Image compression error:", error);
     throw error;
   }
 };

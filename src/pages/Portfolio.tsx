@@ -11,6 +11,8 @@ import { Plus, Sparkles, Search } from "lucide-react";
 import { Project } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { User } from "@supabase/supabase-js";
+import { devLog } from "@/lib/utils";
 
 // Supabase의 or() 메서드는 괄호 없이 사용해야 함
 const Portfolio = () => {
@@ -30,8 +32,7 @@ const Portfolio = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [user, setUser] = useState<any | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { user, userRole } = useAuth();
   const [isError, setIsError] = useState(false);
 
   // 페이지 로드 시 스크롤을 맨 위로 이동
@@ -39,55 +40,14 @@ const Portfolio = () => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
-  // 사용자 정보 가져오기 (간단하게)
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
-          try {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .single();
-            setUserRole(profile?.role || null);
-          } catch {
-            setUserRole(null);
-          }
-        } else {
-          setUser(null);
-          setUserRole(null);
-        }
-      } catch {
-        setUser(null);
-        setUserRole(null);
-      }
-    };
-    
-    checkUser();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
-            setUserRole(profile?.role || null);
-          })
-          .catch(() => setUserRole(null));
-      } else {
-        setUser(null);
-        setUserRole(null);
-      }
-    });
+  // 페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // 즉시 스크롤을 맨 위로 이동
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
 
-    return () => subscription.unsubscribe();
-  }, []);
+  // useAuth 훅이 인증 상태를 관리하므로 별도의 useEffect 불필요
 
   const stripHtml = (html: string | null | undefined) => {
     if (!html) return "";
@@ -107,7 +67,7 @@ const Portfolio = () => {
     const inDescription = stripHtml(project.description).toLowerCase().includes(term);
     const inTags = project.tags?.some(tag => tag?.toLowerCase().includes(term));
     const inUserId = project.user_id?.toLowerCase().includes(term);
-    const inUserName = (project.profiles as any)?.name?.toLowerCase().includes(term);
+    const inUserName = (project.profiles as { name?: string } | null)?.name?.toLowerCase().includes(term);
     return Boolean(inTitle || inDescription || inTags || inUserId || inUserName);
   };
 
@@ -151,7 +111,7 @@ const Portfolio = () => {
         const { data: projectsData, error, count } = await query;
 
         if (error) {
-          console.error("Failed to fetch projects:", error);
+          devLog.error("Failed to fetch projects:", error);
           setProjects([]);
           setTotalCount(0);
           setIsError(true);
@@ -166,28 +126,9 @@ const Portfolio = () => {
           return;
         }
 
-        // 현재 사용자 정보 가져오기 (필요할 때만)
-        let currentUser: any | null = null;
-        let currentUserRole: string | null = null;
-        
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            currentUser = session.user;
-            try {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', session.user.id)
-                .single();
-              currentUserRole = profile?.role || null;
-            } catch {
-              currentUserRole = null;
-            }
-          }
-        } catch {
-          // 사용자 정보 가져오기 실패 시 무시
-        }
+        // 현재 사용자 정보는 useAuth 훅에서 가져옴
+        const currentUser = user;
+        const currentUserRole = userRole;
 
         // 클라이언트 사이드 필터링 (검색)
         let filteredProjects = projectsData.filter(matchesSearch);
@@ -198,7 +139,7 @@ const Portfolio = () => {
             return true;
           }
           if (currentUser) {
-            return project.user_id === currentUser.id || currentUserRole === "admin";
+            return project.user_id === currentUser.id || currentUserRole === "admin" || currentUserRole === "teacher";
           }
           return false;
         });
@@ -258,7 +199,7 @@ const Portfolio = () => {
         // 필터링된 전체 개수로 설정
         setTotalCount(filteredProjects.length);
       } catch (error) {
-        console.error("Error loading projects:", error);
+        devLog.error("Error loading projects:", error);
         setProjects([]);
         setTotalCount(0);
         setIsError(true);
@@ -396,8 +337,17 @@ const Portfolio = () => {
                   <div
                     key={project.id}
                     onClick={() => navigate(`/portfolio/${project.id}`)}
-                    className="cursor-pointer animate-fade-in"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/portfolio/${project.id}`);
+                      }
+                    }}
+                    className="cursor-pointer animate-fade-in focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
                     style={{ animationDelay: `${index * 0.05}s` }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${project.title || "제목 없음"} 프로젝트 보기`}
                   >
                     <PortfolioCard
                       id={project.id}
@@ -435,7 +385,7 @@ const Portfolio = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
                     >
                       이전
@@ -445,7 +395,7 @@ const Portfolio = () => {
                         key={page}
                         variant={page === currentPage ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setCurrentPage(page)}
+                        onClick={() => handlePageChange(page)}
                       >
                         {page}
                       </Button>
@@ -453,7 +403,7 @@ const Portfolio = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
                     >
                       다음

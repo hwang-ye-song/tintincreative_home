@@ -4,12 +4,17 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home } from "lucide-react";
+import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home, Search } from "lucide-react";
 import { Project, Comment, Profile } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { devLog } from "@/lib/utils";
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -17,6 +22,14 @@ const AdminPage = () => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "projects";
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [adminPasswordDialog, setAdminPasswordDialog] = useState<{
+    open: boolean;
+    userId: string | null;
+    userName: string | null;
+  }>({ open: false, userId: null, userName: null });
+  const [adminPassword, setAdminPassword] = useState("");
+  const ADMIN_PROMOTION_PASSWORD = "051414";
 
   // 관리자 권한 확인 (React Query)
   const { data: adminCheck, isLoading: isLoadingAdmin } = useQuery({
@@ -35,11 +48,12 @@ const AdminPage = () => {
         .eq("id", user.id)
         .single();
 
-      // 에러가 발생하거나 프로필이 없거나 role이 admin이 아니면 접근 거부
-      if (profileError || !profile || (profile as { role?: string })?.role !== "admin") {
+      const userRole = (profile as { role?: string })?.role;
+      // 에러가 발생하거나 프로필이 없거나 role이 admin 또는 teacher가 아니면 접근 거부
+      if (profileError || !profile || (userRole !== "admin" && userRole !== "teacher")) {
         toast({
           title: "권한 없음",
-          description: "관리자만 접근할 수 있습니다.",
+          description: "관리자 또는 선생님만 접근할 수 있습니다.",
           variant: "destructive",
         });
         navigate("/");
@@ -102,7 +116,7 @@ const AdminPage = () => {
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(200); // 검색을 위해 더 많은 데이터 가져오기
 
       if (error) throw error;
       return (data || []) as Profile[];
@@ -110,6 +124,19 @@ const AdminPage = () => {
     enabled: isAdmin,
     staleTime: 30 * 1000, // 30초간 캐시
   });
+
+  // 사용자 검색 필터링
+  const filteredUsers = useMemo(() => {
+    if (!userSearchQuery.trim()) {
+      return users;
+    }
+    const query = userSearchQuery.toLowerCase().trim();
+    return users.filter((user) => {
+      const name = (user.name || "").toLowerCase();
+      const email = (user.email || "").toLowerCase();
+      return name.includes(query) || email.includes(query);
+    });
+  }, [users, userSearchQuery]);
 
   // 통계 가져오기 (React Query)
   const { data: stats = {
@@ -161,10 +188,11 @@ const AdminPage = () => {
       queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] }); // 포트폴리오 페이지 캐시도 무효화
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 상태 변경에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 상태 변경에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -187,10 +215,11 @@ const AdminPage = () => {
       // 캐시 무효화하여 최신 데이터 다시 가져오기
       queryClient.invalidateQueries({ queryKey: ["adminComments"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "댓글 상태 변경에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "댓글 상태 변경에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -215,10 +244,11 @@ const AdminPage = () => {
 
       queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "BEST 설정에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "BEST 설정에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -242,10 +272,11 @@ const AdminPage = () => {
 
       queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "홈페이지 표시 설정에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "홈페이지 표시 설정에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -273,10 +304,11 @@ const AdminPage = () => {
       queryClient.invalidateQueries({ queryKey: ["adminProjects"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 삭제에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 삭제에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -304,10 +336,86 @@ const AdminPage = () => {
       queryClient.invalidateQueries({ queryKey: ["adminComments"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
       queryClient.invalidateQueries({ queryKey: ["projectComments"] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "댓글 삭제에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "댓글 삭제에 실패했습니다.",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRoleChange = (userId: string, userName: string, newRole: "admin" | "teacher" | "student", currentRole: string) => {
+    // 자기 자신의 역할은 변경할 수 없음
+    if (adminCheck?.user?.id === userId) {
+      toast({
+        title: "오류",
+        description: "자기 자신의 역할은 변경할 수 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 관리자로 승격하는 경우 비밀번호 확인 필요
+    if (newRole === "admin" && currentRole !== "admin") {
+      setAdminPasswordDialog({ open: true, userId, userName });
+      setAdminPassword("");
+      return;
+    }
+
+    // 학생 → 선생님 또는 다른 역할 변경은 바로 실행
+    updateUserRole(userId, newRole);
+  };
+
+  const confirmAdminPromotion = async () => {
+    if (adminPassword !== ADMIN_PROMOTION_PASSWORD) {
+      toast({
+        title: "오류",
+        description: "비밀번호가 올바르지 않습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (adminPasswordDialog.userId) {
+      await updateUserRole(adminPasswordDialog.userId, "admin");
+      setAdminPasswordDialog({ open: false, userId: null, userName: null });
+      setAdminPassword("");
+    }
+  };
+
+  const updateUserRole = async (userId: string, newRole: "admin" | "teacher" | "student") => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ role: newRole } as any)
+        .eq("id", userId);
+
+      if (error) {
+        devLog.error("Role update error:", error);
+        throw error;
+      }
+
+      const roleNames = {
+        admin: "관리자",
+        teacher: "선생님",
+        student: "학생",
+      };
+
+      toast({
+        title: "성공",
+        description: `사용자 역할이 ${roleNames[newRole]}로 변경되었습니다.`,
+      });
+
+      // 캐시 무효화하여 최신 데이터 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "사용자 역할 변경에 실패했습니다.";
+      toast({
+        title: "오류",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -532,22 +640,126 @@ const AdminPage = () => {
             </TabsContent>
 
             <TabsContent value="users" className="mt-6">
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="이름 또는 이메일로 검색..."
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                {userSearchQuery && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {filteredUsers.length}명의 사용자를 찾았습니다.
+                  </p>
+                )}
+              </div>
               <div className="space-y-4">
-                {users.map((user) => (
-                  <Card key={user.id}>
-                    <CardHeader>
-                      <CardTitle className="text-base">{user.name}</CardTitle>
-                      <CardDescription>
-                        {user.email} | 역할: {user.role || "student"}
-                      </CardDescription>
-                    </CardHeader>
+                {filteredUsers.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      {userSearchQuery ? "검색 결과가 없습니다." : "사용자가 없습니다."}
+                    </CardContent>
                   </Card>
-                ))}
+                ) : (
+                  filteredUsers.map((user) => {
+                    const currentRole = (user.role || "student") as "admin" | "teacher" | "student";
+                    const isCurrentUser = adminCheck?.user?.id === user.id;
+                    
+                    return (
+                      <Card key={user.id}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-base">{user.name || "이름 없음"}</CardTitle>
+                              <CardDescription className="mt-1">
+                                {user.email || "이메일 없음"}
+                              </CardDescription>
+                            </div>
+                            <div className="ml-4">
+                              <Select
+                                value={currentRole}
+                                onValueChange={(value: "admin" | "teacher" | "student") => {
+                                  handleRoleChange(user.id, user.name || "사용자", value, currentRole);
+                                }}
+                                disabled={isCurrentUser}
+                              >
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue>
+                                    {currentRole === "admin" ? "관리자" : currentRole === "teacher" ? "선생님" : "학생"}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="student">학생</SelectItem>
+                                  <SelectItem value="teacher">선생님</SelectItem>
+                                  <SelectItem value="admin">관리자</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {isCurrentUser && (
+                                <p className="text-xs text-muted-foreground mt-1 text-center">
+                                  (본인)
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    );
+                  })
+                )}
               </div>
             </TabsContent>
           </Tabs>
         </div>
       </div>
+
+      {/* 관리자 승격 비밀번호 확인 다이얼로그 */}
+      <Dialog open={adminPasswordDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setAdminPasswordDialog({ open: false, userId: null, userName: null });
+          setAdminPassword("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>관리자 승격 확인</DialogTitle>
+            <DialogDescription>
+              {adminPasswordDialog.userName}님을 관리자로 승격하려면 비밀번호를 입력하세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="password"
+              placeholder="비밀번호 입력"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  confirmAdminPromotion();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAdminPasswordDialog({ open: false, userId: null, userName: null });
+                setAdminPassword("");
+              }}
+            >
+              취소
+            </Button>
+            <Button onClick={confirmAdminPromotion}>
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>

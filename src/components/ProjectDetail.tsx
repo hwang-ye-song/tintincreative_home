@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { devLog, sanitizeHtml } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Project, Comment } from "@/types";
+import type { User } from "@supabase/supabase-js";
 
 const getOptimizedImageUrl = (url?: string | null) => {
   if (!url) return null;
@@ -37,7 +39,7 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,10 +92,11 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
 
       setNewComment("");
       fetchComments();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "댓글 작성에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "댓글 작성에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -171,7 +174,7 @@ export const ProjectDetail = ({ project, open, onOpenChange }: ProjectDetailProp
               <div 
                 className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground"
                 dangerouslySetInnerHTML={{
-                  __html: projectDescription || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>",
+                  __html: sanitizeHtml(projectDescription) || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>",
                 }}
               />
             </div>

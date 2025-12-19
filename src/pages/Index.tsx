@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown, Pencil } from "lucide-react";
 import { Helmet } from "react-helmet-async";
-import { smoothScrollTo } from "@/lib/utils";
+import { smoothScrollTo, devLog } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import { getOptimizedThumbnailUrl } from "@/lib/imageUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const location = useLocation();
@@ -24,27 +25,13 @@ const Index = () => {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdminOrTeacher } = useAuth();
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
-  // 관리자 권한 확인 및 프로젝트 데이터 로드
+  // 프로젝트 데이터 로드
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 관리자 권한 확인
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          try {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("role")
-              .eq("id", user.id)
-              .single();
-            setIsAdmin(profile?.role === "admin");
-          } catch {
-            setIsAdmin(false);
-          }
-        }
 
         // 홈페이지에 표시할 프로젝트만 가져오기 (관리자가 설정한 best of best)
         const { data: projects, error } = await supabase
@@ -99,7 +86,7 @@ const Index = () => {
           setFeaturedProjects(projectsWithCounts);
         }
       } catch (error) {
-        console.error("Error loading featured projects:", error);
+        devLog.error("Error loading featured projects:", error);
       } finally {
         setIsLoadingProjects(false);
       }
@@ -624,7 +611,7 @@ const Index = () => {
           <div className="text-center mb-8 animate-fade-in">
             <div className="flex items-center justify-center gap-4 mb-3">
               <h2 className="font-heading text-4xl font-bold">학생 프로젝트</h2>
-              {isAdmin && (
+              {isAdminOrTeacher && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -679,7 +666,7 @@ const Index = () => {
                       isBest={project.is_best || false}
                     />
                   </div>
-                  {isAdmin && (
+                  {isAdminOrTeacher && (
                     <Button
                       variant="outline"
                       size="sm"

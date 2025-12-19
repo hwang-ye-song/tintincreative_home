@@ -5,7 +5,7 @@ export interface Profile {
   name: string;
   email: string;
   created_at?: string;
-  role?: 'admin' | 'student';
+  role?: 'admin' | 'teacher' | 'student';
   avatar_url?: string | null;
 }
 

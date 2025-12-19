@@ -7,7 +7,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import { getOptimizedAvatarUrl, getOptimizedThumbnailUrl } from "@/lib/imageUtils";
-import { extractYouTubeVideoId, getYouTubeThumbnailUrl, extractFirstImageFromHtml } from "@/lib/utils";
+import { extractYouTubeVideoId, getYouTubeThumbnailUrl, extractFirstImageFromHtml, devLog } from "@/lib/utils";
+import type { User } from "@supabase/supabase-js";
 
 interface PortfolioCardProps {
   id: string;
@@ -91,7 +92,7 @@ export const PortfolioCard = memo(({
     }
     
     // 캐시된 사용자 정보 가져오기
-    const userData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+    const userData = queryClient.getQueryData<{ user: User | null; userRole: string | null }>(["currentUser"]);
     const currentUserId = userData?.user?.id || null;
     const userRole = userData?.userRole || null;
     
@@ -111,7 +112,9 @@ export const PortfolioCard = memo(({
         
         if (error) {
           // 에러가 발생해도 조용히 처리 (프리페칭이므로)
-          console.warn("프리페칭 실패:", error);
+          if (import.meta.env.DEV) {
+            devLog.warn("프리페칭 실패:", error);
+          }
           throw error;
         }
         if (!data) {

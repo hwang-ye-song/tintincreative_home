@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { devLog } from "@/lib/utils";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +52,7 @@ const OAuthCallbackHandler = () => {
       }
 
       if (error) {
-        console.error('OAuth error:', error, errorDescription);
+        devLog.error('OAuth error:', error, errorDescription);
         // URL 정리
         window.history.replaceState({}, document.title, window.location.pathname);
         // 에러가 있으면 로그인 페이지로 리다이렉트
@@ -68,7 +69,7 @@ const OAuthCallbackHandler = () => {
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
           if (sessionError) {
-            console.error('Session error:', sessionError);
+            devLog.error('Session error:', sessionError);
             window.history.replaceState({}, document.title, window.location.pathname);
             navigate('/login');
             return;
@@ -84,7 +85,7 @@ const OAuthCallbackHandler = () => {
           // 홈으로 리다이렉트 (리로드하지 않고 navigate만 사용)
           navigate('/', { replace: true });
         } catch (err) {
-          console.error('OAuth callback handling error:', err);
+          devLog.error('OAuth callback handling error:', err);
           window.history.replaceState({}, document.title, window.location.pathname);
           navigate('/');
         }

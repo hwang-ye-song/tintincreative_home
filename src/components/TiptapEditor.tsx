@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { devLog } from '@/lib/utils';
 import imageCompression from 'browser-image-compression';
 
 interface TiptapEditorProps {
@@ -132,7 +133,7 @@ export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입�
         };
         fileToUpload = await imageCompression(file, options);
       } catch (compressionError) {
-        console.error("Image compression error:", compressionError);
+        devLog.error("Image compression error:", compressionError);
         // 압축 실패 시 원본 사용
       }
 
@@ -155,10 +156,11 @@ export const TiptapEditor = ({ content, onChange, placeholder = "내용을 입�
         title: "이미지 업로드 완료",
         description: "이미지가 본문에 추가되었습니다."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "이미지 업로드에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     }

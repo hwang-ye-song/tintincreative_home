@@ -116,10 +116,11 @@ export const ProjectForm = ({ open, onOpenChange, onSuccess }: ProjectFormProps)
       setImageFile(null);
       onOpenChange(false);
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 등록에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 등록에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

@@ -15,6 +15,7 @@ import { Project, Comment, Profile } from "@/types";
 import { compressAndConvertImage, formatFileSize } from "@/lib/imageUtils";
 import { devLog } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { User } from "@supabase/supabase-js";
 
 const MyPage = () => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const MyPage = () => {
   const [activeTab, setActiveTab] = useState("projects");
 
   // 사용자 정보 - 간단하게 useState와 useEffect 사용
-  const [userData, setUserData] = useState<any | null>(null);
+  const [userData, setUserData] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
 
   useEffect(() => {
@@ -55,7 +56,7 @@ const MyPage = () => {
         }
         setUserData(session.user);
       } catch (error) {
-        console.error('User check error:', error);
+        devLog.error('User check error:', error);
         setUserData(null);
         navigate('/login');
       } finally {
@@ -154,10 +155,11 @@ const MyPage = () => {
       // 캐시 무효화하여 최신 데이터 다시 가져오기
       queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
       setIsEditingProfile(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로필 수정에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로필 수정에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -228,9 +230,10 @@ const MyPage = () => {
       });
     } catch (error: unknown) {
       devLog.error("Avatar compression error:", error);
+      const errorMessage = error instanceof Error ? error.message : "이미지 처리 중 오류가 발생했습니다.";
       toast({
         title: "이미지 처리 실패",
-        description: error.message || "이미지 처리 중 오류가 발생했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
       setAvatarFile(null);
@@ -448,10 +451,11 @@ const MyPage = () => {
       setNewPassword("");
       setConfirmNewPassword("");
       setIsChangingPassword(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "비밀번호 변경에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "비밀번호 변경에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

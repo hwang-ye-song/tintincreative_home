@@ -3,8 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
 import { smoothScrollTo } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 // 구글 폼 URL - 환경 변수에서 가져오거나 직접 설정
 // 편집 링크를 제출 링크로 변환 (edit -> viewform)
@@ -23,9 +23,7 @@ const GOOGLE_FORM_URL = getGoogleFormUrl();
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
-  const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(false); // 초기값을 false로 설정하여 버튼이 바로 표시되도록
+  const { user, isAdminOrTeacher, isLoading: isCheckingAuth } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isHome = location.pathname === "/";
@@ -70,72 +68,7 @@ export const Navbar = () => {
     setIsOpen(false);
   };
 
-  useEffect(() => {
-    // Check auth state and user role - 간단하고 빠르게
-    const checkUser = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session || !session.user) {
-          setUser(null);
-          setUserRole(null);
-          setIsCheckingAuth(false);
-          return;
-        }
-        
-        setUser(session.user);
-        
-        // 프로필 조회는 비동기로 처리 (버튼 표시를 막지 않음)
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
-            setUserRole(profile?.role || null);
-          })
-          .catch(() => {
-            setUserRole(null);
-          });
-      } catch (error) {
-        setUser(null);
-        setUserRole(null);
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-    
-    checkUser();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!session || !session.user) {
-          setUser(null);
-          setUserRole(null);
-          setIsCheckingAuth(false);
-          return;
-        }
-        
-        setUser(session.user);
-        setIsCheckingAuth(false);
-        
-        // 프로필 조회는 비동기로 처리
-        supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
-            setUserRole(profile?.role || null);
-          })
-          .catch(() => {
-            setUserRole(null);
-          });
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // useAuth 훅이 인증 상태를 관리하므로 별도의 useEffect 불필요
 
   useEffect(() => {
     const handleScroll = () => {
@@ -178,7 +111,7 @@ export const Navbar = () => {
             >
               홈
             </button>
-            {!isCheckingAuth && userRole === 'admin' && (
+            {!isCheckingAuth && isAdminOrTeacher && (
               <Link to="/admin">
                 <Button variant="ghost" size="sm" className="text-xs md:text-sm text-foreground hover:text-primary px-2 md:px-3">
                   관리자
@@ -232,7 +165,7 @@ export const Navbar = () => {
             >
               홈
             </button>
-            {!isCheckingAuth && userRole === 'admin' && (
+            {!isCheckingAuth && isAdminOrTeacher && (
               <Link to="/admin" onClick={() => setIsOpen(false)}>
                 <Button variant="ghost" className="w-full text-left justify-start">
                   관리자 페이지

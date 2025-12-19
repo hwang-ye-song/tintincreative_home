@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import DOMPurify from "dompurify";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -16,8 +17,16 @@ export const devLog = {
     if (isDev) console.warn(...args);
   },
   error: (...args: unknown[]) => {
-    // 에러는 항상 출력 (프로덕션에서도 중요)
-    console.error(...args);
+    // 개발 환경에서만 상세 에러 출력, 프로덕션에서는 간단한 에러만
+    if (isDev) {
+      console.error(...args);
+    } else {
+      // 프로덕션에서는 민감한 정보 없이 간단한 에러만
+      const errorMessage = args.length > 0 && typeof args[0] === 'string' 
+        ? args[0] 
+        : 'An error occurred';
+      console.error(errorMessage);
+    }
   },
 };
 
@@ -126,4 +135,30 @@ export function extractFirstImageFromHtml(html: string | null | undefined): stri
   }
   
   return null;
+}
+
+/**
+ * HTML을 정제하여 XSS 공격을 방지
+ * @param html 정제할 HTML 문자열
+ * @returns 정제된 HTML 문자열
+ */
+export function sanitizeHtml(html: string | null | undefined): string {
+  if (!html) return "";
+  
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'em', 'u', 's', 'strike',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li',
+      'a', 'img',
+      'blockquote', 'code', 'pre',
+      'div', 'span'
+    ],
+    ALLOWED_ATTR: [
+      'href', 'target', 'rel', 'title', // 링크 속성
+      'src', 'alt', 'width', 'height', 'title' // 이미지 속성
+    ],
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ADD_ATTR: ['target', 'rel'], // 외부 링크에 target과 rel 추가
+  });
 }

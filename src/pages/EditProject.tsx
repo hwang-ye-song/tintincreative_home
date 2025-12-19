@@ -14,8 +14,9 @@ import { TiptapEditor } from "@/components/TiptapEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import imageCompression from "browser-image-compression";
-import { ProjectAttachment } from "@/types";
-import { convertYouTubeUrlToEmbed } from "@/lib/utils";
+import { ProjectAttachment, Project } from "@/types";
+import { convertYouTubeUrlToEmbed, devLog, sanitizeHtml } from "@/lib/utils";
+import { validateImageFile, validateAttachmentFile, sanitizeFileName } from "@/lib/fileValidation";
 
 const BASE_CATEGORIES = ["AI 기초", "AI 활용", "로봇", "기타"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -65,12 +66,18 @@ const EditProject = () => {
         // 관리자 여부 확인 (먼저 확인)
         let userIsAdmin = false;
         try {
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from("profiles")
             .select("role")
             .eq("id", user.id)
             .single();
-          userIsAdmin = profile?.role === "admin";
+          
+          if (!profileError && profile && 'role' in profile) {
+            const role = (profile as { role?: string }).role;
+            userIsAdmin = role === "admin" || role === "teacher";
+          } else {
+            userIsAdmin = false;
+          }
           setIsAdmin(userIsAdmin);
         } catch {
           setIsAdmin(false);
@@ -101,12 +108,13 @@ const EditProject = () => {
         setCategory(project.category || "");
         setTags(project.tags || []);
         setCurrentImageUrl(project.image_url);
-        setVideoUrl(project.video_url || "");
-        setCurrentAttachments(project.attachments || []);
-      } catch (error: any) {
+        setVideoUrl((project as Project).video_url || "");
+        setCurrentAttachments((project as Project).attachments || []);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "프로젝트를 불러오는데 실패했습니다.";
         toast({
           title: "오류",
-          description: error.message || "프로젝트를 불러오는데 실패했습니다.",
+          description: errorMessage,
           variant: "destructive"
         });
         navigate("/portfolio");
@@ -121,10 +129,12 @@ const EditProject = () => {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > MAX_FILE_SIZE) {
+      // 파일 검증
+      const validation = validateImageFile(file);
+      if (!validation.isValid) {
         toast({
-          title: "파일 크기 초과",
-          description: "이미지는 10MB 이하여야 합니다.",
+          title: "파일 검증 실패",
+          description: validation.error || "이미지 파일이 올바르지 않습니다.",
           variant: "destructive"
         });
         return;
@@ -147,7 +157,7 @@ const EditProject = () => {
           description: `이미지가 ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB로 최적화되었습니다.`,
         });
       } catch (error) {
-        console.error("Image compression error:", error);
+        devLog.error("Image compression error:", error);
         setImageFile(file); // 압축 실패 시 원본 사용
       }
     }
@@ -171,10 +181,12 @@ const EditProject = () => {
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(file => {
-      if (file.size > MAX_FILE_SIZE) {
+      // 파일 검증
+      const validation = validateAttachmentFile(file);
+      if (!validation.isValid) {
         toast({
-          title: "파일 크기 초과",
-          description: `${file.name}은(는) 10MB 이하여야 합니다.`,
+          title: "파일 검증 실패",
+          description: `${file.name}: ${validation.error || "파일이 올바르지 않습니다."}`,
           variant: "destructive"
         });
         return false;
@@ -287,7 +299,8 @@ const EditProject = () => {
       let imageUrl = currentImageUrl;
 
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
+        const sanitizedName = sanitizeFileName(imageFile.name);
+        const fileExt = sanitizedName.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
@@ -309,7 +322,8 @@ const EditProject = () => {
         setUploadingAttachments(true);
         try {
           const uploadPromises = attachmentFiles.map(async (file, index) => {
-            const fileExt = file.name.split('.').pop();
+            const sanitizedName = sanitizeFileName(file.name);
+            const fileExt = sanitizedName.split('.').pop();
             const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
             
             const { error: uploadError } = await supabase.storage
@@ -323,7 +337,7 @@ const EditProject = () => {
               .getPublicUrl(fileName);
 
             return {
-              name: file.name,
+              name: sanitizedName,
               url: publicUrl,
               size: file.size,
               type: file.type,
@@ -333,8 +347,9 @@ const EditProject = () => {
 
           const uploadedAttachments = await Promise.all(uploadPromises);
           newAttachments = [...currentAttachments, ...uploadedAttachments];
-        } catch (error: any) {
-          throw new Error(`파일 업로드 실패: ${error.message}`);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+          throw new Error(`파일 업로드 실패: ${errorMessage}`);
         } finally {
           setUploadingAttachments(false);
         }
@@ -349,7 +364,16 @@ const EditProject = () => {
         ? convertYouTubeUrlToEmbed(videoUrl.trim())
         : null;
 
-      const updateData: any = {
+      const updateData: {
+        title: string;
+        description: string;
+        category: string | null;
+        tags: string[];
+        image_url?: string;
+        video_url?: string | null;
+        attachments?: ProjectAttachment[];
+        is_best?: boolean;
+      } = {
         title,
         description,
         category: finalCategory,
@@ -377,10 +401,11 @@ const EditProject = () => {
       });
 
       navigate(`/portfolio/${id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 수정에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 수정에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -668,7 +693,7 @@ const EditProject = () => {
                 <div className="bg-card border border-border rounded-lg p-6">
                   <div 
                     className="prose prose-sm max-w-none dark:prose-invert"
-                    dangerouslySetInnerHTML={{ __html: description || "<p class='text-muted-foreground'>내용 없음</p>" }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) || "<p class='text-muted-foreground'>내용 없음</p>" }}
                   />
                 </div>
               </div>

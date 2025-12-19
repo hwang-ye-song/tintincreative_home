@@ -25,14 +25,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Comment, Like, Project } from "@/types";
+import { Comment, Like, Project, ProjectAttachment } from "@/types";
 import { Helmet } from "react-helmet-async";
+import type { User } from "@supabase/supabase-js";
 
 import { 
   getOptimizedImageUrl, 
   getOptimizedAvatarUrl, 
   getOptimizedLargeImageUrl 
 } from "@/lib/imageUtils";
+import { devLog, sanitizeHtml } from "@/lib/utils";
 
 const getPlainTextExcerpt = (html?: string | null, length: number = 160) => {
   if (!html) return "";
@@ -124,12 +126,12 @@ const ProjectDetailPage = () => {
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
   const [isUpdatingBest, setIsUpdatingBest] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [currentAttachment, setCurrentAttachment] = useState<any | null>(null);
+  const [currentAttachment, setCurrentAttachment] = useState<ProjectAttachment | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
 
   // 사용자 정보를 React Query로 병렬 로딩
   // 에러가 발생해도 프로젝트는 표시되도록 에러 처리
-  const { data: userData } = useQuery<{ user: any | null; userRole: string | null }>({
+  const { data: userData } = useQuery<{ user: User | null; userRole: string | null }>({
     queryKey: ["currentUser"],
     queryFn: async () => {
       try {
@@ -148,7 +150,7 @@ const ProjectDetailPage = () => {
           // 에러가 발생하거나 프로필이 없으면 null 반환
           if (profileError || !profile) {
             if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
-              console.warn("Profile fetch failed:", profileError);
+              devLog.warn("Profile fetch failed:", profileError);
             }
             return {
               user,
@@ -160,11 +162,14 @@ const ProjectDetailPage = () => {
             user,
             userRole: (profile as { role?: string } | null)?.role || null,
           };
-        } catch (profileError: any) {
+        } catch (profileError: unknown) {
           // profiles 테이블이나 role 컬럼이 없을 경우 null 반환 (조용히 처리)
           // 400 오류는 개발 환경에서만 경고 출력
-          if (import.meta.env.DEV && profileError?.code !== 'PGRST116' && profileError?.code !== '42P01') {
-            console.warn("Profile role fetch failed:", profileError);
+          if (import.meta.env.DEV && profileError && typeof profileError === 'object' && 'code' in profileError) {
+            const code = (profileError as { code?: string }).code;
+            if (code !== 'PGRST116' && code !== '42P01') {
+              devLog.warn("Profile role fetch failed:", profileError);
+            }
           }
           return {
             user,
@@ -172,7 +177,7 @@ const ProjectDetailPage = () => {
           };
         }
       } catch (error) {
-        console.warn("User fetch failed:", error);
+        devLog.warn("User fetch failed:", error);
         return { user: null, userRole: null };
       }
     },
@@ -196,7 +201,7 @@ const ProjectDetailPage = () => {
       }
       
       // 사용자 정보를 캐시에서 가져오기 (없으면 null)
-      const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+      const cachedUserData = queryClient.getQueryData<{ user: User | null; userRole: string | null }>(["currentUser"]);
       const cachedUserId = cachedUserData?.user?.id || null;
       const cachedUserRole = cachedUserData?.userRole || null;
       const isAdmin = cachedUserRole === "admin";
@@ -262,7 +267,7 @@ const ProjectDetailPage = () => {
       if (!data) return [];
       
       // 사용자 정보를 캐시에서 가져오기
-      const cachedUserData = queryClient.getQueryData<{ user: any | null; userRole: string | null }>(["currentUser"]);
+      const cachedUserData = queryClient.getQueryData<{ user: User | null; userRole: string | null }>(["currentUser"]);
       const cachedUserId = cachedUserData?.user?.id || null;
       
       return await attachCommentLikes(data as Comment[], cachedUserId);
@@ -317,9 +322,9 @@ const ProjectDetailPage = () => {
       const { error } = await supabase
         .rpc('increment_project_view_count', { project_id: project.id });
       
-      if (error) console.error('Failed to increment view count:', error);
+      if (error) devLog.error('Failed to increment view count:', error);
     } catch (error) {
-      console.error('Error incrementing view count:', error);
+      devLog.error('Error incrementing view count:', error);
     }
   };
 
@@ -419,7 +424,7 @@ const ProjectDetailPage = () => {
         // 테이블이 없거나 에러가 발생하면 빈 배열 반환 (조용히 처리)
         // 개발 환경에서만 경고 출력
         if (import.meta.env.DEV && error.code !== 'PGRST205') {
-          console.warn("comment_likes 테이블 조회 실패:", error);
+          devLog.warn("comment_likes 테이블 조회 실패:", error);
         }
         return commentList.map((comment) => ({
           ...comment,
@@ -432,7 +437,7 @@ const ProjectDetailPage = () => {
     } catch (error) {
       // 테이블이 존재하지 않을 경우 조용히 처리 (개발 환경에서만 경고)
       if (import.meta.env.DEV) {
-        console.warn("comment_likes 테이블이 존재하지 않습니다:", error);
+        devLog.warn("comment_likes 테이블이 존재하지 않습니다:", error);
       }
       return commentList.map((comment) => ({
         ...comment,
@@ -499,10 +504,11 @@ const ProjectDetailPage = () => {
 
       // 좋아요 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["projectLikes", id] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "좋아요 처리에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "좋아요 처리에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -533,10 +539,11 @@ const ProjectDetailPage = () => {
       // 댓글 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
       setVisibleComments(10);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "댓글 작성에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "댓글 작성에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -569,10 +576,11 @@ const ProjectDetailPage = () => {
       // 댓글 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
       setVisibleComments(10);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "답글 작성에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "답글 작성에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -600,10 +608,11 @@ const ProjectDetailPage = () => {
       setEditingContent("");
       // 댓글 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "댓글 수정에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "댓글 수정에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -625,10 +634,11 @@ const ProjectDetailPage = () => {
 
       // 댓글 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "댓글 삭제에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "댓글 삭제에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -660,7 +670,7 @@ const ProjectDetailPage = () => {
         if (error) {
           // 테이블이 없거나 에러가 발생하면 조용히 처리 (개발 환경에서만 경고)
           if (import.meta.env.DEV && error.code !== 'PGRST205') {
-            console.warn("comment_likes 삭제 실패:", error);
+            devLog.warn("comment_likes 삭제 실패:", error);
           }
           return;
         }
@@ -674,7 +684,7 @@ const ProjectDetailPage = () => {
         if (error) {
           // 테이블이 없거나 에러가 발생하면 조용히 처리 (개발 환경에서만 경고)
           if (import.meta.env.DEV && error.code !== 'PGRST205') {
-            console.warn("comment_likes 삽입 실패:", error);
+            devLog.warn("comment_likes 삽입 실패:", error);
           }
           return;
         }
@@ -682,10 +692,10 @@ const ProjectDetailPage = () => {
 
       // 댓글 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["projectComments", id] });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 테이블이 존재하지 않을 경우 조용히 처리 (개발 환경에서만 경고)
       if (import.meta.env.DEV) {
-        console.warn("comment_likes 테이블이 존재하지 않습니다:", error);
+        devLog.warn("comment_likes 테이블이 존재하지 않습니다:", error);
       }
     }
   };
@@ -712,10 +722,11 @@ const ProjectDetailPage = () => {
       });
 
       navigate("/portfolio");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 삭제에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 삭제에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -745,10 +756,11 @@ const ProjectDetailPage = () => {
       });
 
       await refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 상태 변경에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 상태 변경에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -781,10 +793,11 @@ const ProjectDetailPage = () => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       await refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "BEST 상태 변경에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "BEST 상태 변경에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -795,7 +808,7 @@ const ProjectDetailPage = () => {
   const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || "").split(",").map((e) => e.trim()).filter(Boolean);
   const isAdminEmail = userData?.user?.email && adminEmails.includes(userData.user.email);
   const isOwner = currentUserId && project?.user_id === currentUserId;
-  const isAdmin = userRole === 'admin' || isAdminEmail;
+  const isAdmin = (userRole === 'admin' || userRole === 'teacher') || isAdminEmail;
 
   const renderComment = (
     comment: CommentWithReplies,
@@ -1241,7 +1254,7 @@ const ProjectDetailPage = () => {
               <h3 className="text-xs md:text-sm font-medium mb-3">프로젝트 설명</h3>
               <div 
                 className="prose prose-sm max-w-none dark:prose-invert text-xs md:text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: projectDescription || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>" }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(projectDescription) || "<p class='text-muted-foreground'>아직 작성된 설명이 없습니다.</p>" }}
               />
             </div>
 
@@ -1253,7 +1266,7 @@ const ProjectDetailPage = () => {
                   첨부 파일 ({project.attachments.length})
                 </h3>
                 <div className="space-y-2">
-                  {project.attachments.map((attachment: any, index: number) => (
+                  {project.attachments.map((attachment: ProjectAttachment, index: number) => (
                     <div
                       key={index}
                       onClick={() => {

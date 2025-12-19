@@ -9,6 +9,7 @@ import { Project } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Plus, X, ArrowUp, ArrowDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { devLog } from "@/lib/utils";
 
 const AINativeWebMasterClass3 = () => {
   const navigate = useNavigate();
@@ -52,9 +53,10 @@ const AINativeWebMasterClass3 = () => {
           .select("*")
           .eq("id", user.id)
           .single();
-        setIsAdmin((profile as { role?: string })?.role === "admin");
+        const role = (profile as { role?: string })?.role;
+        setIsAdmin(role === "admin" || role === "teacher");
       } catch (error) {
-        console.error("Failed to check admin:", error);
+        devLog.error("Failed to check admin:", error);
         setIsAdmin(false);
       } finally {
         setIsCheckingAdmin(false);
@@ -82,7 +84,7 @@ const AINativeWebMasterClass3 = () => {
           });
         }
       } catch (error) {
-        console.error("Failed to load section texts:", error);
+        devLog.error("Failed to load section texts:", error);
       }
     };
 
@@ -103,7 +105,7 @@ const AINativeWebMasterClass3 = () => {
         .eq("id", "application-3");
 
       if (error) {
-        console.error("Failed to save section texts:", error);
+        devLog.error("Failed to save section texts:", error);
         alert("저장에 실패했습니다.");
         return;
       }
@@ -111,7 +113,7 @@ const AINativeWebMasterClass3 = () => {
       alert("저장되었습니다.");
       setIsEditingTexts(false);
     } catch (error) {
-      console.error("Failed to save section texts:", error);
+      devLog.error("Failed to save section texts:", error);
       alert("저장에 실패했습니다.");
     } finally {
       setIsSavingTexts(false);
@@ -132,10 +134,10 @@ const AINativeWebMasterClass3 = () => {
         .order("display_order", { ascending: true });
 
       if (curriculumError) {
-        console.error("Failed to fetch curriculum projects:", curriculumError);
+        devLog.error("Failed to fetch curriculum projects:", curriculumError);
       }
 
-      let projectsData: any[] = [];
+      let projectsData: Project[] = [];
 
       if (!curriculumProjects || curriculumProjects.length === 0) {
         setRelatedProjects([]);
@@ -194,7 +196,7 @@ const AINativeWebMasterClass3 = () => {
 
       setRelatedProjects(projectsWithCounts);
     } catch (error) {
-      console.error("Error loading related projects:", error);
+      devLog.error("Error loading related projects:", error);
       setRelatedProjects([]);
     } finally {
       setIsLoadingProjects(false);
@@ -221,10 +223,11 @@ const AINativeWebMasterClass3 = () => {
       toast({ title: "성공", description: "프로젝트가 추가되었습니다." });
       setShowProjectSelector(false);
       await fetchRelatedProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 추가에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 추가에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -243,10 +246,11 @@ const AINativeWebMasterClass3 = () => {
 
       toast({ title: "성공", description: "프로젝트가 제거되었습니다." });
       await fetchRelatedProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트 제거에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트 제거에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -275,10 +279,11 @@ const AINativeWebMasterClass3 = () => {
       );
       // 최신 순서 재확인
       await fetchRelatedProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "순서 변경에 실패했습니다.";
       toast({
         title: "오류",
-        description: error.message || "순서 변경에 실패했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
       fetchRelatedProjects();
@@ -335,10 +340,11 @@ const AINativeWebMasterClass3 = () => {
       await addProjectToCurriculum(projectId);
       setProjectInput("");
       setShowProjectInput(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "프로젝트를 추가할 수 없습니다.";
       toast({
         title: "오류",
-        description: error.message || "프로젝트를 추가할 수 없습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

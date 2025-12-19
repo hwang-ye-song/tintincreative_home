@@ -63,7 +63,7 @@ const Login = () => {
       
       if (error && error.code !== 'PGRST116') {
         // PGRST116은 "no rows returned" 에러이므로 정상
-        console.error('이메일 확인 중 오류:', error);
+        devLog.error('이메일 확인 중 오류:', error);
         toast({
           title: "확인 실패",
           description: "이메일 확인 중 오류가 발생했습니다.",
@@ -90,7 +90,7 @@ const Login = () => {
         }
       }
     } catch (error) {
-      console.error('이메일 확인 중 오류:', error);
+      devLog.error('이메일 확인 중 오류:', error);
       toast({
         title: "확인 실패",
         description: "이메일 확인 중 오류가 발생했습니다.",
@@ -144,10 +144,11 @@ const Login = () => {
         setIsLoading(false);
       }
       // 성공하면 리다이렉트되므로 setIsLoading(false) 불필요
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "구글 로그인 중 오류가 발생했습니다.";
       toast({
         title: "구글 로그인 실패",
-        description: error.message || "구글 로그인 중 오류가 발생했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
       setIsLoading(false);
@@ -240,20 +241,20 @@ const Login = () => {
                 });
 
               if (profileError) {
-                console.error('프로필 생성 실패:', profileError);
+                devLog.error('프로필 생성 실패:', profileError);
                 toast({
                   title: "프로필 생성 실패",
                   description: "회원가입은 완료되었지만 프로필 생성에 실패했습니다. 관리자에게 문의하세요.",
                   variant: "destructive",
                 });
               } else {
-                console.log('프로필 생성 성공');
+                devLog.log('프로필 생성 성공');
               }
             } else {
-              console.log('프로필이 이미 존재합니다');
+              devLog.log('프로필이 이미 존재합니다');
             }
-          } catch (profileErr: any) {
-            console.error('프로필 생성 중 오류:', profileErr);
+          } catch (profileErr: unknown) {
+            devLog.error('프로필 생성 중 오류:', profileErr);
             toast({
               title: "프로필 생성 오류",
               description: profileErr.message || "프로필 생성 중 오류가 발생했습니다.",
@@ -318,10 +319,11 @@ const Login = () => {
 
         navigate("/");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.";
       toast({
         title: "로그인 실패",
-        description: error.message || "로그인 중 오류가 발생했습니다.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
