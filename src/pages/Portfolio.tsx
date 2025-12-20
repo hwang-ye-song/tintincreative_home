@@ -13,6 +13,7 @@ import { Helmet } from "react-helmet-async";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { User } from "@supabase/supabase-js";
 import { devLog } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 // Supabase의 or() 메서드는 괄호 없이 사용해야 함
 const Portfolio = () => {
