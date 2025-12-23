@@ -162,9 +162,8 @@ export const HeroCanvas = () => {
             <span className="text-accent font-medium text-sm">차세대 학습</span>
           </div>
           <h1 className="font-heading text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in">
-            <span className="block mb-2">AI의 두뇌와</span>
             <span className="block bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              로봇의 신체를 연결하다
+              틴틴AI로봇아카데미
             </span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in backdrop-blur-sm">
