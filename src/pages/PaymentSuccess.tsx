@@ -74,6 +74,13 @@ const PaymentSuccess = () => {
           if (result.success && result.payment) {
             setPayment(result.payment);
             sonnerToast.success("결제가 완료되었습니다!");
+
+            // 차액 결제인 경우 전체 환불 처리
+            const isPartialPayment = searchParams.get("isPartialPayment") === "true";
+            const originalPaymentId = searchParams.get("originalPaymentId");
+            if (isPartialPayment && originalPaymentId) {
+              await processFullRefundAfterPartialPayment(user.id, result.payment, originalPaymentId);
+            }
           } else {
             toast({
               title: "결제 처리 실패",
@@ -242,6 +249,92 @@ const PaymentSuccess = () => {
     </div>
   );
 };
+
+/**
+ * 차액 결제 완료 후 전체 환불 처리
+ */
+async function processFullRefundAfterPartialPayment(
+  userId: string,
+  currentPayment: Payment,
+  originalPaymentId: string
+): Promise<void> {
+  try {
+    // 원래 환불된 결제 찾기
+    const { data: refundedPayment, error: fetchError } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("id", originalPaymentId)
+      .eq("user_id", userId)
+      .eq("status", "cancelled")
+      .single();
+
+    if (fetchError || !refundedPayment) {
+      console.log("이전 환불된 결제를 찾을 수 없습니다.");
+      return;
+    }
+    
+    // 이미 전체 환불이 완료되었는지 확인 (refunded_amount가 null이면 전체 환불 완료)
+    if (refundedPayment.refunded_amount === null) {
+      console.log("이미 전체 환불이 완료되었습니다.");
+      return;
+    }
+
+    // 차액 계산: 원래 금액 - 이미 환불된 금액
+    const originalAmount = Number(refundedPayment.amount);
+    const alreadyRefunded = Number(refundedPayment.refunded_amount || 0);
+    const remainingAmount = originalAmount - alreadyRefunded;
+
+    // 현재 결제 금액이 남은 금액과 일치하는지 확인
+    if (Number(currentPayment.amount) !== remainingAmount) {
+      console.log("차액 결제 금액이 일치하지 않습니다.");
+      return;
+    }
+
+    // 전체 환불 처리 (남은 금액 환불)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error("로그인이 필요합니다.");
+      return;
+    }
+
+    if (!refundedPayment.payment_key) {
+      console.error("환불할 결제의 payment_key가 없습니다.");
+      return;
+    }
+
+    // Supabase Edge Function을 통해 남은 금액 환불
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refund-payment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        paymentKey: refundedPayment.payment_key,
+        cancelReason: "차액 결제 완료 후 전체 환불 처리",
+        cancelAmount: remainingAmount,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: "환불 처리 실패" }));
+      console.error("전체 환불 처리 실패:", errorData);
+      return;
+    }
+
+    // 결제 상태 업데이트: 전체 환불 완료
+    await supabase
+      .from("payments")
+      .update({
+        refunded_amount: null, // null은 전체 환불 완료를 의미
+      })
+      .eq("id", refundedPayment.id);
+
+    console.log("차액 결제 완료 후 전체 환불이 처리되었습니다.");
+  } catch (error) {
+    console.error("전체 환불 처리 중 오류:", error);
+  }
+}
 
 export default PaymentSuccess;
 

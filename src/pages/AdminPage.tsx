@@ -38,11 +38,21 @@ const AdminPage = () => {
     paymentKey: string | null;
     orderId: string | null;
     amount: number | null;
-  }>({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+    originalAmount: number | null;
+    refundedAmount: number | null;
+    curriculumId?: string | null;
+    courseId?: string | null;
+    userId?: string | null;
+  }>({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null, originalAmount: null, refundedAmount: null, curriculumId: null, courseId: null, userId: null });
   const [refundReason, setRefundReason] = useState("");
   const [refundType, setRefundType] = useState<"full" | "partial">("full");
   const [refundAmount, setRefundAmount] = useState<string>("");
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+  const [paymentLinkDialog, setPaymentLinkDialog] = useState<{
+    open: boolean;
+    link: string | null;
+    amount: number | null;
+  }>({ open: false, link: null, amount: null });
   const ADMIN_PROMOTION_PASSWORD = "051414";
 
   // 관리자 권한 확인 (React Query)
@@ -495,28 +505,68 @@ const AdminPage = () => {
       return;
     }
 
-    // 부분 환불인 경우 금액 검증
-    if (refundType === "partial") {
-      const partialAmount = parseInt(refundAmount.replace(/,/g, ""), 10);
-      if (isNaN(partialAmount) || partialAmount <= 0) {
-        toast({
-          title: "오류",
-          description: "환불 금액을 올바르게 입력해주세요.",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (partialAmount >= refundDialog.amount) {
-        toast({
-          title: "오류",
-          description: "환불 금액은 결제 금액보다 작아야 합니다.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+    setIsProcessingRefund(true);
 
     try {
+      // 최신 결제 정보를 DB에서 다시 조회하여 정확한 환불 가능 금액 확인
+      const { data: currentPayment, error: fetchError } = await supabase
+        .from("payments")
+        .select("amount, refunded_amount")
+        .eq("id", refundDialog.paymentId)
+        .single();
+
+      if (fetchError || !currentPayment) {
+        throw new Error("결제 정보를 불러올 수 없습니다.");
+      }
+
+      const originalAmount = Number(currentPayment.amount);
+      const alreadyRefunded = Number(currentPayment.refunded_amount || 0);
+      const availableRefundAmount = originalAmount - alreadyRefunded;
+
+      // 부분 환불인 경우 금액 검증
+      if (refundType === "partial") {
+        const partialAmount = parseInt(refundAmount.replace(/,/g, ""), 10);
+        if (isNaN(partialAmount) || partialAmount <= 0) {
+          toast({
+            title: "오류",
+            description: "환불 금액을 올바르게 입력해주세요.",
+            variant: "destructive",
+          });
+          setIsProcessingRefund(false);
+          return;
+        }
+        
+        if (partialAmount > availableRefundAmount) {
+          toast({
+            title: "오류",
+            description: `환불 가능 금액은 ${availableRefundAmount.toLocaleString()}원입니다. (원래 금액: ${originalAmount.toLocaleString()}원, 이미 환불: ${alreadyRefunded.toLocaleString()}원)`,
+            variant: "destructive",
+          });
+          setIsProcessingRefund(false);
+          return;
+        }
+        if (partialAmount >= availableRefundAmount) {
+          toast({
+            title: "오류",
+            description: "환불 금액이 환불 가능 금액과 같거나 더 큽니다. 전체 환불을 선택해주세요.",
+            variant: "destructive",
+          });
+          setIsProcessingRefund(false);
+          return;
+        }
+      } else {
+        // 전체 환불인 경우 남은 금액이 정확한지 확인
+        if (availableRefundAmount <= 0) {
+          toast({
+            title: "오류",
+            description: "환불 가능한 금액이 없습니다.",
+            variant: "destructive",
+          });
+          setIsProcessingRefund(false);
+          return;
+        }
+      }
+
       // Supabase Edge Function을 통해 환불 처리
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -525,14 +575,12 @@ const AdminPage = () => {
 
       const requestBody: any = {
         paymentKey: refundDialog.paymentKey,
-        cancelReason: refundReason || "관리자 환불 처리",
+        cancelReason: refundReason || (refundType === "partial" ? "부분 환불 - 전체 취소 후 차액 재결제" : "관리자 환불 처리"),
       };
 
-      // 부분 환불인 경우 cancelAmount 추가
-      if (refundType === "partial") {
-        const partialAmount = parseInt(refundAmount.replace(/,/g, ""), 10);
-        requestBody.cancelAmount = partialAmount;
-      }
+      // 부분 환불인 경우: 전체 금액을 먼저 취소 (cancelAmount 없이 전체 환불)
+      // 전체 환불인 경우: 전체 금액 취소
+      // (부분 환불은 전체 취소 후 차액 재결제 방식으로 진행)
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refund-payment`, {
         method: "POST",
@@ -544,11 +592,20 @@ const AdminPage = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "환불 처리 실패" }));
-        throw new Error(errorData.message || "환불 처리에 실패했습니다.");
+        const errorData = await response.json().catch(() => ({ message: "환불 처리 실패", error: "알 수 없는 오류" }));
+        const errorMessage = errorData.message || errorData.error || "환불 처리에 실패했습니다.";
+        const errorDetails = errorData.details ? JSON.stringify(errorData.details) : "";
+        throw new Error(`${errorMessage}${errorDetails ? ` (상세: ${errorDetails})` : ""}`);
       }
 
       const result = await response.json();
+
+      // 부분 환불인 경우: 차액 계산 및 결제 링크 생성
+      let remainingAmount = 0;
+      if (refundType === "partial") {
+        const partialAmount = parseInt(refundAmount.replace(/,/g, ""), 10);
+        remainingAmount = originalAmount - partialAmount; // 남은 금액 = 원래 금액 - 환불할 금액
+      }
 
       // 결제 상태 업데이트
       // 부분 환불도 cancelled 상태로 변경하여 환불 탭에 표시
@@ -608,19 +665,39 @@ const AdminPage = () => {
         }
       }
 
-      toast({
-        title: "환불 완료",
-        description: refundType === "full" 
-          ? `전체 환불이 성공적으로 처리되었습니다.`
-          : `${parseInt(refundAmount.replace(/,/g, ""), 10).toLocaleString()}원 환불이 성공적으로 처리되었습니다.`,
-      });
+      // 부분 환불인 경우 차액 결제 링크 생성
+      if (refundType === "partial" && remainingAmount > 0) {
+        // 차액 결제 링크 생성
+        const paymentLink = generatePaymentLink(
+          remainingAmount,
+          currentPayment.user_id,
+          currentPayment.curriculum_id,
+          currentPayment.course_id,
+          `차액 결제 - ${refundDialog.orderId}`,
+          refundDialog.paymentId || undefined
+        );
+
+        // 결제 링크 다이얼로그 표시
+        setPaymentLinkDialog({
+          open: true,
+          link: paymentLink,
+          amount: remainingAmount,
+        });
+      } else {
+        toast({
+          title: "환불 완료",
+          description: refundType === "full" 
+            ? `전체 환불이 성공적으로 처리되었습니다.`
+            : `${parseInt(refundAmount.replace(/,/g, ""), 10).toLocaleString()}원 환불이 성공적으로 처리되었습니다.`,
+        });
+      }
 
       // 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["adminPayments"] });
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
 
-      // 다이얼로그 닫기
-      setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+      // 환불 다이얼로그 닫기
+      setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null, originalAmount: null, refundedAmount: null, curriculumId: null, courseId: null, userId: null });
       setRefundReason("");
       setRefundType("full");
       setRefundAmount("");
@@ -633,6 +710,54 @@ const AdminPage = () => {
         variant: "destructive",
       });
       setIsProcessingRefund(false);
+    }
+  };
+
+  // 차액 결제 링크 생성 함수
+  const generatePaymentLink = (
+    amount: number,
+    userId: string,
+    curriculumId?: string | null,
+    courseId?: string | null,
+    orderName?: string,
+    originalPaymentId?: string
+  ): string => {
+    const baseUrl = window.location.origin;
+    const params = new URLSearchParams({
+      amount: amount.toString(),
+      userId: userId,
+      orderName: orderName || `차액 결제 - ${amount.toLocaleString()}원`,
+    });
+    
+    if (curriculumId) {
+      params.append("curriculumId", curriculumId);
+    }
+    if (courseId) {
+      params.append("courseId", courseId);
+    }
+    if (originalPaymentId) {
+      params.append("originalPaymentId", originalPaymentId);
+    }
+
+    return `${baseUrl}/payment/partial?${params.toString()}`;
+  };
+
+  // 링크 복사 함수
+  const copyPaymentLink = async () => {
+    if (paymentLinkDialog.link) {
+      try {
+        await navigator.clipboard.writeText(paymentLinkDialog.link);
+        toast({
+          title: "링크 복사 완료",
+          description: "결제 링크가 클립보드에 복사되었습니다.",
+        });
+      } catch (error) {
+        toast({
+          title: "복사 실패",
+          description: "링크 복사에 실패했습니다. 링크를 직접 복사해주세요.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -1015,12 +1140,12 @@ const AdminPage = () => {
                                 </div>
                                 <div>
                                   결제 금액: {Number(payment.amount).toLocaleString()}원
-                                  {payment.refunded_amount && payment.refunded_amount > 0 && (
-                                    <span className="text-red-600 ml-2 font-semibold">
-                                      (부분 환불: {Number(payment.refunded_amount).toLocaleString()}원)
-                                    </span>
-                                  )}
                                 </div>
+                                {payment.refunded_amount && payment.refunded_amount > 0 && (
+                                  <div className="text-red-600 font-semibold">
+                                    {Number(payment.refunded_amount).toLocaleString()}원 환불 완료
+                                  </div>
+                                )}
                                 <div>
                                   결제 시간: {new Date(payment.created_at).toLocaleString("ko-KR", {
                                     year: "numeric",
@@ -1063,6 +1188,11 @@ const AdminPage = () => {
                                       paymentKey: payment.payment_key || null,
                                       orderId: payment.order_id,
                                       amount: Number(payment.amount) - (payment.refunded_amount || 0),
+                                      originalAmount: Number(payment.amount),
+                                      refundedAmount: payment.refunded_amount || 0,
+                                      curriculumId: payment.curriculum_id || null,
+                                      courseId: payment.course_id || null,
+                                      userId: payment.user_id || null,
                                     });
                                     setRefundReason("");
                                     setRefundType("full");
@@ -1070,26 +1200,6 @@ const AdminPage = () => {
                                   }}
                                 >
                                   환불 처리
-                                </Button>
-                              )}
-                              {payment.status === "cancelled" && payment.refunded_amount && payment.refunded_amount > 0 && payment.refunded_amount < payment.amount && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => {
-                                    setRefundDialog({
-                                      open: true,
-                                      paymentId: payment.id,
-                                      paymentKey: payment.payment_key || null,
-                                      orderId: payment.order_id,
-                                      amount: Number(payment.amount) - (payment.refunded_amount || 0),
-                                    });
-                                    setRefundReason("");
-                                    setRefundType("partial");
-                                    setRefundAmount("");
-                                  }}
-                                >
-                                  추가 환불
                                 </Button>
                               )}
                             </div>
@@ -1153,7 +1263,7 @@ const AdminPage = () => {
       {/* 환불 확인 다이얼로그 */}
       <Dialog open={refundDialog.open} onOpenChange={(open) => {
         if (!open && !isProcessingRefund) {
-          setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+          setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null, originalAmount: null, refundedAmount: null });
           setRefundReason("");
           setRefundType("full");
           setRefundAmount("");
@@ -1172,8 +1282,18 @@ const AdminPage = () => {
               <p className="text-sm text-muted-foreground">{refundDialog.orderId}</p>
             </div>
             <div>
-              <p className="text-sm font-medium mb-1">결제 금액</p>
-              <p className="text-sm text-muted-foreground">{refundDialog.amount?.toLocaleString()}원</p>
+              <p className="text-sm font-medium mb-1">원래 결제 금액</p>
+              <p className="text-sm text-muted-foreground">{refundDialog.originalAmount?.toLocaleString() || refundDialog.amount?.toLocaleString()}원</p>
+            </div>
+            {refundDialog.refundedAmount && refundDialog.refundedAmount > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-1">이미 환불된 금액</p>
+                <p className="text-sm text-red-600 font-semibold">{refundDialog.refundedAmount.toLocaleString()}원</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-medium mb-1">환불 가능 금액</p>
+              <p className="text-sm text-blue-600 font-semibold">{refundDialog.amount?.toLocaleString()}원</p>
             </div>
             <div>
               <p className="text-sm font-medium mb-2">환불 유형</p>
@@ -1232,6 +1352,11 @@ const AdminPage = () => {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   최대 환불 가능 금액: {refundDialog.amount?.toLocaleString()}원
+                  {refundDialog.refundedAmount && refundDialog.refundedAmount > 0 && (
+                    <span className="ml-2 text-red-600">
+                      (이미 {refundDialog.refundedAmount.toLocaleString()}원 환불됨)
+                    </span>
+                  )}
                 </p>
               </div>
             )}
@@ -1252,7 +1377,7 @@ const AdminPage = () => {
             <Button
               variant="outline"
               onClick={() => {
-                setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+                setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null, originalAmount: null, refundedAmount: null, curriculumId: null, courseId: null, userId: null });
                 setRefundReason("");
                 setRefundType("full");
                 setRefundAmount("");
@@ -1277,6 +1402,71 @@ const AdminPage = () => {
               ) : (
                 `${refundType === "full" ? "전체 환불" : "부분 환불"} 처리`
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 차액 결제 링크 다이얼로그 */}
+      <Dialog open={paymentLinkDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setPaymentLinkDialog({ open: false, link: null, amount: null });
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>차액 결제 링크 생성 완료</DialogTitle>
+            <DialogDescription>
+              전체 금액이 환불되었습니다. 남은 금액({paymentLinkDialog.amount?.toLocaleString()}원)을 결제하기 위한 링크가 생성되었습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <Label htmlFor="paymentLink" className="text-sm font-medium mb-2">
+                결제 링크
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="paymentLink"
+                  value={paymentLinkDialog.link || ""}
+                  readOnly
+                  className="font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  onClick={copyPaymentLink}
+                  className="whitespace-nowrap"
+                >
+                  복사
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                이 링크를 사용자에게 전달하여 차액 결제를 진행하세요.
+              </p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>안내:</strong> 부분 환불은 전체 금액을 먼저 취소한 후, 남은 금액만 재결제하는 방식으로 진행됩니다.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPaymentLinkDialog({ open: false, link: null, amount: null });
+              }}
+            >
+              닫기
+            </Button>
+            <Button
+              onClick={() => {
+                if (paymentLinkDialog.link) {
+                  window.open(paymentLinkDialog.link, "_blank");
+                }
+              }}
+            >
+              링크 열기
             </Button>
           </DialogFooter>
         </DialogContent>

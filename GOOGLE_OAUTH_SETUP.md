@@ -87,8 +87,37 @@
 ## 문제 해결
 
 ### "redirect_uri_mismatch" 오류
-- Google Cloud Console의 **Authorized redirect URIs**에 Supabase 콜백 URL이 정확히 추가되어 있는지 확인
-- URL은 정확히 일치해야 합니다 (마지막 슬래시 포함 여부도 중요)
+- **Google Cloud Console**의 **Authorized redirect URIs**에 다음 URL들이 모두 추가되어 있는지 확인:
+  - `https://aufvgzuokvttpguslkwm.supabase.co/auth/v1/callback` (Supabase 콜백)
+  - `https://yourdomain.com/auth/v1/callback` (새 도메인, 있다면)
+- **Supabase 대시보드**의 **URL Configuration**에도 새 도메인이 추가되어 있는지 확인
+- URL은 정확히 일치해야 합니다 (http/https, 마지막 슬래시 포함 여부도 중요)
+
+### "404: NOT_FOUND" 또는 "DEPLOYMENT_NOT_FOUND" 오류
+새 도메인을 사용하는 경우 다음 두 곳에서 설정이 필요합니다:
+
+1. **Google Cloud Console 설정**
+   - https://console.cloud.google.com 접속
+   - **APIs & Services** → **Credentials** 클릭
+   - 기존 OAuth 2.0 Client ID 클릭 (또는 새로 생성)
+   - **Authorized redirect URIs** 섹션에서 **+ ADD URI** 클릭
+   - 새 도메인 추가: `https://yourdomain.com/auth/v1/callback`
+   - **저장** 클릭
+
+2. **Supabase 대시보드 설정**
+   - https://supabase.com/dashboard 접속
+   - 프로젝트 선택: `aufvgzuokvttpguslkwm`
+   - **Authentication** → **URL Configuration** 탭
+   - **Site URL**: 새 도메인 추가 (예: `https://yourdomain.com`)
+   - **Redirect URLs**: 다음 URL 추가
+     ```
+     https://yourdomain.com/**
+     https://yourdomain.com/auth/callback
+     ```
+   - 각 URL을 한 줄씩 입력하고 **Add** 클릭
+   - **Save** 클릭
+
+⚠️ **중요**: 변경사항 적용까지 몇 분이 걸릴 수 있으니 저장 후 잠시 대기 후 다시 시도하세요.
 
 ### "invalid_client" 오류
 - Client ID와 Client Secret이 올바르게 입력되었는지 확인
@@ -101,12 +130,52 @@
 
 ## 추가 참고사항
 
-### 프로덕션 환경
-- 프로덕션 배포 시 Vercel 도메인도 **Authorized redirect URIs**에 추가해야 할 수 있습니다:
-  ```
-  https://tintincreativehomepage.vercel.app/auth/v1/callback
-  ```
-- 하지만 일반적으로 Supabase 콜백 URL만 추가하면 됩니다.
+### 프로덕션 환경 (새 도메인 추가)
+새로 연결한 도메인에서 Google OAuth가 작동하려면 **두 곳**에서 설정이 필요합니다:
+
+#### 1. Google Cloud Console에 새 도메인 추가
+1. **Google Cloud Console 접속**
+   - https://console.cloud.google.com 접속
+   - 프로젝트 선택
+
+2. **OAuth 클라이언트 수정**
+   - 왼쪽 메뉴: **APIs & Services** → **Credentials**
+   - 기존 OAuth 2.0 Client ID 클릭 (또는 새로 생성)
+   - **Authorized redirect URIs** 섹션에서 **+ ADD URI** 클릭
+   - 다음 URL 추가:
+     ```
+     https://aufvgzuokvttpguslkwm.supabase.co/auth/v1/callback
+     ```
+   - **새 도메인이 있다면** (예: `https://yourdomain.com`):
+     ```
+     https://yourdomain.com/auth/v1/callback
+     ```
+   - **저장** 클릭
+
+#### 2. Supabase 대시보드에 새 도메인 추가
+1. **Supabase 대시보드 접속**
+   - https://supabase.com/dashboard 접속
+   - 프로젝트 선택: `aufvgzuokvttpguslkwm`
+
+2. **Authentication 설정으로 이동**
+   - 왼쪽 메뉴: **Authentication** 클릭
+   - **URL Configuration** 탭 선택
+
+3. **사이트 URL 및 리디렉션 URL 추가**
+   - **Site URL**: 새 도메인 추가 (예: `https://yourdomain.com`)
+   - **Redirect URLs**: 다음 URL들을 추가:
+     ```
+     https://yourdomain.com/**
+     https://yourdomain.com/auth/callback
+     http://localhost:8080/** (로컬 개발용)
+     ```
+   - 각 URL을 한 줄씩 입력하고 **Add** 클릭
+   - **Save** 클릭
+
+#### 중요 사항
+- Google Cloud Console과 Supabase 대시보드 **둘 다**에 새 도메인을 추가해야 합니다
+- URL은 정확히 일치해야 합니다 (http/https, 슬래시 포함 여부 등)
+- 변경사항 적용까지 몇 분이 걸릴 수 있습니다
 
 ### 보안
 - Client Secret은 절대 공개 저장소에 커밋하지 마세요

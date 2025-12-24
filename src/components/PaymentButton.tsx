@@ -15,6 +15,10 @@ interface PaymentButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   children?: React.ReactNode;
+  successUrl?: string;
+  failUrl?: string;
+  isPartialPayment?: boolean;
+  originalPaymentId?: string;
 }
 
 declare global {
@@ -32,6 +36,10 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
   size = "default",
   variant = "default",
   children,
+  successUrl,
+  failUrl,
+  isPartialPayment = false,
+  originalPaymentId,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [tossPayments, setTossPayments] = useState<any>(null);
@@ -112,8 +120,8 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
 
     try {
       const orderId = generateOrderId();
-      const successUrl = `${window.location.origin}/payment/success?orderId=${orderId}`;
-      const failUrl = `${window.location.origin}/payment/fail?orderId=${orderId}`;
+      const finalSuccessUrl = successUrl || `${window.location.origin}/payment/success?orderId=${orderId}${isPartialPayment && originalPaymentId ? `&isPartialPayment=true&originalPaymentId=${originalPaymentId}` : ""}`;
+      const finalFailUrl = failUrl || `${window.location.origin}/payment/fail?orderId=${orderId}`;
 
       // 결제 정보를 먼저 DB에 저장 (pending 상태)
       const payment = await savePaymentToDatabase(
@@ -136,8 +144,8 @@ export const PaymentButton: React.FC<PaymentButtonProps> = ({
         orderId: orderId,
         orderName: orderName,
         customerName: user.email || "고객",
-        successUrl: successUrl,
-        failUrl: failUrl,
+        successUrl: finalSuccessUrl,
+        failUrl: finalFailUrl,
       });
     } catch (error: any) {
       console.error("결제 요청 실패:", error);

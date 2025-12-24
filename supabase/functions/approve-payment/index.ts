@@ -17,16 +17,25 @@ serve(async (req) => {
   }
 
   try {
-    // Supabase 클라이언트 생성
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+      console.error("환경변수 누락: SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY 확인");
+      return new Response(JSON.stringify({ error: "서버 설정 오류" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 인증용 anon 클라이언트 (사용자 토큰 검증)
+    const supabaseAuthClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: req.headers.get("Authorization")! } },
+    });
+
+    // 서비스 롤 클라이언트 (RLS 우회 DB 업데이트)
+    const supabaseServiceClient = createClient(supabaseUrl, serviceRoleKey);
 
     // 요청 본문 파싱
     const { paymentKey, orderId, amount } = await req.json();
@@ -41,6 +50,15 @@ serve(async (req) => {
       );
     }
 
+    // 사용자 인증 확인
+    const { data: authData, error: authError } = await supabaseAuthClient.auth.getUser();
+    if (authError || !authData?.user) {
+      return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 토스 페이먼츠 시크릿 키 (환경 변수에서 가져옴)
     const tossSecretKey = Deno.env.get("TOSS_PAYMENTS_SECRET_KEY");
     if (!tossSecretKey) {
@@ -52,6 +70,39 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // DB에서 주문 조회 (서비스 롤, RLS 우회) - 금액/상태 검증
+    const { data: paymentData, error: paymentError } = await supabaseServiceClient
+      .from("payments")
+      .select("*")
+      .eq("order_id", orderId)
+      .single();
+
+    if (paymentError || !paymentData) {
+      console.error("결제 정보 조회 실패:", paymentError);
+      return new Response(JSON.stringify({ error: "결제 정보를 찾을 수 없습니다." }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 상태 검증: 이미 완료된 결제면 중복 승인 방지
+    if (paymentData.status === "completed") {
+      return new Response(JSON.stringify({ error: "이미 완료된 결제입니다." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 금액 검증: 요청 금액과 DB 금액이 불일치하면 거부
+    const dbAmount = Number(paymentData.amount || 0);
+    if (Number(amount) !== dbAmount) {
+      console.error("금액 불일치: 요청:", amount, "DB:", dbAmount);
+      return new Response(JSON.stringify({ error: "결제 금액이 일치하지 않습니다." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // 토스 페이먼츠 결제 승인 API 호출
@@ -87,32 +138,8 @@ serve(async (req) => {
       );
     }
 
-    // 결제 승인 성공
-    // DB에서 결제 정보 업데이트
-    const { data: paymentData, error: paymentError } = await supabaseClient
-      .from("payments")
-      .select("*")
-      .eq("order_id", orderId)
-      .single();
-
-    if (paymentError || !paymentData) {
-      console.error("결제 정보 조회 실패:", paymentError);
-      // 결제는 승인되었지만 DB 업데이트 실패
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          warning: "결제는 승인되었지만 DB 업데이트에 실패했습니다.",
-          payment: tossData 
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // 결제 정보 업데이트
-    const { error: updateError } = await supabaseClient
+    // 결제 승인 성공 → DB 업데이트 (서비스 롤)
+    const { error: updateError } = await supabaseServiceClient
       .from("payments")
       .update({
         status: "completed",
