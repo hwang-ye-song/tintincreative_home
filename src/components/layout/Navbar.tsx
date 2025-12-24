@@ -100,7 +100,7 @@ export const Navbar = () => {
           {/* Logo */}
           <Link to="/" onClick={handleLogoClick} className="flex items-center gap-1 md:gap-2 flex-shrink-0">
             <Bot className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-            <span className="logo-gradient text-sm md:text-base lg:text-lg">틴틴 AI 로봇 아카데미</span>
+            <span className="logo-gradient text-sm md:text-base lg:text-lg">틴틴AI로봇아카데미</span>
           </Link>
 
           {/* Desktop Navigation */}

@@ -40,19 +40,22 @@ export type Database = {
       }
       enrollments: {
         Row: {
-          course_id: string
+          course_id: string | null
+          curriculum_id: string | null
           enrolled_at: string
           id: string
           user_id: string
         }
         Insert: {
-          course_id: string
+          course_id?: string | null
+          curriculum_id?: string | null
           enrolled_at?: string
           id?: string
           user_id: string
         }
         Update: {
-          course_id?: string
+          course_id?: string | null
+          curriculum_id?: string | null
           enrolled_at?: string
           id?: string
           user_id?: string
@@ -70,6 +73,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curriculums"
             referencedColumns: ["id"]
           },
         ]
@@ -243,6 +253,70 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          course_id: string | null
+          created_at: string
+          curriculum_id: string | null
+          id: string
+          order_id: string
+          payment_key: string
+          payment_method: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          course_id?: string | null
+          created_at?: string
+          curriculum_id?: string | null
+          id?: string
+          order_id: string
+          payment_key: string
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          course_id?: string | null
+          created_at?: string
+          curriculum_id?: string | null
+          id?: string
+          order_id?: string
+          payment_key?: string
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curriculums"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]

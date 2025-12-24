@@ -9,9 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { PortfolioCard } from "@/components/PortfolioCard";
-import { LogOut, User, Lock, Edit2, Save, X, Upload, Camera } from "lucide-react";
+import { LogOut, User, Lock, Edit2, Save, X, Upload, Camera, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Project, Comment, Profile } from "@/types";
+import { Project, Comment, Profile, Payment } from "@/types";
 import { compressAndConvertImage, formatFileSize } from "@/lib/imageUtils";
 import { devLog } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -519,6 +519,25 @@ const MyPage = () => {
     staleTime: 30 * 1000, // 30초간 캐시
   });
 
+  // 내 결제 내역 가져오기 (React Query)
+  const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
+    queryKey: ["myPayments", userData?.id],
+    queryFn: async () => {
+      if (!userData?.id) return [];
+      
+      const { data: paymentsData, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('user_id', userData.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (paymentsData || []) as Payment[];
+    },
+    enabled: !!userData?.id,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
   // 내 댓글 가져오기 (React Query)
   const { data: comments = [], isLoading: isLoadingComments } = useQuery<Comment[]>({
     queryKey: ["myComments", userData?.id],
@@ -543,7 +562,7 @@ const MyPage = () => {
     staleTime: 30 * 1000, // 30초간 캐시
   });
 
-  const loading = isLoadingUser || isLoadingProfile || isLoadingProjects || isLoadingComments;
+  const loading = isLoadingUser || isLoadingProfile || isLoadingProjects || isLoadingComments || isLoadingPayments;
 
   // 인증되지 않은 사용자는 아무것도 렌더링하지 않음
   if (!isLoadingUser && !userData) {
@@ -630,9 +649,10 @@ const MyPage = () => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="projects">내 프로젝트 ({projects.length})</TabsTrigger>
               <TabsTrigger value="comments">내 댓글 ({comments.length})</TabsTrigger>
+              <TabsTrigger value="payments">결제 내역 ({payments.length})</TabsTrigger>
               <TabsTrigger value="settings">계정 설정</TabsTrigger>
             </TabsList>
 
@@ -697,6 +717,90 @@ const MyPage = () => {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="payments" className="mt-6">
+              {payments.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-muted-foreground mb-4">결제 내역이 없습니다.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {payments.map((payment) => {
+                    const statusColors = {
+                      completed: "text-green-600",
+                      pending: "text-yellow-600",
+                      failed: "text-red-600",
+                      cancelled: "text-gray-600",
+                    };
+                    const statusLabels = {
+                      completed: "완료",
+                      pending: "대기",
+                      failed: "실패",
+                      cancelled: payment.refunded_amount && payment.refunded_amount > 0 && payment.refunded_amount < payment.amount ? "부분 환불" : "전체 환불",
+                    };
+
+                    return (
+                      <Card key={payment.id}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <CreditCard className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">
+                                  주문번호: {payment.order_id}
+                                </CardTitle>
+                              </div>
+                              <CardDescription className="mt-1 space-y-1">
+                                <div>
+                                  결제 금액: {Number(payment.amount).toLocaleString()}원
+                                  {payment.refunded_amount && payment.refunded_amount > 0 && (
+                                    <span className="text-red-600 ml-2 font-semibold">
+                                      (부분 환불: {Number(payment.refunded_amount).toLocaleString()}원)
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  결제 시간: {new Date(payment.created_at).toLocaleString("ko-KR", {
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })}
+                                </div>
+                                {payment.curriculum_id && (
+                                  <div>
+                                    커리큘럼 ID: {payment.curriculum_id}
+                                  </div>
+                                )}
+                                {payment.course_id && (
+                                  <div>
+                                    코스 ID: {payment.course_id}
+                                  </div>
+                                )}
+                                {payment.payment_method && (
+                                  <div>
+                                    결제 수단: {payment.payment_method}
+                                  </div>
+                                )}
+                              </CardDescription>
+                            </div>
+                            <div className="ml-4">
+                              <div className={`text-sm font-semibold ${statusColors[payment.status] || "text-gray-600"}`}>
+                                {statusLabels[payment.status] || payment.status}
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>

@@ -19,6 +19,8 @@ import MyPage from "./pages/MyPage";
 import AdminPage from "./pages/AdminPage";
 import AINativeWebMasterClass from "./pages/AINativeWebMasterClass";
 import AINativeWebMasterClass3 from "./pages/AINativeWebMasterClass3";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentFail from "./pages/PaymentFail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -127,6 +129,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/fail" element={<PaymentFail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

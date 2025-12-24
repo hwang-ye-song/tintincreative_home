@@ -1,20 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Robot Head (rounded rectangle) -->
-  <rect x="20" y="25" width="60" height="50" rx="8" ry="8" fill="#00AFFF"/>
-  
-  <!-- Left Eye -->
-  <rect x="30" y="35" width="12" height="18" rx="3" ry="3" fill="#FFFFFF"/>
-  
-  <!-- Right Eye -->
-  <rect x="58" y="35" width="12" height="18" rx="3" ry="3" fill="#FFFFFF"/>
-  
-  <!-- Antenna (top-left L-shape) -->
-  <path d="M 25 25 L 25 20 L 35 20 L 35 22" stroke="#00AFFF" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  
-  <!-- Left Ear/Connector -->
-  <rect x="10" y="40" width="8" height="20" rx="2" ry="2" fill="#00AFFF"/>
-  
-  <!-- Right Ear/Connector -->
-  <rect x="82" y="40" width="8" height="20" rx="2" ry="2" fill="#00AFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00AFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 8V4H8"/>
+  <rect width="16" height="12" x="4" y="8" rx="2"/>
+  <path d="M2 14h2"/>
+  <path d="M20 14h2"/>
+  <path d="M15 13v2"/>
+  <path d="M9 13v2"/>
 </svg>
 

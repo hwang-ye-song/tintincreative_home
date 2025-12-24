@@ -94,3 +94,37 @@ export interface ProjectAttachment {
   password?: string; // 최대 4자리 비밀번호
 }
 
+export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
+
+export interface Payment {
+  id: string;
+  user_id: string;
+  curriculum_id?: string | null;
+  course_id?: string | null;
+  amount: number;
+  status: PaymentStatus;
+  payment_key: string;
+  order_id: string;
+  payment_method?: string | null;
+  refunded_amount?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentRequest {
+  amount: number;
+  orderId: string;
+  orderName: string;
+  customerName: string;
+  successUrl: string;
+  failUrl: string;
+  curriculumId?: string;
+  courseId?: string;
+}
+
+export interface PaymentApproval {
+  paymentKey: string;
+  orderId: string;
+  amount: number;
+}
+

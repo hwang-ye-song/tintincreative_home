@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PaymentButton } from "@/components/PaymentButton";
 
 const AINativeWebMasterClass = () => {
   useEffect(() => {
@@ -17,7 +18,7 @@ const AINativeWebMasterClass = () => {
   return (
     <div className="min-h-screen">
       <Helmet>
-        <title>AI 네이티브 웹 마스터 클래스 - 틴틴 AI 로봇 아카데미</title>
+        <title>AI 네이티브 웹 마스터 클래스 - Realize Academy</title>
         <meta name="description" content="AI 네이티브 웹 마스터 클래스: 0 to 1" />
       </Helmet>
       <Navbar />
@@ -31,7 +32,7 @@ const AINativeWebMasterClass = () => {
 
           {/* Hero Section */}
           <div className="text-center mb-16 animate-fade-in">
-            <Badge className="mb-4">틴틴 AI 로봇 아카데미</Badge>
+            <Badge className="mb-4">Realize Academy</Badge>
             <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               AI 네이티브 웹 마스터 클래스
             </h1>
@@ -44,7 +45,7 @@ const AINativeWebMasterClass = () => {
           {/* Why Section */}
           <section className="mb-20 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             <h2 className="font-heading text-3xl md:text-4xl font-bold mb-8 text-center">
-              왜 틴틴 AI 로봇 아카데미인가?
+              왜 Realize Academy인가?
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="hover:shadow-lg transition-shadow">
@@ -363,9 +364,15 @@ const AINativeWebMasterClass = () => {
             <h2 className="font-heading text-3xl md:text-4xl font-bold mb-8 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               AI 네이티브 개발자로의<br />여정을 시작하세요
             </h2>
-            <Button size="lg" className="bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg transition-all">
+            <PaymentButton
+              amount={99000}
+              orderName="AI 네이티브 웹 마스터 클래스"
+              curriculumId="application-2"
+              size="lg"
+              className="bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg transition-all"
+            >
               수강 신청하기
-            </Button>
+            </PaymentButton>
           </section>
         </div>
       </div>

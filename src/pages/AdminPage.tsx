@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home, Search } from "lucide-react";
-import { Project, Comment, Profile } from "@/types";
+import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home, Search, CreditCard, Loader2 } from "lucide-react";
+import { Project, Comment, Profile, Payment } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
@@ -23,12 +24,25 @@ const AdminPage = () => {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "projects";
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<"all" | "completed" | "pending" | "failed" | "cancelled">("all");
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState("");
   const [adminPasswordDialog, setAdminPasswordDialog] = useState<{
     open: boolean;
     userId: string | null;
     userName: string | null;
   }>({ open: false, userId: null, userName: null });
   const [adminPassword, setAdminPassword] = useState("");
+  const [refundDialog, setRefundDialog] = useState<{
+    open: boolean;
+    paymentId: string | null;
+    paymentKey: string | null;
+    orderId: string | null;
+    amount: number | null;
+  }>({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+  const [refundReason, setRefundReason] = useState("");
+  const [refundType, setRefundType] = useState<"full" | "partial">("full");
+  const [refundAmount, setRefundAmount] = useState<string>("");
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
   const ADMIN_PROMOTION_PASSWORD = "051414";
 
   // 관리자 권한 확인 (React Query)
@@ -125,6 +139,48 @@ const AdminPage = () => {
     staleTime: 30 * 1000, // 30초간 캐시
   });
 
+  // 결제 목록 가져오기 (React Query)
+  const { data: allPayments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
+    queryKey: ["adminPayments", paymentStatusFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from("payments")
+        .select(`
+          *,
+          profiles (id, name, email)
+        `);
+
+      if (paymentStatusFilter !== "all") {
+        query = query.eq("status", paymentStatusFilter);
+      }
+
+      const { data, error } = await query
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (error) throw error;
+      return (data || []) as Payment[];
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000, // 30초간 캐시
+  });
+
+  // 결제 검색 필터링
+  const payments = useMemo(() => {
+    if (!paymentSearchQuery.trim()) {
+      return allPayments;
+    }
+    const query = paymentSearchQuery.toLowerCase().trim();
+    return allPayments.filter((payment) => {
+      const profile = (payment as any).profiles;
+      const name = (profile?.name || "").toLowerCase();
+      const email = (profile?.email || "").toLowerCase();
+      const orderId = (payment.order_id || "").toLowerCase();
+      const userId = (payment.user_id || "").toLowerCase();
+      return name.includes(query) || email.includes(query) || orderId.includes(query) || userId.includes(query);
+    });
+  }, [allPayments, paymentSearchQuery]);
+
   // 사용자 검색 필터링
   const filteredUsers = useMemo(() => {
     if (!userSearchQuery.trim()) {
@@ -143,23 +199,31 @@ const AdminPage = () => {
     totalProjects: 0,
     totalComments: 0,
     totalUsers: 0,
+    totalPayments: 0,
+    totalRevenue: 0,
     hiddenProjects: 0,
     hiddenComments: 0,
   }, isLoading: isLoadingStats } = useQuery({
     queryKey: ["adminStats"],
     queryFn: async () => {
-      const [projectsResult, commentsResult, usersResult, hiddenProjectsResult, hiddenCommentsResult] = await Promise.all([
+      const [projectsResult, commentsResult, usersResult, paymentsResult, completedPaymentsResult, hiddenProjectsResult, hiddenCommentsResult] = await Promise.all([
         supabase.from("projects").select("*", { count: "exact", head: true }),
         supabase.from("project_comments").select("*", { count: "exact", head: true }),
         supabase.from("profiles").select("*", { count: "exact", head: true }),
+        supabase.from("payments").select("*", { count: "exact", head: true }),
+        supabase.from("payments").select("amount").eq("status", "completed"),
         supabase.from("projects").select("*", { count: "exact", head: true }).eq("is_hidden", true),
         supabase.from("project_comments").select("*", { count: "exact", head: true }).eq("is_hidden", true),
       ]);
+
+      const totalRevenue = completedPaymentsResult.data?.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) || 0;
 
       return {
         totalProjects: projectsResult.count || 0,
         totalComments: commentsResult.count || 0,
         totalUsers: usersResult.count || 0,
+        totalPayments: paymentsResult.count || 0,
+        totalRevenue: totalRevenue,
         hiddenProjects: hiddenProjectsResult.count || 0,
         hiddenComments: hiddenCommentsResult.count || 0,
       };
@@ -168,7 +232,7 @@ const AdminPage = () => {
     staleTime: 30 * 1000, // 30초간 캐시
   });
 
-  const loading = isLoadingAdmin || isLoadingProjects || isLoadingComments || isLoadingUsers || isLoadingStats;
+  const loading = isLoadingAdmin || isLoadingProjects || isLoadingComments || isLoadingUsers || isLoadingPayments || isLoadingStats;
 
   const toggleProjectVisibility = async (projectId: string, currentState: boolean) => {
     try {
@@ -421,6 +485,157 @@ const AdminPage = () => {
     }
   };
 
+  const handleRefund = async () => {
+    if (!refundDialog.paymentKey || !refundDialog.orderId || !refundDialog.amount || !refundDialog.paymentId) {
+      toast({
+        title: "오류",
+        description: "환불 정보가 올바르지 않습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 부분 환불인 경우 금액 검증
+    if (refundType === "partial") {
+      const partialAmount = parseInt(refundAmount.replace(/,/g, ""), 10);
+      if (isNaN(partialAmount) || partialAmount <= 0) {
+        toast({
+          title: "오류",
+          description: "환불 금액을 올바르게 입력해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (partialAmount >= refundDialog.amount) {
+        toast({
+          title: "오류",
+          description: "환불 금액은 결제 금액보다 작아야 합니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    try {
+      // Supabase Edge Function을 통해 환불 처리
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("로그인이 필요합니다.");
+      }
+
+      const requestBody: any = {
+        paymentKey: refundDialog.paymentKey,
+        cancelReason: refundReason || "관리자 환불 처리",
+      };
+
+      // 부분 환불인 경우 cancelAmount 추가
+      if (refundType === "partial") {
+        const partialAmount = parseInt(refundAmount.replace(/,/g, ""), 10);
+        requestBody.cancelAmount = partialAmount;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refund-payment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "환불 처리 실패" }));
+        throw new Error(errorData.message || "환불 처리에 실패했습니다.");
+      }
+
+      const result = await response.json();
+
+      // 결제 상태 업데이트
+      // 부분 환불도 cancelled 상태로 변경하여 환불 탭에 표시
+      const updateData: any = {
+        status: "cancelled",
+      };
+
+      // 부분 환불인 경우 환불 금액 저장
+      if (refundType === "partial") {
+        const partialAmount = parseInt(refundAmount.replace(/,/g, ""), 10);
+        // 기존 환불 금액이 있으면 누적
+        const { data: existingPayment } = await supabase
+          .from("payments")
+          .select("refunded_amount")
+          .eq("id", refundDialog.paymentId)
+          .single();
+        
+        const existingRefunded = existingPayment?.refunded_amount || 0;
+        updateData.refunded_amount = existingRefunded + partialAmount;
+      } else {
+        // 전체 환불인 경우 refunded_amount는 null (전체 금액 환불)
+        updateData.refunded_amount = null;
+      }
+
+      const { error: updateError } = await supabase
+        .from("payments")
+        .update(updateData)
+        .eq("id", refundDialog.paymentId);
+
+      if (updateError) {
+        console.error("결제 상태 업데이트 실패:", updateError);
+      }
+
+      // 전체 환불인 경우에만 등록 정보 삭제
+      if (refundType === "full" && refundDialog.paymentId) {
+        const { data: paymentData } = await supabase
+          .from("payments")
+          .select("user_id, curriculum_id, course_id")
+          .eq("id", refundDialog.paymentId)
+          .single();
+
+        if (paymentData) {
+          if (paymentData.curriculum_id) {
+            await supabase
+              .from("enrollments")
+              .delete()
+              .eq("user_id", paymentData.user_id)
+              .eq("curriculum_id", paymentData.curriculum_id);
+          }
+          if (paymentData.course_id) {
+            await supabase
+              .from("enrollments")
+              .delete()
+              .eq("user_id", paymentData.user_id)
+              .eq("course_id", paymentData.course_id);
+          }
+        }
+      }
+
+      toast({
+        title: "환불 완료",
+        description: refundType === "full" 
+          ? `전체 환불이 성공적으로 처리되었습니다.`
+          : `${parseInt(refundAmount.replace(/,/g, ""), 10).toLocaleString()}원 환불이 성공적으로 처리되었습니다.`,
+      });
+
+      // 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["adminPayments"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+
+      // 다이얼로그 닫기
+      setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+      setRefundReason("");
+      setRefundType("full");
+      setRefundAmount("");
+      setIsProcessingRefund(false);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "환불 처리에 실패했습니다.";
+      toast({
+        title: "환불 실패",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setIsProcessingRefund(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -457,7 +672,7 @@ const AdminPage = () => {
           </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">전체 프로젝트</CardTitle>
@@ -488,15 +703,32 @@ const AdminPage = () => {
                 <div className="text-2xl font-bold">{stats.totalUsers}</div>
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">전체 결제</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalPayments}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">총 매출</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.totalRevenue.toLocaleString()}원</div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Tabs */}
           <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="projects">프로젝트 관리</TabsTrigger>
               <TabsTrigger value="featured">홈페이지 프로젝트</TabsTrigger>
               <TabsTrigger value="comments">댓글 관리</TabsTrigger>
               <TabsTrigger value="users">사용자 관리</TabsTrigger>
+              <TabsTrigger value="payments">결제 관리</TabsTrigger>
             </TabsList>
 
             <TabsContent value="projects" className="mt-6">
@@ -712,6 +944,163 @@ const AdminPage = () => {
                 )}
               </div>
             </TabsContent>
+
+            <TabsContent value="payments" className="mt-6">
+              {/* 상태별 카테고리 탭 */}
+              <Tabs value={paymentStatusFilter} onValueChange={(value: "all" | "completed" | "pending" | "failed" | "cancelled") => setPaymentStatusFilter(value)} className="w-full mb-6">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="all">전체 상태</TabsTrigger>
+                  <TabsTrigger value="completed">성공</TabsTrigger>
+                  <TabsTrigger value="pending">대기</TabsTrigger>
+                  <TabsTrigger value="failed">실패</TabsTrigger>
+                  <TabsTrigger value="cancelled">환불</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="mb-4 flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="결제자 이름, 이메일, 주문번호로 검색..."
+                    value={paymentSearchQuery}
+                    onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground whitespace-nowrap">
+                  총 {payments.length}건
+                </p>
+              </div>
+              <div className="space-y-4">
+                {payments.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      {paymentStatusFilter === "all" ? "결제 내역이 없습니다." : `${paymentStatusFilter === "completed" ? "성공" : paymentStatusFilter === "pending" ? "대기" : paymentStatusFilter === "failed" ? "실패" : "취소/환불"} 상태의 결제 내역이 없습니다.`}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  payments.map((payment) => {
+                    const profile = (payment as any).profiles;
+                    const statusColors = {
+                      completed: "text-green-600",
+                      pending: "text-yellow-600",
+                      failed: "text-red-600",
+                      cancelled: "text-gray-600",
+                    };
+                    const statusLabels = {
+                      completed: "완료",
+                      pending: "대기",
+                      failed: "실패",
+                      cancelled: payment.refunded_amount && payment.refunded_amount > 0 && payment.refunded_amount < payment.amount ? "부분 환불" : "전체 환불",
+                    };
+
+                    return (
+                      <Card key={payment.id}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <CreditCard className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-base">
+                                  주문번호: {payment.order_id}
+                                </CardTitle>
+                              </div>
+                              <CardDescription className="mt-1 space-y-1">
+                                <div>
+                                  결제자: {profile?.name || "이름 없음"} ({profile?.email || payment.user_id})
+                                </div>
+                                <div>
+                                  결제자 ID: {payment.user_id}
+                                </div>
+                                <div>
+                                  결제 금액: {Number(payment.amount).toLocaleString()}원
+                                  {payment.refunded_amount && payment.refunded_amount > 0 && (
+                                    <span className="text-red-600 ml-2 font-semibold">
+                                      (부분 환불: {Number(payment.refunded_amount).toLocaleString()}원)
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  결제 시간: {new Date(payment.created_at).toLocaleString("ko-KR", {
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })}
+                                </div>
+                                {payment.curriculum_id && (
+                                  <div>
+                                    커리큘럼 ID: {payment.curriculum_id}
+                                  </div>
+                                )}
+                                {payment.course_id && (
+                                  <div>
+                                    코스 ID: {payment.course_id}
+                                  </div>
+                                )}
+                                {payment.payment_method && (
+                                  <div>
+                                    결제 수단: {payment.payment_method}
+                                  </div>
+                                )}
+                              </CardDescription>
+                            </div>
+                            <div className="ml-4 flex flex-col items-end gap-2">
+                              <div className={`text-sm font-semibold ${statusColors[payment.status] || "text-gray-600"}`}>
+                                {statusLabels[payment.status] || payment.status}
+                              </div>
+                              {payment.status === "completed" && payment.payment_key && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setRefundDialog({
+                                      open: true,
+                                      paymentId: payment.id,
+                                      paymentKey: payment.payment_key || null,
+                                      orderId: payment.order_id,
+                                      amount: Number(payment.amount) - (payment.refunded_amount || 0),
+                                    });
+                                    setRefundReason("");
+                                    setRefundType("full");
+                                    setRefundAmount("");
+                                  }}
+                                >
+                                  환불 처리
+                                </Button>
+                              )}
+                              {payment.status === "cancelled" && payment.refunded_amount && payment.refunded_amount > 0 && payment.refunded_amount < payment.amount && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setRefundDialog({
+                                      open: true,
+                                      paymentId: payment.id,
+                                      paymentKey: payment.payment_key || null,
+                                      orderId: payment.order_id,
+                                      amount: Number(payment.amount) - (payment.refunded_amount || 0),
+                                    });
+                                    setRefundReason("");
+                                    setRefundType("partial");
+                                    setRefundAmount("");
+                                  }}
+                                >
+                                  추가 환불
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
@@ -756,6 +1145,138 @@ const AdminPage = () => {
             </Button>
             <Button onClick={confirmAdminPromotion}>
               확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 환불 확인 다이얼로그 */}
+      <Dialog open={refundDialog.open} onOpenChange={(open) => {
+        if (!open && !isProcessingRefund) {
+          setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+          setRefundReason("");
+          setRefundType("full");
+          setRefundAmount("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>환불 처리</DialogTitle>
+            <DialogDescription>
+              정말 이 결제를 환불하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-1">주문번호</p>
+              <p className="text-sm text-muted-foreground">{refundDialog.orderId}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-1">결제 금액</p>
+              <p className="text-sm text-muted-foreground">{refundDialog.amount?.toLocaleString()}원</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">환불 유형</p>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="refundType"
+                    value="full"
+                    checked={refundType === "full"}
+                    onChange={(e) => {
+                      setRefundType(e.target.value as "full" | "partial");
+                      setRefundAmount("");
+                    }}
+                    disabled={isProcessingRefund}
+                  />
+                  <span className="text-sm">전체 환불</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="refundType"
+                    value="partial"
+                    checked={refundType === "partial"}
+                    onChange={(e) => {
+                      setRefundType(e.target.value as "full" | "partial");
+                      setRefundAmount("");
+                    }}
+                    disabled={isProcessingRefund}
+                  />
+                  <span className="text-sm">부분 환불</span>
+                </label>
+              </div>
+            </div>
+            {refundType === "partial" && (
+              <div>
+                <Label htmlFor="refundAmount" className="text-sm font-medium mb-1">
+                  환불 금액
+                </Label>
+                <Input
+                  id="refundAmount"
+                  type="text"
+                  placeholder="환불할 금액을 입력하세요"
+                  value={refundAmount}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "");
+                    setRefundAmount(value);
+                  }}
+                  onBlur={(e) => {
+                    const value = parseInt(e.target.value.replace(/,/g, ""), 10);
+                    if (!isNaN(value) && value > 0) {
+                      setRefundAmount(value.toLocaleString());
+                    }
+                  }}
+                  disabled={isProcessingRefund}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  최대 환불 가능 금액: {refundDialog.amount?.toLocaleString()}원
+                </p>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="refundReason" className="text-sm font-medium mb-1">
+                환불 사유
+              </Label>
+                <Input
+                  id="refundReason"
+                  placeholder="환불 사유를 입력하세요 (선택사항)"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  disabled={isProcessingRefund}
+                />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRefundDialog({ open: false, paymentId: null, paymentKey: null, orderId: null, amount: null });
+                setRefundReason("");
+                setRefundType("full");
+                setRefundAmount("");
+              }}
+              disabled={isProcessingRefund}
+            >
+              취소
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleRefund}
+              disabled={
+                isProcessingRefund || 
+                (refundType === "partial" && (!refundAmount || parseInt(refundAmount.replace(/,/g, ""), 10) <= 0 || parseInt(refundAmount.replace(/,/g, ""), 10) >= (refundDialog.amount || 0)))
+              }
+            >
+              {isProcessingRefund ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  환불 처리 중...
+                </>
+              ) : (
+                `${refundType === "full" ? "전체 환불" : "부분 환불"} 처리`
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

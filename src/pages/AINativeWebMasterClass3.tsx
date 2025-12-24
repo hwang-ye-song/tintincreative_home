@@ -353,7 +353,7 @@ const AINativeWebMasterClass3 = () => {
   return (
     <>
       <Helmet>
-        <title>틴틴 AI 로봇 아카데미 - AI Native Web Master Class</title>
+        <title>Realize Academy - AI Native Web Master Class</title>
         <meta name="description" content="디자인 툴 없이, 코딩 없이, 3주 만에 완성합니다. AI Native Web Development" />
       </Helmet>
       <style>{`
