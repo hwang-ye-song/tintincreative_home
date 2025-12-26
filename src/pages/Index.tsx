@@ -250,12 +250,20 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       <Helmet>
-        <title>AI & 로봇공학 아카데미 - 혁신적인 학습 경험</title>
+        <title>틴틴AI로봇아카데미 - AI & 로봇공학 아카데미</title>
         <meta name="description" content="AI와 로봇공학을 배우는 종합 교육 플랫폼. 기초부터 고급까지 체계적인 커리큘럼으로 전문가가 되세요." />
-        <meta property="og:title" content="AI & 로봇공학 아카데미" />
-        <meta property="og:description" content="AI와 로봇공학을 배우는 종합 교육 플랫폼" />
+        <meta property="og:title" content="틴틴AI로봇아카데미 - AI & 로봇공학 아카데미" />
+        <meta property="og:description" content="AI와 로봇공학을 배우는 종합 교육 플랫폼. 기초부터 고급까지 체계적인 커리큘럼으로 전문가가 되세요." />
         <meta property="og:type" content="website" />
+        <meta property="og:image" content={`${window.location.origin}/images/aice.jpg`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:site_name" content="틴틴AI로봇아카데미" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="틴틴AI로봇아카데미 - AI & 로봇공학 아카데미" />
+        <meta name="twitter:description" content="AI와 로봇공학을 배우는 종합 교육 플랫폼. 기초부터 고급까지 체계적인 커리큘럼으로 전문가가 되세요." />
+        <meta name="twitter:image" content={`${window.location.origin}/images/aice.jpg`} />
       </Helmet>
       <Navbar />
       
