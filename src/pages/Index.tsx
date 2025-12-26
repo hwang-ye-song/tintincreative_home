@@ -271,7 +271,7 @@ const Index = () => {
       <HeroCanvas />
 
       {/* Learning Roadmap */}
-      <section id="roadmap" className="relative py-20 px-4 min-h-screen flex flex-col items-center justify-center overflow-hidden" style={{ background: '#f0f7ff' }}>
+      <section id="roadmap" className="relative py-8 px-4 flex flex-col items-center justify-center overflow-hidden" style={{ background: '#f0f7ff' }}>
         {/* Background: Large glowing blobs */}
         <div className="absolute top-[-30%] left-[-20%] w-[80vw] h-[80vw] bg-blue-300/30 rounded-full filter blur-[150px] animate-pulse mix-blend-screen"></div>
         <div className="absolute bottom-[-30%] right-[-20%] w-[80vw] h-[80vw] bg-purple-300/30 rounded-full filter blur-[150px] animate-pulse mix-blend-screen" style={{ animationDelay: '2s' }}></div>
@@ -279,14 +279,14 @@ const Index = () => {
 
         <div className="container mx-auto max-w-7xl relative z-20">
           {/* Main Title */}
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-16 z-20 text-center relative leading-tight" style={{ color: '#1e293b' }}>
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-6 z-20 text-center relative leading-tight" style={{ color: '#1e293b' }}>
             AI 커리교육
           </h1>
           
           {/* Curriculum Stages Container */}
-          <div className="w-full max-w-7xl flex flex-col md:flex-row items-stretch justify-center gap-6 relative z-20 mb-16 px-4 md:px-0">
+          <div className="w-full max-w-7xl flex flex-col md:flex-row items-stretch justify-center gap-4 relative z-20 mb-6 px-4 md:px-0">
             {/* STAGE 1 Card */}
-            <div className="flex-1 min-w-0 relative p-4 md:p-6 lg:p-8 flex flex-col items-center text-center group animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-3 md:p-4 lg:p-5 flex flex-col items-center text-center group animate-fade-in"
                  style={{
                    flexBasis: 0,
                    background: 'linear-gradient(165deg, rgba(255, 255, 255, 0.8), rgba(240, 245, 255, 0.5))',
@@ -313,10 +313,10 @@ const Index = () => {
                   <span className="font-extrabold text-sm md:text-base lg:text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 1</span>
                 </div>
                 <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold mb-1 md:mb-2" style={{ color: '#3b267d' }}>AI BASIC</h2>
-                <p className="text-muted-foreground font-semibold mb-6 md:mb-8 lg:mb-10 text-xs md:text-sm lg:text-lg">(기초 다지기)</p>
+                <p className="text-muted-foreground font-semibold mb-3 md:mb-4 lg:mb-5 text-xs md:text-sm lg:text-lg">(기초 다지기)</p>
                 
                 {/* Stage 1 Visuals */}
-                <div className="flex justify-center items-center gap-2 md:gap-3 lg:gap-4 xl:gap-6 mb-6 md:mb-8 lg:mb-10 h-20 md:h-24 lg:h-28">
+                <div className="flex justify-center items-center gap-2 md:gap-3 lg:gap-4 xl:gap-6 mb-3 md:mb-4 lg:mb-5 h-16 md:h-20 lg:h-24">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-xl md:rounded-2xl border-2 flex items-center justify-center"
                        style={{
                          background: 'rgba(219, 234, 254, 0.5)',
@@ -336,8 +336,9 @@ const Index = () => {
                 </div>
                 
                 <p className="text-foreground/70 font-medium leading-relaxed mt-auto text-xs md:text-sm lg:text-base">
-                  AI 블록코딩 기초를 탄탄히<br />
-                  입문하는 기초 강의의 정석
+                  CosPro3급(파이썬 기초) 
+                  <br />AICE(인공지능 기초)<br />
+                  자격증 취득
                 </p>
               </div>
             </div>
@@ -361,7 +362,7 @@ const Index = () => {
             </div>
             
             {/* STAGE 2 Card */}
-            <div className="flex-1 min-w-0 relative p-4 md:p-6 lg:p-8 flex flex-col items-center text-center animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-3 md:p-4 lg:p-5 flex flex-col items-center text-center animate-fade-in"
                  style={{
                    animationDelay: '0.1s',
                    flexBasis: 0,
@@ -389,10 +390,10 @@ const Index = () => {
                   <span className="font-extrabold text-sm md:text-base lg:text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 2</span>
                 </div>
                 <h2 className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-extrabold mb-1 md:mb-2 break-keep leading-tight" style={{ color: '#3b267d' }}>SERVICE & AGENT AI</h2>
-                <p className="text-muted-foreground font-semibold mb-6 md:mb-8 lg:mb-10 text-xs md:text-sm lg:text-lg">(소프트웨어 AI 통합)</p>
+                <p className="text-muted-foreground font-semibold mb-3 md:mb-4 lg:mb-5 text-xs md:text-sm lg:text-lg">(소프트웨어 AI 통합)</p>
                 
                 {/* Stage 2 Visuals */}
-                <div className="flex justify-center items-center relative mb-6 md:mb-8 lg:mb-10 h-20 md:h-24 lg:h-28 w-full overflow-hidden">
+                <div className="flex justify-center items-center relative mb-3 md:mb-4 lg:mb-5 h-16 md:h-20 lg:h-24 w-full overflow-hidden">
                   {/* Phone Frame */}
                   <div className="w-12 h-20 sm:w-14 sm:h-22 md:w-16 md:h-24 lg:w-20 lg:h-32 rounded-[1.5rem] md:rounded-[1.75rem] lg:rounded-[2rem] flex flex-col items-center justify-start absolute left-1/2 transform -translate-x-[2.5rem] sm:-translate-x-[3rem] md:-translate-x-[3.5rem] lg:-translate-x-14 z-10 shadow-lg"
                        style={{
@@ -432,8 +433,9 @@ const Index = () => {
                 </div>
                 
                 <p className="text-foreground/70 font-medium leading-relaxed mt-auto pt-2 md:pt-3 lg:pt-4 text-xs md:text-sm lg:text-base">
-                  AI 전용헤어 챗봇구축<br />
-                  AI(소프트웨어 AI 통합)
+                  Chat bot 제작<br />
+                  WEB & Mobile APP디자인<br />
+                  Vision AI 학습
                 </p>
               </div>
             </div>
@@ -457,7 +459,7 @@ const Index = () => {
             </div>
             
             {/* STAGE 3 Card */}
-            <div className="flex-1 min-w-0 relative p-4 md:p-6 lg:p-8 flex flex-col items-center text-center animate-fade-in"
+            <div className="flex-1 min-w-0 relative p-3 md:p-4 lg:p-5 flex flex-col items-center text-center animate-fade-in"
                  style={{
                    animationDelay: '0.2s',
                    flexBasis: 0,
@@ -485,10 +487,10 @@ const Index = () => {
                   <span className="font-extrabold text-sm md:text-base lg:text-xl tracking-widest" style={{ color: '#00c6ff', textShadow: '0 0 10px rgba(0, 198, 255, 0.3)' }}>STAGE 3</span>
                 </div>
                 <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold mb-1 md:mb-2" style={{ color: '#3b267d' }}>PHYSICAL AI</h2>
-                <p className="text-muted-foreground font-semibold mb-6 md:mb-8 lg:mb-10 text-xs md:text-sm lg:text-lg">(실전 하드웨어 적용)</p>
+                <p className="text-muted-foreground font-semibold mb-3 md:mb-4 lg:mb-5 text-xs md:text-sm lg:text-lg">(실전 하드웨어 적용)</p>
                 
                 {/* Stage 3 Visuals */}
-                <div className="flex justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 mb-4 md:mb-5 lg:mb-6 w-full px-2 md:px-3 lg:px-4 h-20 md:h-24 lg:h-28 items-end">
+                <div className="flex justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 mb-3 md:mb-4 lg:mb-5 w-full px-2 md:px-3 lg:px-4 h-16 md:h-20 lg:h-24 items-end">
                   {/* R1 Mini Box */}
                   <div className="flex flex-col items-center transform rotate-[-5deg]">
                     <div className="w-14 h-12 sm:w-16 sm:h-14 md:w-20 md:h-16 lg:w-24 lg:h-20 rounded-lg sm:rounded-xl shadow-xl flex items-center justify-center relative overflow-hidden border-b-[3px] sm:border-b-[4px] md:border-b-[5px] lg:border-b-[6px]"
@@ -518,21 +520,21 @@ const Index = () => {
                 </div>
                 
                 <p className="text-foreground/70 font-medium leading-relaxed mt-auto text-xs md:text-sm lg:text-base">
-                  LeRobot (R1) 키트를 활용한<br />
-                  실전 (실전 하드웨어 적용)
+                  자율주행 로봇 실습<br />
+                  6축 다관절 로봇팔 실습
                 </p>
               </div>
             </div>
           </div>
           
           {/* Footer Text */}
-          <footer className="text-center text-muted-foreground font-medium text-base max-w-3xl mx-auto leading-relaxed z-20 px-4 mb-8">
+          <footer className="text-center text-muted-foreground font-medium text-base max-w-3xl mx-auto leading-relaxed z-20 px-4 mb-4">
             애플리케이션 개발자를 꿈꾸는 분들을 위한 고품격 AI 교육 커리큘럼을 함께하며<br className="hidden md:block" />
             어떤 해결 문제 정의를 생각한 게 목표와 성장에 중시능합니다.
           </footer>
           
           {/* 자세히 보기 버튼 */}
-          <div className="text-center mt-8 z-20">
+          <div className="text-center mt-4 z-20">
             <Button 
               onClick={scrollToCurriculum}
               size="lg" 
