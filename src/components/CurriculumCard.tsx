@@ -16,7 +16,7 @@ interface CurriculumCardProps {
 
 export const CurriculumCard = ({ id, title, description, level, duration, icon, image }: CurriculumCardProps) => {
   return (
-    <Card className="group hover:shadow-lg transition-all hover-scale h-full flex flex-col min-h-[480px] w-full">
+    <Card className="group hover:shadow-lg transition-all hover-scale h-[480px] flex flex-col w-full">
       <CardHeader className="space-y-2 pb-2 flex-shrink-0">
         {image && (
           <div className="overflow-hidden rounded-xl border bg-muted/40 mb-2 aspect-video w-full max-h-[180px]">

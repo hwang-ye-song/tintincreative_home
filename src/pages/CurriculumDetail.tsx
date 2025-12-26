@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -53,12 +53,19 @@ const fetchCurriculum = async (id: string): Promise<Curriculum | null> => {
 
 const CurriculumDetail = () => {
   const { id: curriculumId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    // robot ID는 별도 페이지로 리다이렉트
+    if (curriculumId === "robot") {
+      navigate("/curriculum/robot", { replace: true });
+      return;
+    }
+
     const loadCurriculum = async () => {
       if (!curriculumId) {
         setIsLoading(false);
@@ -78,7 +85,7 @@ const CurriculumDetail = () => {
     };
 
     loadCurriculum();
-  }, [curriculumId]);
+  }, [curriculumId, navigate]);
 
   useEffect(() => {
     const handleScroll = () => {

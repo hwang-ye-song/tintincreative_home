@@ -133,7 +133,7 @@ const Index = () => {
     }
   };
 
-  const categories = ["전체", "AI 기초", "AI 활용", "로봇"];
+  const categories = ["전체", "AI 기초", "AI 활용", "AI로봇"];
   
   const curriculumData = [
     {
@@ -198,13 +198,13 @@ const Index = () => {
     },
     {
       id: "robot",
-      title: "로봇공학 트랙 (Physical AI)",
-      description: "지능형 로봇을 만들고 프로그래밍하세요",
+      title: "로봇공학 트랙 - 자율주행",
+      description: "ROS1 Melodic 환경 구축부터 SLAM, Navigation, 그리고 실전 자율주행 프로젝트까지",
       level: "고급",
-      duration: "20주",
+      duration: "5주",
       icon: <Bot className="h-6 w-6" />,
       image: "/images/lerobot.gif",
-      category: "로봇",
+      category: "AI로봇",
     },
     {
       id: "robot-2",
@@ -214,7 +214,7 @@ const Index = () => {
       duration: "18주",
       icon: <Cpu className="h-6 w-6" />,
       image: "/images/lerobot.gif",
-      category: "로봇",
+      category: "AI로봇",
     },
   ];
 
@@ -590,7 +590,7 @@ const Index = () => {
               {filteredCurriculums.map((curriculum, index) => (
                 <div
                   key={`${selectedCategory}-${curriculum.id}`}
-                  className="min-w-[280px] sm:min-w-[300px] md:min-w-[320px] lg:min-w-[340px] snap-start"
+                  className="w-[280px] sm:w-[300px] md:w-[320px] lg:w-[340px] snap-start flex-shrink-0"
                   style={{
                     animation: 'fadeInScale 0.5s ease-out forwards',
                     animationDelay: `${index * 0.1}s`,

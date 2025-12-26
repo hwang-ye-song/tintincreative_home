@@ -167,7 +167,7 @@ export const HeroCanvas = () => {
             </span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in backdrop-blur-sm">
-            젠슨황이 예견한 Embodied AI의 미래.<br className="hidden md:block" />
+            다가오는 Physical AI의 미래.<br className="hidden md:block" />
             당신의 코드가 현실의 움직임이 되는 과정을 경험하세요.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in pointer-events-auto">
