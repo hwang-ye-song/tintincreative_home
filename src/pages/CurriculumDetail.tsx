@@ -146,11 +146,11 @@ const CurriculumDetail = () => {
         <meta property="og:title" content={curriculum.title} />
         <meta property="og:description" content={curriculum.description} />
         <meta property="og:type" content="article" />
-        <meta property="og:image" content={`${window.location.origin}/images/og-image.jpg`} />
+        <meta property="og:image" content={`${window.location.origin}/images/og_image_one.png`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content={`${window.location.origin}/images/og-image.jpg`} />
+        <meta name="twitter:image" content={`${window.location.origin}/images/og_image_one.png`} />
       </Helmet>
       <Navbar />
       
