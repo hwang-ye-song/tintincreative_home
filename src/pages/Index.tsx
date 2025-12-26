@@ -153,7 +153,7 @@ const Index = () => {
       level: "초급",
       duration: "10주",
       icon: <Code className="h-6 w-6" />,
-      image: "/images/aice.jpg",
+      image: "/images/COSPRO.jpg",
       category: "AI 기초",
     },
     {

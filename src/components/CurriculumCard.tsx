@@ -19,7 +19,7 @@ export const CurriculumCard = ({ id, title, description, level, duration, icon, 
     <Card className="group hover:shadow-lg transition-all hover-scale h-[480px] flex flex-col w-full">
       <CardHeader className="space-y-2 pb-2 flex-shrink-0">
         {image && (
-          <div className="overflow-hidden rounded-xl border bg-muted/40 mb-2 aspect-video w-full max-h-[180px]">
+          <div className="overflow-hidden rounded-xl border bg-white mb-2 w-full h-[200px]">
             <img
               src={image}
               alt={`${title} 미리보기`}
