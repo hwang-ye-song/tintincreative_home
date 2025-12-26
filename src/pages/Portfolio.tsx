@@ -244,6 +244,11 @@ const Portfolio = () => {
         <meta property="og:title" content="포트폴리오 - 학생 프로젝트 모음" />
         <meta property="og:description" content="학생들이 만든 AI와 로봇공학 프로젝트를 확인하세요" />
         <meta property="og:type" content="website" />
+        <meta property="og:image" content={`${window.location.origin}/images/og-image.jpg`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content={`${window.location.origin}/images/og-image.jpg`} />
       </Helmet>
       <Navbar />
       
