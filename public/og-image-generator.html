@@ -30,88 +30,73 @@
         .og-image {
             width: 1200px;
             height: 630px;
-            background: hsl(0, 0%, 100%);
+            background: linear-gradient(to bottom, 
+                hsl(200, 100%, 98%) 0%, 
+                hsl(0, 0%, 100%) 20%, 
+                hsl(0, 0%, 100%) 80%, 
+                hsl(200, 100%, 98%) 100%);
             position: relative;
             overflow: hidden;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             border-radius: 8px;
-        }
-        
-        /* Canvas 배경 효과 (파티클 스타일) */
-        .og-image::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 30%, hsla(210, 100%, 50%, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, hsla(200, 95%, 50%, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, hsla(180, 100%, 50%, 0.1) 0%, transparent 50%);
-            z-index: 1;
-        }
-        
-        /* 연결선 효과 */
-        .og-image::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: 
-                linear-gradient(45deg, transparent 40%, hsla(210, 100%, 50%, 0.1) 50%, transparent 60%),
-                linear-gradient(-45deg, transparent 40%, hsla(200, 95%, 50%, 0.1) 50%, transparent 60%);
-            z-index: 1;
         }
         
         .content {
             position: relative;
             z-index: 2;
             text-align: center;
-            padding: 60px;
+            padding: 80px 100px;
             width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         .badge {
             display: inline-block;
-            padding: 8px 20px;
-            background: hsla(180, 100%, 50%, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 9999px;
-            margin-bottom: 30px;
-            font-size: 16px;
+            padding: 10px 24px;
+            background: hsl(120, 40%, 70%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            font-size: 18px;
             font-weight: 600;
-            color: hsl(180, 100%, 50%);
+            color: white;
+        }
+        
+        .title-bar {
+            width: 100%;
+            max-width: 1000px;
+            background: linear-gradient(to right, 
+                hsl(180, 100%, 50%) 0%, 
+                hsl(200, 100%, 45%) 100%);
+            padding: 30px 50px;
+            border-radius: 8px;
+            margin-bottom: 40px;
         }
         
         .academy-name {
-            font-size: 72px;
+            font-size: 64px;
             font-weight: 900;
-            margin-bottom: 30px;
             letter-spacing: -0.02em;
-            line-height: 1.1;
-            background: linear-gradient(135deg, hsl(200, 95%, 50%) 0%, hsl(180, 100%, 50%) 50%, hsl(200, 95%, 50%) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            line-height: 1.2;
+            color: hsl(0, 0%, 0%);
         }
         
         .subtitle {
             font-size: 28px;
             font-weight: 500;
-            margin-bottom: 20px;
-            color: hsl(220, 15%, 35%);
-            line-height: 1.6;
+            margin-bottom: 30px;
+            color: hsl(0, 0%, 20%);
+            line-height: 1.7;
         }
         
         .description {
             font-size: 22px;
             font-weight: 400;
-            color: hsl(220, 15%, 45%);
+            color: hsl(0, 0%, 40%);
             line-height: 1.6;
         }
         
@@ -151,7 +136,9 @@
         <div class="og-image" id="ogImage">
             <div class="content">
                 <div class="badge">차세대 학습</div>
-                <div class="academy-name">틴틴AI로봇아카데미</div>
+                <div class="title-bar">
+                    <div class="academy-name">틴틴AI로봇아카데미</div>
+                </div>
                 <div class="subtitle">젠슨황이 예견한 Embodied AI의 미래.<br>당신의 코드가 현실의 움직임이 되는 과정을 경험하세요.</div>
                 <div class="description">
                     AI와 로봇공학을 배우는 종합 교육 플랫폼
