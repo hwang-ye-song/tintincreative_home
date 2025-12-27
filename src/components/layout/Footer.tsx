@@ -38,7 +38,7 @@ export const Footer = () => {
               </li>
               <li>
                 <Link to="/faculty" onClick={handleLinkClick} className="hover:text-accent transition-colors">
-                  교수진
+                  강사진
                 </Link>
               </li>
               <li>

@@ -208,7 +208,7 @@ const Index = () => {
     },
     {
       id: "robot-2",
-      title: "로봇 제어 및 센서 통합",
+      title: "로봇공학 트랙 - 6축 다관절 로봇팔",
       description: "로봇 하드웨어 제어와 다양한 센서 활용",
       level: "고급",
       duration: "18주",
@@ -754,46 +754,43 @@ const Index = () => {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center mb-12 animate-fade-in">
-            <h2 className="font-heading text-4xl font-bold mb-4">교수진 소개</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              업계 전문가들과 경험 많은 교육자들로부터 배우세요
-            </p>
+            <h2 className="font-heading text-4xl font-bold mb-4">강사진 소개</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div className="animate-fade-in hover-scale">
               <FacultyCard
-                name="박지훈 박사"
+                name="강경호"
                 title="AI 프로그램 책임자"
                 expertise={["머신러닝", "딥러닝", "컴퓨터 비전"]}
-                bio="AI 연구 및 교육 분야 15년 경력"
-                email="j.park@academy.ai"
+                bio=""
+                email=""
               />
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
               <FacultyCard
-                name="마리아 가르시아 교수"
-                title="로봇공학 책임자"
-                expertise={["로봇공학", "임베디드 시스템", "제어 이론"]}
-                bio="자율 시스템 전문 전직 NASA 로봇공학 엔지니어"
-                email="m.garcia@academy.ai"
+                name="신옥철"
+                title="AI 윤리 자문"
+                expertise={["AI 윤리", "정책", "사회적 영향"]}
+                bio=""
+                email=""
               />
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
               <FacultyCard
-                name="리사 웡 박사"
+                name="황예성"
                 title="NLP 전문가"
                 expertise={["자연어 처리", "AI 윤리", "데이터 과학"]}
-                bio="자연어 처리 분야 연구 논문 발표"
-                email="l.wong@academy.ai"
+                bio=""
+                email=""
               />
             </div>
           </div>
           
           <div className="text-center animate-fade-in">
-            <Link to="/faculty">
+            <Link to="/faculty" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Button variant="outline" size="lg" className="hover-scale">
-                전체 교수진 보기
+                전체 강사진 보기
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

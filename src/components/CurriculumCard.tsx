@@ -17,7 +17,7 @@ interface CurriculumCardProps {
 export const CurriculumCard = ({ id, title, description, level, duration, icon, image }: CurriculumCardProps) => {
   return (
     <Card className="group hover:shadow-lg transition-all hover-scale h-[480px] flex flex-col w-full">
-      <CardHeader className="space-y-2 pb-2 flex-shrink-0">
+      <CardHeader className="space-y-1.5 pb-1.5 flex-shrink-0">
         {image && (
           <div className="overflow-hidden rounded-xl border bg-white mb-2 w-full h-[200px]">
             <img
@@ -28,15 +28,15 @@ export const CurriculumCard = ({ id, title, description, level, duration, icon, 
             />
           </div>
         )}
-        <div className="flex items-center gap-2 mb-1.5">
+        <div className="flex items-center gap-2 mb-1">
           <div className="text-primary scale-90">{icon}</div>
           <span className="text-[10px] sm:text-xs font-medium text-accent uppercase tracking-wide">{level}</span>
         </div>
-        <CardTitle className="font-heading text-base sm:text-lg md:text-xl leading-tight line-clamp-2 min-h-[3rem]">{title}</CardTitle>
-        <CardDescription className="text-xs sm:text-sm md:text-base line-clamp-3 min-h-[3.5rem]">{description}</CardDescription>
+        <CardTitle className="font-heading text-sm sm:text-base md:text-lg leading-tight line-clamp-2 min-h-[2.5rem]">{title}</CardTitle>
+        <CardDescription className="text-xs sm:text-sm md:text-base line-clamp-3 min-h-[3rem]">{description}</CardDescription>
       </CardHeader>
-      <CardContent className="pt-0 pb-2 flex-shrink-0">
-        <p className="text-xs sm:text-sm md:text-base text-muted-foreground">기간: {duration}</p>
+      <CardContent className="pt-0 pb-1.5 flex-shrink-0">
+        <p className="text-[10px] sm:text-xs md:text-xs text-muted-foreground">기간: {duration}</p>
       </CardContent>
       <CardFooter className="pt-2 mt-auto flex-shrink-0">
         <Link to={`/curriculum/${id}`} className="w-full">
