@@ -137,6 +137,16 @@ const Index = () => {
   
   const curriculumData = [
     {
+      id: "basic-2",
+      title: "AI 프로그래밍 입문",
+      description: "Python과 머신러닝 라이브러리를 활용한 실습",
+      level: "초급",
+      duration: "6주",
+      icon: <Code className="h-6 w-6" />,
+      image: "/images/COSPRO.jpg",
+      category: "AI 기초",
+    },
+    {
       id: "basic",
       title: "기초 트랙 (Perception AI)",
       description: "AI와 머신러닝의 기초를 배우세요",
@@ -144,16 +154,6 @@ const Index = () => {
       duration: "12주",
       icon: <Lightbulb className="h-6 w-6" />,
       image: "/images/aice.jpg",
-      category: "AI 기초",
-    },
-    {
-      id: "basic-2",
-      title: "AI 프로그래밍 입문",
-      description: "Python과 머신러닝 라이브러리를 활용한 실습",
-      level: "초급",
-      duration: "10주",
-      icon: <Code className="h-6 w-6" />,
-      image: "/images/COSPRO.jpg",
       category: "AI 기초",
     },
     {
