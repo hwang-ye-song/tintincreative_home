@@ -21,6 +21,7 @@ import AINativeWebMasterClass from "./pages/AINativeWebMasterClass";
 import AINativeWebMasterClass3 from "./pages/AINativeWebMasterClass3";
 import OMOR1miniMasterClass from "./pages/OMOR1miniMasterClass";
 import ChatbotMasterClass from "./pages/ChatbotMasterClass";
+import AIPythonMasterClass from "./pages/AIPythonMasterClass";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFail from "./pages/PaymentFail";
 import PartialPayment from "./pages/PartialPayment";
@@ -125,6 +126,7 @@ const App = () => (
             <Route path="/curriculum/application-3" element={<AINativeWebMasterClass3 />} />
             <Route path="/curriculum/application-4" element={<ChatbotMasterClass />} />
             <Route path="/curriculum/robot" element={<OMOR1miniMasterClass />} />
+            <Route path="/curriculum/basic-2" element={<AIPythonMasterClass />} />
             <Route path="/curriculum/:id" element={<CurriculumDetail />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/portfolio/create" element={<CreateProject />} />

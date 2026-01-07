@@ -8,14 +8,14 @@ const facultyMembers = [
     name: "강경호",
     title: "AI 프로그램 책임자",
     expertise: ["머신러닝", "딥러닝", "컴퓨터 비전"],
-    bio: "",
+    bio: "삼성전자 책임연구원 출신",
     email: ""
   },
   {
     name: "신옥철",
     title: "AI 윤리 자문",
     expertise: ["AI 윤리", "정책", "사회적 영향"],
-    bio: "",
+    bio: "한양대학교 교수",
     email: ""
   },
   {

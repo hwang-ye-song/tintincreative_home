@@ -70,6 +70,11 @@ const CurriculumDetail = () => {
       navigate("/curriculum/application-4", { replace: true });
       return;
     }
+    // basic-2 ID는 AI 프로그래밍 입문 페이지로 리다이렉트
+    if (curriculumId === "basic-2") {
+      navigate("/curriculum/basic-2", { replace: true });
+      return;
+    }
 
     const loadCurriculum = async () => {
       if (!curriculumId) {
