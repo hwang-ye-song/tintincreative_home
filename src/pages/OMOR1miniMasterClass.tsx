@@ -1,39 +1,189 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { 
   Bot, Map, Terminal, CheckCircle, 
-  ArrowRight, Cpu, Layers
+  ArrowLeft, Cpu, Layers, Radar, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaymentButton } from "@/components/PaymentButton";
 
-/* --- Visual Components (CSS Art Replacement for Images) --- */
+/* --- Robotics Hero Composite Component --- */
+export const RoboticsHeroComposite = () => {
+  return (
+    <div className="relative w-full max-w-6xl mx-auto h-[450px] md:h-[550px] perspective-1000 flex flex-col items-center justify-center">
+      <div className="relative w-full h-full flex items-center justify-center p-4 md:p-10 overflow-visible">
+        {/* Background Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gradient-to-br from-primary/20 to-accent/20 rounded-full blur-[80px] -z-10" />
 
-const VisualPlaceholder = ({ icon: Icon, color, title, sub }: { icon: React.ElementType; color: string; title: string; sub: string }) => (
-  <div className="w-full h-full min-h-[300px] bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center justify-center relative overflow-hidden group">
-    <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-5 group-hover:opacity-10 transition-opacity duration-500`} />
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-white rounded-full shadow-2xl flex items-center justify-center z-10 animate-pulse">
-        <Icon size={64} className="text-slate-800" />
+        <div className="relative w-full h-full flex items-center justify-center z-30">
+          {/* Left Floating Card: LiDAR Data */}
+          <div className="hidden md:block w-[180px] bg-[#2D2D2D] dark:bg-[#1E1E1E] rounded-xl shadow-2xl border border-slate-700/50 p-4 z-40 animate-float-medium transform -rotate-6 absolute left-4 md:left-10 bottom-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 bg-red-500/20 text-red-400 rounded-lg"><Radar size={14} /></div>
+              <span className="text-xs font-bold text-white">LiDAR View</span>
+            </div>
+            <div className="relative w-full aspect-square bg-[#0a0a0a] rounded-full border border-green-500/30 flex items-center justify-center overflow-hidden">
+               <div className="absolute inset-0 border border-green-500/10 rounded-full scale-50" />
+               <div className="absolute inset-0 border border-green-500/10 rounded-full scale-75" />
+               {/* Crosshair */}
+               <div className="absolute top-1/2 left-0 w-full h-[1px] bg-green-500/70 transform -translate-y-1/2" />
+               <div className="absolute left-1/2 top-0 h-full w-[1px] bg-green-500/70 transform -translate-x-1/2" />
+               {/* Scanning Line */}
+               <div 
+                 className="absolute w-full h-[1px] bg-green-500/50 top-1/2 left-0"
+                 style={{
+                   animation: 'spin 2s linear infinite'
+                 }}
+               />
+               <div className="absolute top-2 left-10 w-1.5 h-1.5 bg-red-500 rounded-full" />
+               <div className="absolute bottom-4 right-8 w-1.5 h-1.5 bg-red-500 rounded-full" />
+               <div className="absolute top-8 right-2 w-1.5 h-1.5 bg-red-500 rounded-full" />
+            </div>
+          </div>
+
+          {/* Main Screen: ROS Terminal & Simulation (Center) */}
+          <div className="relative w-[82%] md:w-[70%] lg:w-[62%] max-w-3xl bg-[#1E1E1E] dark:bg-[#0a0a0a] rounded-2xl shadow-2xl border border-border/50 overflow-hidden z-30 animate-float-slow group">
+            {/* Header */}
+            <div className="bg-[#2D2D2D] border-b border-black/20 px-4 py-3 flex items-center gap-2">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <div className="w-3 h-3 rounded-full bg-amber-500" />
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+              </div>
+              <div className="ml-4 text-xs text-muted-foreground font-mono flex items-center gap-2">
+                <Terminal size={12} /> student@omo-r1mini:~/catkin_ws
+              </div>
+            </div>
+            {/* Content */}
+            <div className="p-0 flex flex-col h-[320px]">
+              {/* Split View: Terminal & Sim */}
+              <div className="flex-1 flex">
+                  {/* Left: Terminal */}
+                  <div className="w-1/2 p-4 font-mono text-xs text-green-400 border-r border-white/10 overflow-hidden bg-[#1E1E1E]">
+                      <p className="opacity-50">$ roslaunch omo_r1mini_bringup omo_r1mini_robot.launch</p>
+                      <p className="text-white mt-2">[INFO] [16321.22] Controller Spawner: Loaded controllers: joint_state_controller, diff_drive_controller</p>
+                      <p className="text-white">[INFO] [16321.45] OMO R1mini Connected.</p>
+                      <p className="text-blue-400 mt-2">$ roslaunch turtlebot3_slam turtlebot3_slam.launch</p>
+                      <p className="text-white">[INFO] [16345.11] SLAM: Gmapping</p>
+                      <p className="text-yellow-400 mt-2">[WARN] Map update loop started.</p>
+                      <div className="mt-2 animate-pulse">_</div>
+                  </div>
+                  
+                  {/* Right: Simulation View */}
+                  <div className="w-1/2 bg-[#000] relative flex items-center justify-center overflow-hidden">
+                      {/* Background Image: Point Cloud Map */}
+                      <img 
+                        src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80" 
+                        alt="LiDAR Point Cloud Map"
+                        className="absolute inset-0 w-full h-full object-cover opacity-60"
+                        referrerPolicy="no-referrer"
+                      />
+                      
+                      {/* Grid Overlay */}
+                      <div 
+                        className="absolute inset-0 opacity-30"
+                        style={{
+                          backgroundImage: 'linear-gradient(hsl(var(--primary)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)',
+                          backgroundSize: '30px 30px'
+                        }}
+                      ></div>
+                      
+                      {/* Scanning Effect */}
+                      <div 
+                        className="absolute inset-0 bg-gradient-to-tr from-transparent via-primary/20 to-transparent origin-center rounded-full"
+                        style={{
+                          animation: 'spin 4s linear infinite',
+                          transform: 'scale(2.5)'
+                        }}
+                      />
+                      
+                      {/* Robot Icon */}
+                      <div className="relative z-10 w-10 h-10 bg-primary rounded-full flex items-center justify-center border-2 border-white" style={{ boxShadow: '0 0 30px hsl(var(--primary))' }}>
+                          <Bot className="text-white" size={20} />
+                          <div className="absolute inset-0 border border-white/50 rounded-full animate-ping" />
+                      </div>
+                      
+                      {/* Path Line */}
+                      <div className="absolute top-1/2 left-1/2 w-32 h-1 bg-gradient-to-r from-primary to-transparent transform -translate-y-1/2 translate-x-5 rotate-12 rounded-full blur-[1px]" />
+                      
+                      {/* UI Overlay */}
+                      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur px-2 py-1 rounded text-[10px] text-green-400 font-mono border border-green-900">
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                          LiDAR: Active
+                      </div>
+                  </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Floating Card: SLAM Map */}
+          <div className="hidden md:block w-[180px] bg-white rounded-xl shadow-2xl border border-slate-200 p-4 z-40 animate-float-fast transform rotate-6 absolute right-4 md:right-10 bottom-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 bg-accent/20 text-accent rounded-lg"><Map size={14} /></div>
+              <span className="text-xs font-bold text-slate-800">SLAM Map</span>
+            </div>
+            <div className="w-full bg-muted rounded-lg h-24 p-2 relative overflow-hidden">
+               <div className="absolute top-2 left-2 right-2 bottom-2 border-2 border-border border-dashed rounded" />
+               <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-accent rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg" />
+               <div className="absolute top-1/2 left-1/2 w-16 h-0.5 bg-accent/50 transform rotate-45 origin-left" />
+               <div className="absolute bottom-2 right-2 text-[8px] text-muted-foreground font-mono">
+                  Global_Costmap
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    {/* Decorative Circles */}
-    <div className="absolute top-1/4 left-1/4 w-20 h-20 bg-white rounded-full opacity-50 blur-xl" />
-    <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-white rounded-full opacity-50 blur-xl" />
-    
-    <div className="absolute bottom-6 text-center z-10">
-        <p className="font-bold text-slate-800">{title}</p>
-        <p className="text-xs text-slate-400">{sub}</p>
+  );
+}
+
+/* --- Course Visual Component --- */
+const CourseVisual = ({ imageSrc, alt, title, sub, icon: FallbackIcon = Sparkles }: { imageSrc: string; alt: string; title: string; sub: string; icon?: React.ElementType }) => {
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <div className="w-full h-full min-h-[400px] bg-slate-900 rounded-[32px] border border-border relative overflow-hidden group shadow-xl">
+      <div className="absolute inset-0">
+        {!imgError ? (
+          <img 
+            src={imageSrc} 
+            alt={alt} 
+            onError={() => setImgError(true)}
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700 ease-out"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary rounded-full filter blur-[100px] opacity-20" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent rounded-full filter blur-[100px] opacity-20" />
+            <div className="flex flex-col items-center justify-center text-muted-foreground">
+              {FallbackIcon && <FallbackIcon size={64} strokeWidth={1} />}
+            </div>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent opacity-80 mix-blend-multiply" />
+      </div>
+      
+      <div className="absolute bottom-6 left-6 right-6 p-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500 shadow-lg">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_10px_hsl(var(--primary))]" />
+          <p className="text-xs font-semibold tracking-wider uppercase text-primary">{sub}</p>
+        </div>
+        <p className="font-bold text-xl leading-tight text-white">{title}</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* --- Main Page Component --- */
 
 const OMOR1miniMasterClass = () => {
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -46,7 +196,7 @@ const OMOR1miniMasterClass = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-[#00AFFF] selection:text-white">
+    <div className="min-h-screen bg-background font-sans">
       <Helmet>
         <title>로봇공학 트랙 - 자율주행 - 틴틴AI로봇아카데미</title>
         <meta name="description" content="ROS1 Melodic 환경 구축부터 SLAM, Navigation, 그리고 실전 자율주행 프로젝트까지. 로봇 제어의 미래, 지금 시작됩니다." />
@@ -54,28 +204,40 @@ const OMOR1miniMasterClass = () => {
 
       {/* Decorative Background */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-gradient-to-br from-[#00AFFF] to-[#7B61FF] rounded-full opacity-[0.05] blur-[100px]" />
+        <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-gradient-to-br from-primary/5 to-accent/5 rounded-full blur-[100px]" />
       </div>
 
       <Navbar />
       
       <div className="pt-24 pb-12 px-4 bg-gradient-to-br from-background to-primary/5">
         <div className="container mx-auto max-w-6xl">
-          <Link to="/?section=curriculum" className="inline-flex items-center text-muted-foreground hover:text-primary mb-6 transition-colors animate-fade-in">
-            <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
+          <button
+            onClick={() => navigate("/?section=curriculum")}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
             커리큘럼으로 돌아가기
-          </Link>
+          </button>
           
           {/* Hero Section */}
-          <div className="text-center mb-16 animate-fade-in">
-            <Badge className="mb-4">틴틴AI로봇아카데미</Badge>
-            <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              로봇공학 트랙 - 자율주행
-            </h1>
-            <p className="text-xl md:text-2xl text-primary font-medium mb-4">0 to Autonomous</p>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              ROS1 Melodic 환경 구축부터 SLAM, Navigation, 그리고 실전 자율주행 프로젝트까지.
-            </p>
+          <div className="flex flex-col items-center mb-24 animate-fade-in relative">
+            <div className="text-center max-w-3xl mb-24 relative z-10">
+              <Badge className="mb-6 px-4 py-1 text-sm">Robotics Master Class</Badge>
+              <h1 className="font-heading text-5xl md:text-6xl lg:text-7xl font-extrabold mb-8 leading-tight tracking-tight">
+                OMO R1mini <br className="hidden md:block" />
+                <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                  Autonomous Driving
+                </span>
+              </h1>
+              <p className="text-2xl text-foreground font-bold mb-4">ROS1 Melodic to SLAM</p>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Ubuntu 18.04 환경 구축부터 센서 퓨전, SLAM, 그리고 자율주행까지.<br/>
+                이론을 넘어 내 손으로 움직이는 로봇을 완성하세요.
+              </p>
+            </div>
+
+            {/* Robotics Hero Composite */}
+            <RoboticsHeroComposite />
           </div>
 
           {/* Why Section */}
@@ -158,11 +320,12 @@ const OMOR1miniMasterClass = () => {
                 </ul>
               </div>
               <div className="relative h-[400px]">
-                <VisualPlaceholder 
-                    icon={Terminal} 
-                    color="from-blue-500 to-cyan-500" 
-                    title="ROS1 Environment" 
-                    sub="Ubuntu 18.04 / Melodic" 
+                <CourseVisual 
+                  imageSrc="https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=800&q=80"
+                  alt="ROS Code Environment"
+                  title="ROS Environment" 
+                  sub="Week 1" 
+                  icon={Terminal}
                 />
               </div>
             </div>
@@ -172,11 +335,12 @@ const OMOR1miniMasterClass = () => {
           <section className="mb-20">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               <div className="order-2 lg:order-1 relative h-[400px]">
-                 <VisualPlaceholder 
-                    icon={Layers} 
-                    color="from-purple-500 to-pink-500" 
-                    title="Sensor Data" 
-                    sub="LiDAR & Camera" 
+                <CourseVisual 
+                  imageSrc="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80"
+                  alt="Robot Sensor Tech"
+                  title="Sensor Fusion" 
+                  sub="Week 2" 
+                  icon={Radar}
                 />
               </div>
               <div className="order-1 lg:order-2">
@@ -236,11 +400,12 @@ const OMOR1miniMasterClass = () => {
                 </ul>
               </div>
               <div className="relative h-[400px]">
-                <VisualPlaceholder 
-                    icon={Map} 
-                    color="from-emerald-400 to-teal-500" 
-                    title="SLAM & Nav" 
-                    sub="Mapping & Path Planning" 
+                <CourseVisual 
+                  imageSrc="https://images.unsplash.com/photo-1527430253228-e93688616381?auto=format&fit=crop&w=800&q=80"
+                  alt="Digital Map Navigation"
+                  title="SLAM & Navigation" 
+                  sub="Week 3-5" 
+                  icon={Map}
                 />
               </div>
             </div>
@@ -250,11 +415,12 @@ const OMOR1miniMasterClass = () => {
           <section className="mb-20" id="projects">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               <div className="order-2 lg:order-1 relative h-[400px]">
-                 <VisualPlaceholder 
-                    icon={Bot} 
-                    color="from-amber-400 to-orange-500" 
-                    title="Final Project" 
-                    sub="Autonomous Mission" 
+                <CourseVisual 
+                  imageSrc="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80"
+                  alt="Autonomous Robot Mission"
+                  title="Final Project" 
+                  sub="Week 4-5" 
+                  icon={Bot}
                 />
               </div>
               <div className="order-1 lg:order-2">
@@ -312,21 +478,58 @@ const OMOR1miniMasterClass = () => {
             </div>
           </section>
 
+          {/* Caution & Requirements */}
+          <section className="mb-20" id="requirements">
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-3xl p-8 flex flex-col md:flex-row gap-8 items-start">
+              <div className="p-4 bg-amber-100 dark:bg-amber-900/30 rounded-2xl text-amber-600 dark:text-amber-400 flex-shrink-0">
+                <AlertTriangle size={32} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-amber-800 dark:text-amber-200 mb-4">수강 전 확인사항</h3>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <ul className="space-y-3 text-amber-900/80 dark:text-amber-200/80 text-sm">
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5"></div>
+                      <span><strong>파이썬(Python) 언어</strong>에 대한 기본적인 이해도가 필요합니다.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5"></div>
+                      <span>실제 로봇을 다루므로 <strong>안전 수칙</strong>을 반드시 준수해야 합니다.</span>
+                    </li>
+                  </ul>
+                  <ul className="space-y-3 text-amber-900/80 dark:text-amber-200/80 text-sm">
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5"></div>
+                      <span>강사의 실습 지시에 따르지 않을 경우 기기 파손의 위험이 있습니다.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5"></div>
+                      <span>개인 노트북(Windows/Mac) 지참이 권장됩니다.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* CTA Section */}
-          <section className="text-center py-16 animate-fade-in" style={{ animationDelay: '0.7s' }}>
-            <p className="text-xl text-muted-foreground mb-4">성장할 준비가 되셨나요?</p>
-            <h2 className="font-heading text-3xl md:text-4xl font-bold mb-8 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              자율주행 엔지니어로의<br />여정을 시작하세요
-            </h2>
-            <PaymentButton
-              amount={99000}
-              orderName="로봇공학 트랙 - 자율주행"
-              curriculumId="robot"
-              size="lg"
-              className="bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg transition-all"
-            >
-              수강 신청하기
-            </PaymentButton>
+          <section className="text-center py-20 bg-muted/30 rounded-[40px] border border-border">
+            <div className="max-w-3xl mx-auto px-6">
+              <p className="text-xl text-primary font-semibold mb-4">Build Your Own Robot</p>
+              <h2 className="text-4xl md:text-5xl font-bold mb-8 leading-tight">
+                자율주행 엔지니어로의 첫 걸음,<br />
+                틴틴AI로봇아카데미에서 시작하세요.
+              </h2>
+              <PaymentButton
+                amount={99000}
+                orderName="로봇공학 트랙 - 자율주행"
+                curriculumId="robot"
+                size="lg"
+                className="bg-gradient-to-r from-primary to-accent text-white hover:shadow-lg transition-all shadow-lg shadow-primary/25"
+              >
+                수강 신청하기
+              </PaymentButton>
+            </div>
           </section>
 
         </div>

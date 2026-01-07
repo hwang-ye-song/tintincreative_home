@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import { getOptimizedThumbnailUrl } from "@/lib/imageUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 
 const Index = () => {
   const location = useLocation();
@@ -193,7 +194,7 @@ const Index = () => {
       level: "고급",
       duration: "5주",
       icon: <Bot className="h-6 w-6" />,
-      image: "/images/lerobot.gif",
+      image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
       category: "AI로봇",
     },
     {
@@ -208,9 +209,39 @@ const Index = () => {
     },
   ];
 
+  // 커리큘럼 설정 가져오기 (숨김 처리된 커리큘럼 필터링)
+  const { data: curriculumSettings = {} } = useQuery<Record<string, { id: string; is_hidden: boolean }>>({
+    queryKey: ["curriculumSettings"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("curriculum_settings")
+        .select("*");
+      
+      if (error) {
+        devLog.error("Error fetching curriculum settings:", error);
+        return {};
+      }
+
+      const settingsMap: Record<string, { id: string; is_hidden: boolean }> = {};
+      if (data) {
+        data.forEach((setting: any) => {
+          settingsMap[setting.id] = setting;
+        });
+      }
+      return settingsMap;
+    },
+    staleTime: 30 * 1000,
+  });
+
+  // 숨겨진 커리큘럼 필터링
+  const visibleCurriculums = curriculumData.filter((curriculum) => {
+    const setting = curriculumSettings[curriculum.id];
+    return !setting?.is_hidden; // is_hidden이 true이면 필터링
+  });
+
   const filteredCurriculums = selectedCategory === "전체" 
-    ? curriculumData 
-    : curriculumData.filter(curriculum => curriculum.category === selectedCategory);
+    ? visibleCurriculums 
+    : visibleCurriculums.filter(curriculum => curriculum.category === selectedCategory);
 
   // 드래그 스크롤 핸들러
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {

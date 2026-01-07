@@ -91,6 +91,84 @@ const AdminPage = () => {
 
   const isAdmin = adminCheck?.isAdmin || false;
 
+  // 커리큘럼 설정 가져오기 (React Query)
+  const { data: curriculumSettings = {}, isLoading: isLoadingCurriculumSettings } = useQuery<Record<string, { id: string; is_hidden: boolean }>>({
+    queryKey: ["curriculumSettings"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("curriculum_settings")
+        .select("*");
+      
+      if (error) {
+        devLog.error("Error fetching curriculum settings:", error);
+        return {};
+      }
+
+      const settingsMap: Record<string, { id: string; is_hidden: boolean }> = {};
+      if (data) {
+        data.forEach((setting: any) => {
+          settingsMap[setting.id] = setting;
+        });
+      }
+      return settingsMap;
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000,
+  });
+
+  // 커리큘럼 목록 (Index.tsx와 동일)
+  const curriculumList = [
+    { id: "basic-2", title: "AI 프로그래밍 입문", category: "AI 기초" },
+    { id: "basic", title: "기초 트랙 (Perception AI)", category: "AI 기초" },
+    { id: "application-4", title: "AI 챗봇 및 대화형 시스템", category: "AI 활용" },
+    { id: "application-3", title: "나만의 WEB / Mobile APP디자인", category: "AI 활용" },
+    { id: "application-2", title: "컴퓨터 비전", category: "AI 활용" },
+    { id: "robot", title: "로봇공학 트랙 - 자율주행", category: "AI로봇" },
+    { id: "robot-2", title: "로봇공학 트랙 - 6축 다관절 로봇팔", category: "AI로봇" },
+  ];
+
+  // 커리큘럼 숨기기/보이기 토글
+  const toggleCurriculumVisibility = async (curriculumId: string, currentState: boolean) => {
+    try {
+      const newState = !currentState;
+      
+      // 먼저 설정이 있는지 확인
+      const existingSetting = curriculumSettings[curriculumId];
+      
+      if (existingSetting) {
+        // 업데이트
+        const { error } = await (supabase as any)
+          .from("curriculum_settings")
+          .update({ is_hidden: newState })
+          .eq("id", curriculumId);
+
+        if (error) throw error;
+      } else {
+        // 새로 생성
+        const { error } = await (supabase as any)
+          .from("curriculum_settings")
+          .insert({ id: curriculumId, is_hidden: newState });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "성공",
+        description: currentState ? "커리큘럼이 공개되었습니다." : "커리큘럼이 숨김 처리되었습니다.",
+      });
+
+      // 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["curriculumSettings"] });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "커리큘럼 상태 변경에 실패했습니다.";
+      toast({
+        title: "오류",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   // 프로젝트 목록 가져오기 (React Query)
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
     queryKey: ["adminProjects"],
@@ -848,12 +926,13 @@ const AdminPage = () => {
 
           {/* Tabs */}
           <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="projects">프로젝트 관리</TabsTrigger>
               <TabsTrigger value="featured">홈페이지 프로젝트</TabsTrigger>
               <TabsTrigger value="comments">댓글 관리</TabsTrigger>
               <TabsTrigger value="users">사용자 관리</TabsTrigger>
               <TabsTrigger value="payments">결제 관리</TabsTrigger>
+              <TabsTrigger value="curriculums">커리큘럼 관리</TabsTrigger>
             </TabsList>
 
             <TabsContent value="projects" className="mt-6">
@@ -1202,6 +1281,62 @@ const AdminPage = () => {
                                   환불 처리
                                 </Button>
                               )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="curriculums" className="mt-6">
+              <div className="space-y-4">
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold mb-2">커리큘럼 표시 설정</h2>
+                  <p className="text-sm text-muted-foreground">
+                    각 커리큘럼의 표시 여부를 설정할 수 있습니다. 숨김 처리된 커리큘럼은 홈페이지에 표시되지 않습니다.
+                  </p>
+                </div>
+                {isLoadingCurriculumSettings ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    <p className="text-muted-foreground">로딩 중...</p>
+                  </div>
+                ) : (
+                  curriculumList.map((curriculum) => {
+                    const setting = curriculumSettings[curriculum.id];
+                    const isHidden = setting?.is_hidden || false;
+                    
+                    return (
+                      <Card key={curriculum.id}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-base">{curriculum.title}</CardTitle>
+                              <CardDescription>
+                                ID: {curriculum.id} | 카테고리: {curriculum.category}
+                              </CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant={isHidden ? "default" : "outline"}
+                                onClick={() => toggleCurriculumVisibility(curriculum.id, isHidden)}
+                              >
+                                {isHidden ? (
+                                  <>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    공개
+                                  </>
+                                ) : (
+                                  <>
+                                    <EyeOff className="mr-2 h-4 w-4" />
+                                    숨김
+                                  </>
+                                )}
+                              </Button>
                             </div>
                           </div>
                         </CardHeader>

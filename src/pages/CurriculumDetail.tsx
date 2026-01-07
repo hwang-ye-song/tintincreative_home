@@ -75,6 +75,11 @@ const CurriculumDetail = () => {
       navigate("/curriculum/basic-2", { replace: true });
       return;
     }
+    // basic ID는 AICE 마스터 클래스 페이지로 리다이렉트
+    if (curriculumId === "basic") {
+      navigate("/curriculum/basic", { replace: true });
+      return;
+    }
 
     const loadCurriculum = async () => {
       if (!curriculumId) {
