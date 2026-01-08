@@ -184,7 +184,7 @@ const Index = () => {
       level: "중급",
       duration: "14주",
       icon: <Code className="h-6 w-6" />,
-      image: "/images/ai_agent.jpg",
+      image: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=1000",
       category: "AI 활용",
     },
     {

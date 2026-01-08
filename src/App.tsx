@@ -23,6 +23,7 @@ import OMOR1miniMasterClass from "./pages/OMOR1miniMasterClass";
 import ChatbotMasterClass from "./pages/ChatbotMasterClass";
 import AIPythonMasterClass from "./pages/AIPythonMasterClass";
 import AICEMasterClass from "./pages/AICEMasterClass";
+import ComputerVisionMasterClass from "./pages/ComputerVisionMasterClass";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFail from "./pages/PaymentFail";
 import PartialPayment from "./pages/PartialPayment";
@@ -123,7 +124,7 @@ const App = () => (
           <OAuthCallbackHandler />
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/curriculum/application-2" element={<AINativeWebMasterClass />} />
+            <Route path="/curriculum/application-2" element={<ComputerVisionMasterClass />} />
             <Route path="/curriculum/application-3" element={<AINativeWebMasterClass3 />} />
             <Route path="/curriculum/application-4" element={<ChatbotMasterClass />} />
             <Route path="/curriculum/robot" element={<OMOR1miniMasterClass />} />
