@@ -65,6 +65,11 @@ const CurriculumDetail = () => {
       navigate("/curriculum/robot", { replace: true });
       return;
     }
+    // robot-2 ID는 로봇 다관절팔 마스터 클래스 페이지로 리다이렉트
+    if (curriculumId === "robot-2") {
+      navigate("/curriculum/robot-2", { replace: true });
+      return;
+    }
     // application-2 ID는 컴퓨터 비전 마스터 클래스 페이지로 리다이렉트
     if (curriculumId === "application-2") {
       navigate("/curriculum/application-2", { replace: true });
