@@ -14,7 +14,7 @@ import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home, Search, CreditCard,
 import { Project, Comment, Profile, Payment } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { devLog } from "@/lib/utils";
 
 const AdminPage = () => {
@@ -115,6 +115,479 @@ const AdminPage = () => {
     enabled: isAdmin,
     staleTime: 30 * 1000,
   });
+
+  // 팝업 설정 가져오기 (React Query)
+  const [popupSettings, setPopupSettings] = useState({
+    is_enabled: false,
+    title: "",
+    content: "",
+    image_url: "",
+    link_url: "",
+    link_text: "자세히 보기",
+    show_once_per_session: true,
+    max_width: "100px",
+    max_height: "100px",
+    position: "center",
+    priority: 1000,
+    top_offset: "50%",
+    left_offset: "50%",
+  });
+  
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const { data: popupData, isLoading: isLoadingPopup } = useQuery({
+    queryKey: ["popupSettings"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("popup_settings")
+          .select("*")
+          .eq("id", "main")
+          .maybeSingle(); // .single() 대신 .maybeSingle() 사용 (데이터가 없으면 null 반환)
+        
+        if (error) {
+          // 테이블이 없거나 접근 권한이 없는 경우
+          if (error.code === "42P01" || error.message?.includes("does not exist") || error.message?.includes("406")) {
+            devLog.warn("Popup settings table does not exist. Please run the migration:", error);
+            if (isAdmin) {
+              toast({
+                title: "팝업 설정 테이블 없음",
+                description: "팝업 설정을 사용하려면 마이그레이션을 실행해주세요.",
+                variant: "destructive"
+              });
+            }
+            return null;
+          }
+          devLog.error("Error fetching popup settings:", error);
+          if (isAdmin) {
+            toast({
+              title: "오류",
+              description: `팝업 설정을 가져오는 중 오류가 발생했습니다: ${error.message}`,
+              variant: "destructive"
+            });
+          }
+          return null;
+        }
+
+        // 데이터가 없으면 null 반환 (에러가 아닌 정상 상태)
+        // 데이터가 있으면 상태 업데이트
+        if (data) {
+          setPopupSettings({
+            is_enabled: data.is_enabled || false,
+            title: data.title || "",
+            content: data.content || "",
+            image_url: data.image_url || "",
+            link_url: data.link_url || "",
+            link_text: data.link_text || "자세히 보기",
+            show_once_per_session: data.show_once_per_session !== false,
+            max_width: data.max_width || "100px",
+            max_height: data.max_height || "100px",
+            position: data.position || "center",
+            priority: data.priority ?? 1000,
+            top_offset: data.top_offset || "50%",
+            left_offset: data.left_offset || "50%",
+          });
+        }
+        return data;
+      } catch (err) {
+        devLog.error("Unexpected error fetching popup settings:", err);
+        return null;
+      }
+    },
+    enabled: isAdmin,
+    staleTime: 30 * 1000,
+    retry: false, // 테이블이 없으면 재시도하지 않음
+  });
+
+  // 이미지 업로드 핸들러
+  const handleImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "로그인 필요",
+          description: "이미지를 업로드하려면 로그인이 필요합니다.",
+          variant: "destructive"
+        });
+        setUploadingImage(false);
+        return;
+      }
+
+      // 이미지 파일 확장자 확인
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "지원하지 않는 파일 형식",
+          description: "JPEG, PNG, GIF, WebP 형식만 업로드 가능합니다.",
+          variant: "destructive"
+        });
+        setUploadingImage(false);
+        return;
+      }
+
+      // 파일명 생성
+      const fileExt = file.name.split('.').pop();
+      const fileName = `popup/${Date.now()}.${fileExt}`;
+
+      // 기존 이미지가 있으면 삭제
+      if (popupSettings.image_url && popupSettings.image_url.includes('popup/')) {
+        try {
+          const oldFileName = popupSettings.image_url.split('popup/')[1]?.split('?')[0];
+          if (oldFileName) {
+            await supabase.storage
+              .from('project-images')
+              .remove([`popup/${oldFileName}`]);
+          }
+        } catch (removeError) {
+          devLog.warn("Failed to remove old image:", removeError);
+          // 삭제 실패해도 계속 진행
+        }
+      }
+
+      // 이미지 업로드
+      const { error: uploadError } = await supabase.storage
+        .from('project-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Public URL 생성
+      const { data: { publicUrl } } = supabase.storage
+        .from('project-images')
+        .getPublicUrl(fileName);
+
+      setPopupSettings(prev => ({ ...prev, image_url: publicUrl }));
+      setImageFile(null);
+
+      toast({
+        title: "이미지 업로드 완료",
+        description: "이미지가 성공적으로 업로드되었습니다."
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.";
+      toast({
+        title: "오류",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // 팝업 설정 저장
+  const savePopupSettings = async () => {
+    try {
+      const updateData: any = {
+        id: "main",
+        is_enabled: popupSettings.is_enabled,
+        title: popupSettings.title,
+        content: popupSettings.content,
+        image_url: popupSettings.image_url,
+        link_url: popupSettings.link_url,
+        link_text: popupSettings.link_text,
+        show_once_per_session: popupSettings.show_once_per_session,
+        max_width: popupSettings.max_width,
+        max_height: popupSettings.max_height,
+        position: popupSettings.position,
+      };
+
+      // 선택적 필드 추가 (컬럼이 존재하는 경우에만)
+      if (popupSettings.priority !== undefined) {
+        updateData.priority = popupSettings.priority;
+      }
+      if (popupSettings.top_offset !== undefined) {
+        updateData.top_offset = popupSettings.top_offset;
+      }
+      if (popupSettings.left_offset !== undefined) {
+        updateData.left_offset = popupSettings.left_offset;
+      }
+
+      const { error } = await (supabase as any)
+        .from("popup_settings")
+        .upsert(updateData);
+
+      if (error) throw error;
+
+      toast({
+        title: "성공",
+        description: "팝업 설정이 저장되었습니다.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["popupSettings"] });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "팝업 설정 저장에 실패했습니다.";
+      toast({
+        title: "오류",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 팝업 삭제
+  const deletePopup = async () => {
+    if (!confirm("정말 이 팝업을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+      return;
+    }
+
+    try {
+      const { error } = await (supabase as any)
+        .from("popup_settings")
+        .delete()
+        .eq("id", "main");
+
+      if (error) throw error;
+
+      toast({
+        title: "성공",
+        description: "팝업이 삭제되었습니다.",
+      });
+
+      // 상태 초기화
+      setPopupSettings({
+        is_enabled: false,
+        title: "",
+        content: "",
+        image_url: "",
+        link_url: "",
+        link_text: "자세히 보기",
+        show_once_per_session: true,
+        max_width: "500px",
+        max_height: "auto",
+        position: "center",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["popupSettings"] });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "팝업 삭제에 실패했습니다.";
+      toast({
+        title: "오류",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 미리보기에서 크기/위치 저장
+  const [previewSettings, setPreviewSettings] = useState({
+    max_width: "100px",
+    max_height: "100px",
+    position: "center",
+    priority: 1000,
+    top_offset: "50%",
+    left_offset: "50%",
+  });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<"both" | "width" | "height">("both");
+  const [isDraggingFromSettings, setIsDraggingFromSettings] = useState(false);
+  const [isResizingFromSettings, setIsResizingFromSettings] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 });
+
+  useEffect(() => {
+    if (popupData) {
+      setPreviewSettings({
+        max_width: popupData.max_width || "500px",
+        max_height: popupData.max_height || "auto",
+        position: popupData.position || "center",
+        priority: popupData.priority ?? 1000,
+        top_offset: popupData.top_offset || "50%",
+        left_offset: popupData.left_offset || "50%",
+      });
+    }
+  }, [popupData]);
+
+  // 드래그 시작
+  const handleDragStart = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).classList.contains("resize-handle") || 
+        (e.target as HTMLElement).closest(".resize-handle")) return;
+    e.preventDefault();
+    setIsDragging(true);
+    const previewContainer = (e.currentTarget as HTMLElement).closest(".preview-container")?.getBoundingClientRect();
+    const popupElement = e.currentTarget as HTMLElement;
+    const popupRect = popupElement.getBoundingClientRect();
+    
+    if (previewContainer) {
+      // 팝업 박스의 중심점 기준으로 오프셋 계산
+      const popupCenterX = popupRect.left + popupRect.width / 2;
+      const popupCenterY = popupRect.top + popupRect.height / 2;
+      
+      setDragStart({
+        x: e.clientX - popupCenterX,
+        y: e.clientY - popupCenterY,
+      });
+    }
+  };
+
+  // 드래그 중
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        e.preventDefault();
+        const previewContainer = document.querySelector(".preview-container")?.getBoundingClientRect();
+        if (previewContainer) {
+          // 마우스 위치에서 오프셋을 빼서 팝업 중심점 계산
+          const popupCenterX = e.clientX - dragStart.x;
+          const popupCenterY = e.clientY - dragStart.y;
+          
+          // 퍼센트로 변환
+          const newLeftPercent = ((popupCenterX - previewContainer.left) / previewContainer.width) * 100;
+          const newTopPercent = ((popupCenterY - previewContainer.top) / previewContainer.height) * 100;
+          
+          const newLeftOffset = `${Math.max(0, Math.min(100, newLeftPercent))}%`;
+          const newTopOffset = `${Math.max(0, Math.min(100, newTopPercent))}%`;
+          
+          if (isDraggingFromSettings) {
+            // 팝업 설정 카드의 미리보기 - popupSettings 업데이트
+            setPopupSettings(prev => ({
+              ...prev,
+              left_offset: newLeftOffset,
+              top_offset: newTopOffset,
+              position: "custom",
+            }));
+          } else {
+            // 팝업 미리보기 및 관리 카드의 미리보기 - previewSettings 업데이트
+            setPreviewSettings(prev => ({
+              ...prev,
+              left_offset: newLeftOffset,
+              top_offset: newTopOffset,
+            }));
+          }
+        }
+      } else if (isResizing) {
+        e.preventDefault();
+        const deltaX = e.clientX - resizeStart.x;
+        const deltaY = e.clientY - resizeStart.y;
+        
+        // 리사이즈 방향에 따라 조절
+        let newWidth = resizeStart.width;
+        let newHeight = resizeStart.height;
+        
+        if (resizeDirection === "both" || resizeDirection === "width") {
+          newWidth = Math.max(100, Math.min(800, resizeStart.width + deltaX));
+        }
+        if (resizeDirection === "both" || resizeDirection === "height") {
+          newHeight = Math.max(100, Math.min(600, resizeStart.height + deltaY));
+        }
+        
+        const newWidthStr = `${newWidth}px`;
+        const newHeightStr = `${newHeight}px`;
+        
+        if (isResizingFromSettings) {
+          // 팝업 설정 카드의 미리보기 - popupSettings 업데이트
+          setPopupSettings(prev => ({
+            ...prev,
+            max_width: newWidthStr,
+            max_height: newHeightStr,
+            position: "custom",
+          }));
+        } else {
+          // 팝업 미리보기 및 관리 카드의 미리보기 - previewSettings 업데이트
+          setPreviewSettings(prev => ({
+            ...prev,
+            max_width: newWidthStr,
+            max_height: newHeightStr,
+          }));
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+      setIsDraggingFromSettings(false);
+      setIsResizingFromSettings(false);
+      setResizeDirection("both");
+    };
+
+    if (isDragging || isResizing) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isDragging, isResizing, isDraggingFromSettings, isResizingFromSettings, dragStart, resizeStart, resizeDirection, previewSettings]);
+
+  // 리사이즈 시작 (양방향)
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    setResizeDirection("both");
+    
+    // 현재 팝업 박스의 실제 크기 가져오기
+    const popupBox = (e.currentTarget as HTMLElement).closest(".draggable-popup") as HTMLElement;
+    if (popupBox) {
+      const currentWidth = popupBox.offsetWidth || parseInt(previewSettings.max_width) || 500;
+      const currentHeight = popupBox.offsetHeight || (previewSettings.max_height === "auto" || !previewSettings.max_height ? 300 : parseInt(previewSettings.max_height)) || 300;
+      
+      setResizeStart({
+        width: currentWidth,
+        height: currentHeight,
+        x: e.clientX,
+        y: e.clientY,
+      });
+    } else {
+      // 폴백
+      const currentWidth = parseInt(previewSettings.max_width) || 500;
+      const currentHeight = previewSettings.max_height === "auto" || !previewSettings.max_height ? 300 : parseInt(previewSettings.max_height) || 300;
+      setResizeStart({
+        width: currentWidth,
+        height: currentHeight,
+        x: e.clientX,
+        y: e.clientY,
+      });
+    }
+  };
+
+  const savePreviewSettings = async () => {
+    try {
+      const updateData: any = {
+        max_width: previewSettings.max_width,
+        max_height: previewSettings.max_height,
+        position: "custom", // 직접 조절한 경우 custom으로 설정
+      };
+
+      // 선택적 필드 추가 (컬럼이 존재하는 경우에만)
+      if (previewSettings.priority !== undefined) {
+        updateData.priority = previewSettings.priority;
+      }
+      if (previewSettings.top_offset !== undefined) {
+        updateData.top_offset = previewSettings.top_offset;
+      }
+      if (previewSettings.left_offset !== undefined) {
+        updateData.left_offset = previewSettings.left_offset;
+      }
+
+      const { error } = await (supabase as any)
+        .from("popup_settings")
+        .update(updateData)
+        .eq("id", "main");
+
+      if (error) throw error;
+
+      toast({
+        title: "성공",
+        description: "크기 및 위치 설정이 저장되었습니다.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["popupSettings"] });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "설정 저장에 실패했습니다.";
+      toast({
+        title: "오류",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
 
   // 커리큘럼 목록 (Index.tsx와 동일)
   const curriculumList = [
@@ -926,13 +1399,14 @@ const AdminPage = () => {
 
           {/* Tabs */}
           <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="projects">프로젝트 관리</TabsTrigger>
               <TabsTrigger value="featured">홈페이지 프로젝트</TabsTrigger>
               <TabsTrigger value="comments">댓글 관리</TabsTrigger>
               <TabsTrigger value="users">사용자 관리</TabsTrigger>
               <TabsTrigger value="payments">결제 관리</TabsTrigger>
               <TabsTrigger value="curriculums">커리큘럼 관리</TabsTrigger>
+              <TabsTrigger value="popup">팝업 설정</TabsTrigger>
             </TabsList>
 
             <TabsContent value="projects" className="mt-6">
@@ -1345,6 +1819,593 @@ const AdminPage = () => {
                   })
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="popup" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>팝업 광고 설정</CardTitle>
+                  <CardDescription>
+                    홈페이지 진입 시 표시될 팝업 광고를 설정할 수 있습니다.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="popup-enabled" className="text-base font-medium">
+                        팝업 활성화
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        팝업을 표시하려면 활성화하세요.
+                      </p>
+                    </div>
+                    <Button
+                      variant={popupSettings.is_enabled ? "default" : "outline"}
+                      onClick={() => setPopupSettings({ ...popupSettings, is_enabled: !popupSettings.is_enabled })}
+                    >
+                      {popupSettings.is_enabled ? "활성화됨" : "비활성화됨"}
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="popup-title">제목</Label>
+                    <Input
+                      id="popup-title"
+                      value={popupSettings.title}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, title: e.target.value })}
+                      placeholder="팝업 제목을 입력하세요"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="popup-content">내용</Label>
+                    <textarea
+                      id="popup-content"
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={popupSettings.content}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, content: e.target.value })}
+                      placeholder="팝업 내용을 입력하세요"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="popup-image">이미지 (선택사항)</Label>
+                    <input
+                      type="file"
+                      id="popup-image"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImageFile(file);
+                          handleImageUpload(file);
+                        }
+                      }}
+                      disabled={uploadingImage}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById("popup-image")?.click()}
+                        disabled={uploadingImage}
+                        className="w-full"
+                      >
+                        {uploadingImage ? "업로드 중..." : "이미지 선택"}
+                      </Button>
+                      {popupSettings.image_url && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setPopupSettings(prev => ({ ...prev, image_url: "" }));
+                            setImageFile(null);
+                          }}
+                          disabled={uploadingImage}
+                        >
+                          삭제
+                        </Button>
+                      )}
+                    </div>
+                    {popupSettings.image_url && (
+                      <div className="w-full aspect-video rounded-lg overflow-hidden border mt-2">
+                        <img 
+                          src={popupSettings.image_url} 
+                          alt="미리보기"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    {imageFile && !popupSettings.image_url && (
+                      <p className="text-xs text-muted-foreground">이미지 업로드 중...</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="popup-link">링크 URL (선택사항)</Label>
+                    <Input
+                      id="popup-link"
+                      value={popupSettings.link_url}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, link_url: e.target.value })}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="popup-link-text">링크 텍스트</Label>
+                    <Input
+                      id="popup-link-text"
+                      value={popupSettings.link_text}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, link_text: e.target.value })}
+                      placeholder="자세히 보기"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="popup-once"
+                      checked={popupSettings.show_once_per_session}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, show_once_per_session: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="popup-once" className="text-sm font-normal cursor-pointer">
+                      세션당 한 번만 표시 (체크 해제 시 매번 표시)
+                    </Label>
+                  </div>
+
+                  {/* 인터랙티브 미리보기 - 팝업 생성 시 위치 조절 */}
+                  <div className="border-t pt-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-lg">팝업 위치 및 크기 조절</h3>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="preview-priority-input" className="text-sm">우선순위:</Label>
+                        <Input
+                          id="preview-priority-input"
+                          type="number"
+                          value={popupSettings.priority}
+                          onChange={(e) => setPopupSettings({ ...popupSettings, priority: parseInt(e.target.value) || 1000 })}
+                          className="w-20"
+                          min="1"
+                          max="9999"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      팝업 박스를 드래그하여 위치를 조절하고, 우측 하단 핸들을 드래그하여 크기를 조절할 수 있습니다. (기본값: 100px × 100px, 중앙 위치)
+                    </p>
+                    
+                    {/* 홈페이지 미리보기 영역 */}
+                    <div className="relative border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted/30 preview-container" style={{ height: "500px", width: "100%" }} data-popup-settings-preview>
+                      {/* 홈페이지 레이아웃 시뮬레이션 */}
+                      <div className="absolute inset-0">
+                        {/* Navbar 시뮬레이션 */}
+                        <div className="h-16 bg-background border-b flex items-center px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-primary"></div>
+                            <div className="h-4 w-32 bg-muted rounded"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Hero 섹션 시뮬레이션 */}
+                        <div className="h-32 bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+                          <div className="h-6 w-48 bg-muted rounded"></div>
+                        </div>
+                        
+                        {/* 컨텐츠 섹션 시뮬레이션 */}
+                        <div className="p-4 space-y-2">
+                          <div className="h-4 w-full bg-muted rounded"></div>
+                          <div className="h-4 w-3/4 bg-muted rounded"></div>
+                          <div className="grid grid-cols-3 gap-2 mt-4">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="h-20 bg-muted rounded"></div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 드래그 가능한 팝업 박스 - 항상 표시 (빈 박스라도 보여줌) */}
+                      <div
+                        className="absolute bg-background border-2 border-primary rounded-lg shadow-2xl cursor-move select-none draggable-popup"
+                        style={{
+                          width: popupSettings.max_width,
+                          height: popupSettings.max_height === "auto" ? "100px" : popupSettings.max_height,
+                          left: popupSettings.left_offset,
+                          top: popupSettings.top_offset,
+                          transform: "translate(-50%, -50%)",
+                          zIndex: popupSettings.priority,
+                          minWidth: "100px",
+                          minHeight: "100px",
+                          resize: "none",
+                        }}
+                        onMouseDown={(e) => {
+                          if ((e.target as HTMLElement).classList.contains("resize-handle") || 
+                              (e.target as HTMLElement).closest(".resize-handle")) return;
+                          e.preventDefault();
+                          setIsDragging(true);
+                          const previewContainer = (e.currentTarget as HTMLElement).closest(".preview-container")?.getBoundingClientRect();
+                          const popupElement = e.currentTarget as HTMLElement;
+                          const popupRect = popupElement.getBoundingClientRect();
+                          
+                          if (previewContainer) {
+                            const popupCenterX = popupRect.left + popupRect.width / 2;
+                            const popupCenterY = popupRect.top + popupRect.height / 2;
+                            
+                            setDragStart({
+                              x: e.clientX - popupCenterX,
+                              y: e.clientY - popupCenterY,
+                            });
+                            
+                            // 팝업 설정 카드의 드래그임을 표시
+                            setIsDraggingFromSettings(true);
+                            
+                            // 팝업 설정 위치를 custom으로 변경
+                            setPopupSettings(prev => ({ ...prev, position: "custom" }));
+                          }
+                        }}
+                      >
+                        {/* 우선순위 표시 */}
+                        <div className="absolute -top-3 -right-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+                          우선순위: {popupSettings.priority}
+                        </div>
+                        
+                        {/* 팝업 내용 미리보기 */}
+                        <div className="p-2 space-y-1 pointer-events-none overflow-hidden" style={{ fontSize: "10px" }}>
+                          {popupSettings.title ? (
+                            <h5 className="font-semibold truncate">{popupSettings.title}</h5>
+                          ) : (
+                            <p className="text-muted-foreground text-center py-2">팝업 미리보기</p>
+                          )}
+                          {popupSettings.content && (
+                            <p className="text-muted-foreground line-clamp-1 text-[9px]">{popupSettings.content}</p>
+                          )}
+                          {popupSettings.image_url && (
+                            <div className="w-full h-12 bg-muted rounded overflow-hidden">
+                              <img 
+                                src={popupSettings.image_url} 
+                                alt="미리보기"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 리사이즈 핸들 - 우측 하단 (양방향 리사이즈) */}
+                        <div
+                          className="absolute bottom-0 right-0 w-8 h-8 cursor-se-resize resize-handle z-30 bg-primary/80 hover:bg-primary transition-colors"
+                          style={{
+                            clipPath: "polygon(100% 0, 0 100%, 100% 100%)",
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setIsResizing(true);
+                            setResizeDirection("both");
+                            const popupBox = (e.currentTarget as HTMLElement).closest(".draggable-popup") as HTMLElement;
+                            if (popupBox) {
+                              const currentWidth = popupBox.offsetWidth || parseInt(popupSettings.max_width) || 100;
+                              const currentHeight = popupBox.offsetHeight || (popupSettings.max_height === "auto" || !popupSettings.max_height ? 100 : parseInt(popupSettings.max_height)) || 100;
+                              setResizeStart({
+                                width: currentWidth,
+                                height: currentHeight,
+                                x: e.clientX,
+                                y: e.clientY,
+                              });
+                              
+                              // 팝업 설정 카드의 리사이즈임을 표시
+                              setIsResizingFromSettings(true);
+                              
+                              // 팝업 설정 위치를 custom으로 변경
+                              setPopupSettings(prev => ({ ...prev, position: "custom" }));
+                            }
+                          }}
+                          title="크기 조절 (가로/세로)"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 현재 설정 정보 (읽기 전용) */}
+                    {(popupSettings.title || popupSettings.content || popupSettings.image_url) && (
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">현재 크기</p>
+                          <p className="text-sm font-semibold">
+                            {popupSettings.max_width} × {popupSettings.max_height === "auto" ? "auto" : popupSettings.max_height}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">현재 위치</p>
+                          <p className="text-sm font-semibold">
+                            {parseFloat(popupSettings.left_offset) || 50}%, {parseFloat(popupSettings.top_offset) || 50}%
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button onClick={savePopupSettings} className="w-full">
+                    설정 저장
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* 팝업 미리보기 및 관리 */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>팝업 미리보기 및 관리</CardTitle>
+                  <CardDescription>
+                    현재 설정된 팝업을 미리보고 활성화 상태를 관리할 수 있습니다.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {popupData ? (
+                    <>
+                      <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full ${popupData.is_enabled ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                          <div>
+                            <p className="font-semibold">{popupData.title || "제목 없음"}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {popupData.is_enabled ? "활성화됨" : "비활성화됨"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={popupData.is_enabled ? "default" : "outline"}
+                            onClick={async () => {
+                              try {
+                                const newEnabledState = !popupData.is_enabled;
+                                const { error } = await (supabase as any)
+                                  .from("popup_settings")
+                                  .update({ is_enabled: newEnabledState })
+                                  .eq("id", "main");
+
+                                if (error) throw error;
+
+                                toast({
+                                  title: "성공",
+                                  description: newEnabledState ? "팝업이 활성화되었습니다." : "팝업이 비활성화되었습니다.",
+                                });
+
+                                queryClient.invalidateQueries({ queryKey: ["popupSettings"] });
+                              } catch (error: unknown) {
+                                const errorMessage = error instanceof Error ? error.message : "팝업 상태 변경에 실패했습니다.";
+                                toast({
+                                  title: "오류",
+                                  description: errorMessage,
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            {popupData.is_enabled ? "비활성화" : "활성화"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={deletePopup}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* 팝업 미리보기 */}
+                      <div className="border rounded-lg p-4 bg-background">
+                        <h4 className="font-semibold mb-3">미리보기</h4>
+                        <div className="space-y-3">
+                          {popupData.title && (
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">제목</p>
+                              <p className="font-semibold">{popupData.title}</p>
+                            </div>
+                          )}
+                          {popupData.content && (
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">내용</p>
+                              <p className="text-sm">{popupData.content}</p>
+                            </div>
+                          )}
+                          {popupData.image_url && (
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">이미지</p>
+                              <div className="w-full aspect-video rounded-lg overflow-hidden border">
+                                <img 
+                                  src={popupData.image_url} 
+                                  alt="팝업 미리보기"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {popupData.link_url && (
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">링크</p>
+                              <a 
+                                href={popupData.link_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline text-sm"
+                              >
+                                {popupData.link_text || popupData.link_url}
+                              </a>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={popupData.show_once_per_session !== false}
+                              disabled
+                              className="h-3 w-3"
+                            />
+                            <span>세션당 한 번만 표시</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 인터랙티브 미리보기 */}
+                      <div className="border-t pt-4 space-y-4 mt-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">인터랙티브 미리보기</h4>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="preview-priority" className="text-sm">우선순위:</Label>
+                            <Input
+                              id="preview-priority"
+                              type="number"
+                              value={previewSettings.priority}
+                              onChange={(e) => setPreviewSettings({ ...previewSettings, priority: parseInt(e.target.value) || 1000 })}
+                              className="w-20"
+                              min="1"
+                              max="9999"
+                            />
+                            <p className="text-xs text-muted-foreground">(숫자가 클수록 앞에 표시)</p>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          팝업 박스를 드래그하여 위치를 조절하고, 우측 하단 핸들을 드래그하여 크기를 조절할 수 있습니다.
+                        </p>
+                        
+                        {/* 홈페이지 미리보기 영역 */}
+                        <div className="relative border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted/30 preview-container" style={{ height: "500px", width: "100%" }}>
+                          {/* 홈페이지 레이아웃 시뮬레이션 */}
+                          <div className="absolute inset-0">
+                            {/* Navbar 시뮬레이션 */}
+                            <div className="h-16 bg-background border-b flex items-center px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-primary"></div>
+                                <div className="h-4 w-32 bg-muted rounded"></div>
+                              </div>
+                            </div>
+                            
+                            {/* Hero 섹션 시뮬레이션 */}
+                            <div className="h-32 bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+                              <div className="h-6 w-48 bg-muted rounded"></div>
+                            </div>
+                            
+                            {/* 컨텐츠 섹션 시뮬레이션 */}
+                            <div className="p-4 space-y-2">
+                              <div className="h-4 w-full bg-muted rounded"></div>
+                              <div className="h-4 w-3/4 bg-muted rounded"></div>
+                              <div className="grid grid-cols-3 gap-2 mt-4">
+                                {[1, 2, 3].map((i) => (
+                                  <div key={i} className="h-20 bg-muted rounded"></div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 드래그 가능한 팝업 박스 */}
+                          {popupData && (
+                            <div
+                              className="absolute bg-background border-2 border-primary rounded-lg shadow-2xl cursor-move select-none draggable-popup"
+                              style={{
+                                width: previewSettings.max_width,
+                                height: previewSettings.max_height === "auto" ? "300px" : previewSettings.max_height,
+                                left: previewSettings.left_offset,
+                                top: previewSettings.top_offset,
+                                transform: "translate(-50%, -50%)",
+                                zIndex: previewSettings.priority,
+                                minWidth: "200px",
+                                minHeight: "200px",
+                                resize: "none",
+                              }}
+                              onMouseDown={handleDragStart}
+                            >
+                              {/* 우선순위 표시 */}
+                              <div className="absolute -top-3 -right-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+                                우선순위: {previewSettings.priority}
+                              </div>
+                              
+                              {/* 팝업 내용 미리보기 */}
+                              <div className="p-4 space-y-2 pointer-events-none">
+                                {popupData.title && (
+                                  <h5 className="font-semibold text-sm">{popupData.title}</h5>
+                                )}
+                                {popupData.content && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{popupData.content}</p>
+                                )}
+                                {popupData.image_url && (
+                                  <div className="w-full h-20 bg-muted rounded overflow-hidden">
+                                    <img 
+                                      src={popupData.image_url} 
+                                      alt="미리보기"
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* 리사이즈 핸들 - 우측 하단 (양방향 리사이즈) */}
+                              <div
+                                className="absolute bottom-0 right-0 w-8 h-8 cursor-se-resize resize-handle z-30 bg-primary/80 hover:bg-primary transition-colors"
+                                style={{
+                                  clipPath: "polygon(100% 0, 0 100%, 100% 100%)",
+                                }}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handleResizeStart(e);
+                                }}
+                                title="크기 조절 (가로/세로)"
+                              />
+                              
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 현재 설정 정보 (읽기 전용) */}
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">현재 크기</p>
+                            <p className="text-sm font-semibold">
+                              {previewSettings.max_width} × {previewSettings.max_height === "auto" ? "auto" : previewSettings.max_height}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">현재 위치</p>
+                            <p className="text-sm font-semibold">
+                              {parseFloat(previewSettings.left_offset) || 50}%, {parseFloat(previewSettings.top_offset) || 50}%
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <Button onClick={savePreviewSettings} className="w-full">
+                          크기 및 위치 저장
+                        </Button>
+                      </div>
+
+                      {/* 팝업 정보 */}
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p>생성일: {popupData.created_at ? new Date(popupData.created_at).toLocaleString("ko-KR") : "알 수 없음"}</p>
+                        {popupData.updated_at && (
+                          <p>수정일: {new Date(popupData.updated_at).toLocaleString("ko-KR")}</p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>설정된 팝업이 없습니다.</p>
+                      <p className="text-sm mt-2">위의 설정을 입력하고 저장하면 여기에 표시됩니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>

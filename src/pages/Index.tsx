@@ -9,7 +9,8 @@ import { HeroCanvas } from "@/components/HeroCanvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentButton } from "@/components/PaymentButton";
-import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown, Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown, Pencil, X } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { smoothScrollTo, devLog } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,8 @@ const Index = () => {
   const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
   const { isAdminOrTeacher } = useAuth();
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupData, setPopupData] = useState<any>(null);
 
   // 프로젝트 데이터 로드
   useEffect(() => {
@@ -96,6 +99,80 @@ const Index = () => {
 
     loadData();
   }, []);
+
+  // 팝업 설정 가져오기
+  const { data: popupSettings } = useQuery({
+    queryKey: ["popupSettings"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("popup_settings")
+          .select("*")
+          .eq("id", "main")
+          .maybeSingle(); // .single() 대신 .maybeSingle() 사용 (데이터가 없으면 null 반환)
+        
+        if (error) {
+          // 테이블이 없거나 접근 권한이 없는 경우
+          if (error.code === "42P01" || error.message?.includes("does not exist") || error.message?.includes("406")) {
+            devLog.warn("Popup settings table does not exist. Please run the migration:", error);
+            return null;
+          }
+          devLog.error("Error fetching popup settings:", error);
+          return null;
+        }
+        
+        // 데이터가 없으면 null 반환 (에러가 아닌 정상 상태)
+        return data;
+      } catch (err) {
+        devLog.error("Unexpected error fetching popup settings:", err);
+        return null;
+      }
+    },
+    staleTime: 60 * 1000, // 1분간 캐시
+    retry: false, // 테이블이 없으면 재시도하지 않음
+  });
+
+  // 팝업 표시 여부 확인
+  useEffect(() => {
+    if (popupSettings && popupSettings.is_enabled) {
+      // 24시간 동안 안 보기 체크
+      const popupHiddenUntil = localStorage.getItem("popup_hidden_until");
+      if (popupHiddenUntil) {
+        const hiddenUntilTime = parseInt(popupHiddenUntil, 10);
+        const now = Date.now();
+        if (now < hiddenUntilTime) {
+          // 아직 24시간이 지나지 않았으면 표시하지 않음
+          return;
+        } else {
+          // 24시간이 지났으면 localStorage에서 제거
+          localStorage.removeItem("popup_hidden_until");
+        }
+      }
+
+      // 세션당 한 번만 표시하는 경우
+      if (popupSettings.show_once_per_session) {
+        const popupShown = sessionStorage.getItem("popup_shown");
+        if (!popupShown) {
+          setPopupData(popupSettings);
+          setShowPopup(true);
+          sessionStorage.setItem("popup_shown", "true");
+        }
+      } else {
+        // 매번 표시
+        setPopupData(popupSettings);
+        setShowPopup(true);
+      }
+    }
+  }, [popupSettings]);
+
+  // 24시간 동안 안 보기 처리
+  const handleDontShowFor24Hours = () => {
+    const now = Date.now();
+    const twentyFourHours = 24 * 60 * 60 * 1000; // 24시간을 밀리초로 변환
+    const hiddenUntil = now + twentyFourHours;
+    localStorage.setItem("popup_hidden_until", hiddenUntil.toString());
+    setShowPopup(false);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -845,6 +922,85 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Popup Advertisement */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent 
+          className="max-w-md p-0 cursor-pointer"
+          style={{
+            maxWidth: popupData?.max_width || "500px",
+            maxHeight: popupData?.max_height === "auto" ? "auto" : popupData?.max_height || "auto",
+            top: popupData?.top_offset || (popupData?.position === "center" ? "50%" : popupData?.position?.includes("top") ? "10%" : popupData?.position?.includes("bottom") ? "90%" : "50%"),
+            left: popupData?.left_offset || (popupData?.position === "center" || popupData?.position?.includes("center") ? "50%" : popupData?.position?.includes("left") ? "10%" : popupData?.position?.includes("right") ? "90%" : "50%"),
+            right: popupData?.position?.includes("right") && !popupData?.top_offset && !popupData?.left_offset ? "10%" : "auto",
+            bottom: popupData?.position?.includes("bottom") && !popupData?.top_offset && !popupData?.left_offset ? "10%" : "auto",
+            transform: (popupData?.top_offset || popupData?.left_offset) ? "translate(-50%, -50%)" : 
+                      (popupData?.position === "center" ? "translate(-50%, -50%)" :
+                      popupData?.position?.includes("center") ? "translate(-50%, 0)" : "translate(0, 0)"),
+            zIndex: popupData?.priority ?? 1000,
+          }}
+          onClick={(e) => {
+            // 닫기 버튼이나 24시간 안 보기 버튼 클릭 시에는 링크 이동 안 함
+            if ((e.target as HTMLElement).closest('button')) {
+              return;
+            }
+            // 팝업 전체 클릭 시 링크로 이동
+            if (popupData?.link_url) {
+              window.open(popupData.link_url, "_blank");
+              setShowPopup(false);
+            }
+          }}
+        >
+          <div className="p-6">
+            <DialogHeader>
+              {popupData?.title && (
+                <DialogTitle className="text-2xl">{popupData.title}</DialogTitle>
+              )}
+              {popupData?.content && (
+                <DialogDescription className="text-base pt-2">
+                  {popupData.content}
+                </DialogDescription>
+              )}
+            </DialogHeader>
+            {popupData?.image_url && (
+              <div className="w-full aspect-video rounded-lg overflow-hidden mb-4 mt-4">
+                <img 
+                  src={popupData.image_url} 
+                  alt={popupData.title || "팝업 이미지"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            {popupData?.link_url && (
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">{popupData.link_text || "클릭하여 자세히 보기"}</p>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 p-4 pt-0 border-t">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPopup(false);
+              }}
+            >
+              닫기
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex-1 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDontShowFor24Hours();
+              }}
+            >
+              24시간 동안 안 보기
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>
