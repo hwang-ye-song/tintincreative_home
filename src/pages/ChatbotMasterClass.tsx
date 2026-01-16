@@ -296,7 +296,7 @@ const ChatbotMasterClass = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
               <div className="order-2 lg:order-1 relative h-[400px]">
                 <CourseVisual
-                  imageSrc="https://images.unsplash.com/photo-1585399000684-d5c2576c23ac?auto=format&fit=crop&w=800&q=80"
+                  imageSrc="/images/ai_chatbot.avif"
                   alt="Ecommerce Analytics Dashboard"
                   title="Intelligent Commerce"
                   sub="Week 2"
@@ -360,11 +360,11 @@ const ChatbotMasterClass = () => {
                 </ul>
               </div>
               <div className="relative h-[400px]">
-                <CourseVisual 
-                  imageSrc="https://images.unsplash.com/photo-1605303180288-34d1165b6f0d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
+                <CourseVisual
+                  imageSrc="/images/ai_agent.jpg"
                   alt="Complex Code and Data Logic"
-                  title="n8n Workflow & Agents" 
-                  sub="Week 3" 
+                  title="n8n Workflow & Agents"
+                  sub="Week 3"
                   icon={Workflow}
                 />
               </div>
