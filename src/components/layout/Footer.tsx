@@ -77,15 +77,15 @@ export const Footer = () => {
             <ul className="space-y-2 text-xs">
               <li className="flex items-center gap-2">
                 <Mail className="h-3 w-3 text-accent" />
-                <span>info@academy.ai</span>
+                <span>tintincreative@naver.com</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-3 w-3 text-accent" />
-                <span>+1 (555) 123-4567</span>
+                <span>(82)010-9597-2542</span>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="h-3 w-3 text-accent" />
-                <span>San Francisco, CA</span>
+                <span>화성시 수노을 중앙로 156 폴리프라자2 403호</span>
               </li>
             </ul>
           </div>
