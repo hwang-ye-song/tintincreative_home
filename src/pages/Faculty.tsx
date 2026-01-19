@@ -12,6 +12,13 @@ const facultyMembers = [
     email: ""
   },
   {
+    name: "강다정",
+    title: "배터리 강사",
+    expertise: ["배터리", "에너지 저장", "전기화학"],
+    bio: "과학고 졸업, UNIST",
+    email: ""
+  },
+  {
     name: "신옥철",
     title: "AI 윤리 자문",
     expertise: ["AI 윤리", "정책", "사회적 영향"],
@@ -20,9 +27,9 @@ const facultyMembers = [
   },
   {
     name: "황예성",
-    title: "NLP 전문가",
-    expertise: ["자연어 처리", "AI 윤리", "데이터 과학"],
-    bio: "",
+    title: "웹 개발 전문가",
+    expertise: ["바이브 코딩", "홈페이지 제작", "풀스택 개발"],
+    bio: "프론트엔드 및 백엔드 웹 개발 전문가",
     email: ""
   },
   {

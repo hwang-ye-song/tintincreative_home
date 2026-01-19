@@ -867,19 +867,19 @@ const Index = () => {
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.1s' }}>
               <FacultyCard
-                name="신옥철"
-                title="AI 윤리 자문"
-                expertise={["AI 윤리", "정책", "사회적 영향"]}
-                bio="한양대학교 교수"
+                name="강다정"
+                title="배터리 강사"
+                expertise={["배터리", "에너지 저장", "전기화학"]}
+                bio="과학고 졸업, UNIST"
                 email=""
               />
             </div>
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
               <FacultyCard
-                name="황예성"
-                title="NLP 전문가"
-                expertise={["자연어 처리", "AI 윤리", "데이터 과학"]}
-                bio=""
+                name="신옥철"
+                title="AI 윤리 자문"
+                expertise={["AI 윤리", "정책", "사회적 영향"]}
+                bio="한양대학교 교수"
                 email=""
               />
             </div>
