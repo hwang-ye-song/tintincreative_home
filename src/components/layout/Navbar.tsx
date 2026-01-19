@@ -15,7 +15,7 @@ const getGoogleFormUrl = () => {
     return envUrl.replace('/edit', '/viewform');
   }
   // 기본값: 제공된 구글 폼 URL
-  return "https://docs.google.com/forms/d/e/1FAIpQLSeIJyroJdeZfc_5phn0sFBvbXjQoWj9hSjopaVJahLBq5AYhA/viewform?usp=header";
+  return "https://forms.gle/M4jKeZDiPHX6sh4j7";
 };
 
 const GOOGLE_FORM_URL = getGoogleFormUrl();

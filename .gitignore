@@ -28,3 +28,9 @@ DB.env
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase migrations archive (old migrations, use database_setup.sql instead)
+supabase/migrations_archive/
+
+# Supabase SQL scripts (test/debug scripts)
+supabase/sql_scripts/
