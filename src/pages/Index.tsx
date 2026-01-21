@@ -627,8 +627,8 @@ const Index = () => {
           
           {/* Footer Text */}
           <footer className="text-center text-muted-foreground font-medium text-base max-w-3xl mx-auto leading-relaxed z-20 px-4 mb-4">
-            애플리케이션 개발자를 꿈꾸는 분들을 위한 고품격 AI 교육 커리큘럼을 함께하며<br className="hidden md:block" />
-            어떤 해결 문제 정의를 생각한 게 목표와 성장에 중시능합니다.
+            애플리케이션 개발자를 꿈꾸는 분들을 위한 고품격 AI 교육 커리큘럼을 함께하며,<br className="hidden md:block" />
+            문제 정의와 해결을 통해 목표 달성과 성장에 중점을 둡니다.
           </footer>
           
           {/* 자세히 보기 버튼 */}
@@ -861,7 +861,7 @@ const Index = () => {
                 name="강경호"
                 title="AI 프로그램 책임자"
                 expertise={["머신러닝", "딥러닝", "컴퓨터 비전"]}
-                bio="삼성전자 책임연구원 출신"
+                bio="전 삼성전자 책임연구원"
                 email=""
               />
             </div>

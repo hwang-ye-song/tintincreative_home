@@ -8,7 +8,7 @@ const facultyMembers = [
     name: "강경호",
     title: "AI 프로그램 책임자",
     expertise: ["머신러닝", "딥러닝", "컴퓨터 비전"],
-    bio: "삼성전자 책임연구원 출신",
+    bio: "전 삼성전자 책임연구원",
     email: ""
   },
   {
