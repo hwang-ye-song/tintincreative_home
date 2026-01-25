@@ -271,7 +271,7 @@ const Index = () => {
       level: "고급",
       duration: "5주",
       icon: <Bot className="h-6 w-6" />,
-      image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+      image: "/images/omo_r1mini_card.png",
       category: "AI로봇",
     },
     {

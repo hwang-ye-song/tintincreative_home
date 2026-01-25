@@ -221,7 +221,7 @@ const OMOR1miniMasterClass = () => {
           
           {/* Hero Section */}
           <div className="flex flex-col items-center mb-24 animate-fade-in relative">
-            <div className="text-center max-w-3xl mb-24 relative z-10">
+            <div className="text-center max-w-3xl mb-12 relative z-10">
               <Badge className="mb-6 px-4 py-1 text-sm">Robotics Master Class</Badge>
               <h1 className="font-heading text-5xl md:text-6xl lg:text-7xl font-extrabold mb-8 leading-tight tracking-tight">
                 OMO R1mini <br className="hidden md:block" />
@@ -236,8 +236,16 @@ const OMOR1miniMasterClass = () => {
               </p>
             </div>
 
-            {/* Robotics Hero Composite */}
-            <RoboticsHeroComposite />
+            {/* Robot Image */}
+            <div className="w-full max-w-4xl relative">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+                <img 
+                  src="/images/omo_r1mini_robots.png" 
+                  alt="OMO R1mini Basic and Pro Robots"
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Why Section */}
@@ -321,7 +329,7 @@ const OMOR1miniMasterClass = () => {
               </div>
               <div className="relative h-[400px]">
                 <CourseVisual 
-                  imageSrc="https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=800&q=80"
+                  imageSrc="/images/robot_week1.png"
                   alt="ROS Code Environment"
                   title="ROS Environment" 
                   sub="Week 1" 
@@ -336,7 +344,7 @@ const OMOR1miniMasterClass = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               <div className="order-2 lg:order-1 relative h-[400px]">
                 <CourseVisual 
-                  imageSrc="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80"
+                  imageSrc="/images/robot_week2.png"
                   alt="Robot Sensor Tech"
                   title="Sensor Fusion" 
                   sub="Week 2" 
@@ -401,7 +409,7 @@ const OMOR1miniMasterClass = () => {
               </div>
               <div className="relative h-[400px]">
                 <CourseVisual 
-                  imageSrc="https://images.unsplash.com/photo-1527430253228-e93688616381?auto=format&fit=crop&w=800&q=80"
+                  imageSrc="/images/robot_week3.png"
                   alt="Digital Map Navigation"
                   title="SLAM & Navigation" 
                   sub="Week 3-5" 
@@ -416,7 +424,7 @@ const OMOR1miniMasterClass = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
               <div className="order-2 lg:order-1 relative h-[400px]">
                 <CourseVisual 
-                  imageSrc="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80"
+                  imageSrc="/images/robot_week4.png"
                   alt="Autonomous Robot Mission"
                   title="Final Project" 
                   sub="Week 4-5" 
