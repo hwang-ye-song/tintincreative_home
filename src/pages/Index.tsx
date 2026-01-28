@@ -378,7 +378,7 @@ const Index = () => {
         <div className="container mx-auto max-w-7xl relative z-20">
           {/* Main Title */}
           <h1 className="text-4xl md:text-5xl font-extrabold mb-6 z-20 text-center relative leading-tight" style={{ color: '#1e293b' }}>
-            AI 커리교육
+            AI교육 커리큘럼
           </h1>
           
           {/* Curriculum Stages Container */}
