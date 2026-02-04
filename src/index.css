@@ -1,0 +1,461 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(-50%, -50%) translateY(0px);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-10px);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float-fast {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 4s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 3s ease-in-out infinite;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+/* Global Font */
+* {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+}
+
+@layer base {
+  :root {
+    /* Background & Foreground */
+    --background: 0 0% 100%;
+    --foreground: 220 15% 15%;
+
+    /* Primary - Electric Blue */
+    --primary: 200 95% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 200 95% 65%;
+    --primary-dark: 200 95% 35%;
+
+    /* Secondary - Deep Tech Navy */
+    --secondary: 220 60% 20%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 220 50% 30%;
+    --secondary-dark: 220 70% 12%;
+
+    /* Accent - Bright Cyan */
+    --accent: 180 100% 50%;
+    --accent-foreground: 220 60% 10%;
+    --accent-light: 180 100% 65%;
+    --accent-glow: 180 100% 50%;
+
+    /* Grayscale */
+    --gray-50: 220 15% 98%;
+    --gray-100: 220 15% 95%;
+    --gray-200: 220 15% 88%;
+    --gray-300: 220 15% 75%;
+    --gray-400: 220 15% 60%;
+    --gray-500: 220 15% 45%;
+    --gray-600: 220 15% 35%;
+    --gray-700: 220 15% 25%;
+    --gray-800: 220 15% 15%;
+    --gray-900: 220 15% 8%;
+
+    /* Semantic Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+    --muted: 220 15% 95%;
+    --muted-foreground: 220 15% 45%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 200 95% 50%;
+
+    /* Border Radius */
+    --radius: 0.5rem;
+
+    /* Typography Scale */
+    --font-heading: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-body: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    
+    /* Font Sizes - Heading Scale */
+    --text-h1: 3.5rem;      /* 56px */
+    --text-h2: 3rem;        /* 48px */
+    --text-h3: 2.5rem;      /* 40px */
+    --text-h4: 2rem;        /* 32px */
+    --text-h5: 1.5rem;      /* 24px */
+    --text-h6: 1.25rem;     /* 20px */
+    
+    /* Font Sizes - Body Scale */
+    --text-lg: 1.125rem;    /* 18px */
+    --text-base: 1rem;      /* 16px */
+    --text-sm: 0.875rem;    /* 14px */
+    --text-xs: 0.75rem;     /* 12px */
+    --text-caption: 0.6875rem; /* 11px */
+
+    /* Line Heights */
+    --leading-tight: 1.2;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.75;
+
+    /* Letter Spacing */
+    --tracking-tight: -0.02em;
+    --tracking-normal: 0;
+    --tracking-wide: 0.025em;
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s ease-in-out;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--secondary-dark)) 100%);
+    --gradient-tech: linear-gradient(135deg, hsl(var(--primary-dark)) 0%, hsl(var(--secondary)) 50%, hsl(var(--accent)) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 30px hsl(var(--accent-glow) / 0.4);
+  }
+
+  .dark {
+    /* Background & Foreground */
+    --background: 220 15% 8%;
+    --foreground: 220 15% 98%;
+
+    /* Primary - Electric Blue (adjusted for dark) */
+    --primary: 200 95% 55%;
+    --primary-foreground: 220 60% 10%;
+    --primary-light: 200 95% 70%;
+    --primary-dark: 200 95% 40%;
+
+    /* Secondary - Lighter Navy for dark mode */
+    --secondary: 220 50% 30%;
+    --secondary-foreground: 220 15% 98%;
+    --secondary-light: 220 45% 40%;
+    --secondary-dark: 220 60% 20%;
+
+    /* Accent - Bright Cyan */
+    --accent: 180 100% 55%;
+    --accent-foreground: 220 60% 10%;
+    --accent-light: 180 100% 70%;
+
+    /* Grayscale (inverted) */
+    --gray-50: 220 15% 8%;
+    --gray-100: 220 15% 12%;
+    --gray-200: 220 15% 18%;
+    --gray-300: 220 15% 25%;
+    --gray-400: 220 15% 40%;
+    --gray-500: 220 15% 55%;
+    --gray-600: 220 15% 65%;
+    --gray-700: 220 15% 75%;
+    --gray-800: 220 15% 88%;
+    --gray-900: 220 15% 95%;
+
+    /* Semantic Colors */
+    --card: 220 15% 12%;
+    --card-foreground: 220 15% 98%;
+    --popover: 220 15% 12%;
+    --popover-foreground: 220 15% 98%;
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 15% 65%;
+    --border: 220 15% 25%;
+    --input: 220 15% 25%;
+    --ring: 200 95% 55%;
+
+    /* Shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 40px hsl(var(--accent-glow) / 0.6);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    line-height: var(--leading-normal);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  h1 {
+    font-size: var(--text-h1);
+  }
+
+  h2 {
+    font-size: var(--text-h2);
+  }
+
+  h3 {
+    font-size: var(--text-h3);
+  }
+
+  h4 {
+    font-size: var(--text-h4);
+  }
+
+  h5 {
+    font-size: var(--text-h5);
+  }
+
+  h6 {
+    font-size: var(--text-h6);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px; /* Navbar 높이만큼 padding 추가 */
+  }
+}
+
+@layer components {
+  /* Logo Gradient Style */
+  .logo-gradient {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #00AFFF 0%, #7B61FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  /* CTA Button Gradient Style */
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #00AFFF 0%, #7B61FF 100%);
+    color: white;
+    border-radius: 30px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+
+  .cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 175, 255, 0.3);
+  }
+
+  /* Prose styles for markdown rendering */
+  .prose {
+    color: hsl(var(--foreground));
+    max-width: 65ch;
+  }
+
+  .prose :where(p):not(:where([class~="not-prose"] *)) {
+    margin-top: 1.25em;
+    margin-bottom: 1.25em;
+  }
+
+  .prose :where([class~="lead"]):not(:where([class~="not-prose"] *)) {
+    font-size: 1.25em;
+    line-height: 1.6;
+    margin-top: 1.2em;
+    margin-bottom: 1.2em;
+  }
+
+  .prose :where(a):not(:where([class~="not-prose"] *)) {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    font-weight: 500;
+  }
+
+  .prose :where(strong):not(:where([class~="not-prose"] *)) {
+    color: hsl(var(--foreground));
+    font-weight: 700;
+  }
+
+  .prose :where(ol):not(:where([class~="not-prose"] *)) {
+    list-style-type: decimal;
+    padding-left: 1.625em;
+  }
+
+  .prose :where(ul):not(:where([class~="not-prose"] *)) {
+    list-style-type: disc;
+    padding-left: 1.625em;
+  }
+
+  .prose :where(li):not(:where([class~="not-prose"] *)) {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+
+  .prose :where(h1):not(:where([class~="not-prose"] *)) {
+    color: hsl(var(--foreground));
+    font-weight: 800;
+    font-size: 2.25em;
+    margin-top: 0;
+    margin-bottom: 0.8888889em;
+    line-height: 1.1111111;
+  }
+
+  .prose :where(h2):not(:where([class~="not-prose"] *)) {
+    color: hsl(var(--foreground));
+    font-weight: 700;
+    font-size: 1.5em;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    line-height: 1.3333333;
+  }
+
+  .prose :where(h3):not(:where([class~="not-prose"] *)) {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    font-size: 1.25em;
+    margin-top: 1.6em;
+    margin-bottom: 0.6em;
+    line-height: 1.6;
+  }
+
+  .prose :where(h4):not(:where([class~="not-prose"] *)) {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    line-height: 1.5;
+  }
+
+  .prose :where(code):not(:where([class~="not-prose"] *)) {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    font-size: 0.875em;
+    background-color: hsl(var(--muted));
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+  }
+
+  .prose :where(pre):not(:where([class~="not-prose"] *)) {
+    background-color: hsl(var(--muted));
+    overflow-x: auto;
+    font-size: 0.875em;
+    line-height: 1.7142857;
+    margin-top: 1.7142857em;
+    margin-bottom: 1.7142857em;
+    border-radius: 0.375rem;
+    padding: 0.8571429em 1.1428571em;
+  }
+
+  .prose :where(pre code):not(:where([class~="not-prose"] *)) {
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 0;
+    padding: 0;
+    font-weight: inherit;
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .prose :where(blockquote):not(:where([class~="not-prose"] *)) {
+    font-weight: 500;
+    font-style: italic;
+    color: hsl(var(--foreground));
+    border-left-width: 0.25rem;
+    border-left-color: hsl(var(--border));
+    quotes: "\201C""\201D""\2018""\2019";
+    margin-top: 1.6em;
+    margin-bottom: 1.6em;
+    padding-left: 1em;
+  }
+
+  .prose :where(hr):not(:where([class~="not-prose"] *)) {
+    border-color: hsl(var(--border));
+    margin-top: 3em;
+    margin-bottom: 3em;
+  }
+
+  .prose-sm {
+    font-size: 0.875rem;
+    line-height: 1.7142857;
+  }
+
+  /* Tiptap Editor Styles */
+  .tiptap-editor {
+    min-height: 400px;
+  }
+
+  .tiptap-editor .ProseMirror {
+    outline: none;
+  }
+
+  .tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+    color: hsl(var(--muted-foreground));
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .tiptap-editor .ProseMirror > * + * {
+    margin-top: 0.75em;
+  }
+
+  .tiptap-editor .ProseMirror img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    display: block;
+    margin: 1em 0;
+  }
+}
