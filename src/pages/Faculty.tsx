@@ -22,7 +22,7 @@ const facultyMembers = [
     name: "신옥철",
     title: "AI 융합 논술 교수",
     expertise: ["AI 융합 논술", "AI로 책 만들기"],
-    bio: "(전)경기대교수",
+    bio: "(전) 경기대 교수",
     email: ""
   },
   {

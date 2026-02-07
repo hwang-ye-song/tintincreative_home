@@ -983,9 +983,9 @@ const Index = () => {
             <div className="animate-fade-in hover-scale" style={{ animationDelay: '0.2s' }}>
               <FacultyCard
                 name="신옥철"
-                title="AI 윤리 자문"
+                title="AI 융합 논술 교수"
                 expertise={["AI 융합 논술", "AI로 책 만들기"]}
-                bio="AI 융합 논술 전문"
+                bio="(전) 경기대 교수"
                 email=""
               />
             </div>
