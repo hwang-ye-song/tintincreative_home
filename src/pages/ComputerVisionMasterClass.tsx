@@ -130,17 +130,27 @@ const ComputerVisionMasterClass = () => {
     {
       title: "쇼핑몰 캐릭터 + 광고 영상",
       description: "AI로 생성한 마스코트와 쇼핑몰 광고 영상 콘텐츠",
-      image: "https://images.unsplash.com/photo-1589652717521-10c0d092dea9?w=800&q=80&auto=format&fit=crop"
+      images: ["/images/vision_character.png"]
     },
     {
       title: "AI 가위바위보 게임",
       description: "Teachable Machine + Cursor로 만든 실시간 웹 게임",
-      image: "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=800&q=80&auto=format&fit=crop"
+      images: ["/images/vision_classification.png"]
+    },
+    {
+      title: "물건 이동 + 포즈 챌린지",
+      description: "Roboflow 객체 탐지와 MediaPipe 포즈 인식 게임",
+      images: ["/images/vision_detection1.png", "/images/vision_detection2.png"]
+    },
+    {
+      title: "보안 게이트 + AR 필터",
+      description: "얼굴 인식 보안 시스템과 AR 필터 체험",
+      images: ["/images/vision_face.png", "/images/vision_filter.png"]
     },
     {
       title: "AI 체험관 (미니게임 4종)",
       description: "물건이동, 포즈챌린지, 보안게이트, AR필터가 담긴 AI 체험관",
-      image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80&auto=format&fit=crop"
+      images: ["/images/vision_web.png"]
     }
   ];
 
@@ -205,7 +215,7 @@ const ComputerVisionMasterClass = () => {
                 <div className="absolute -inset-4 bg-gradient-to-r from-[#00AFFF] to-[#7B61FF] rounded-[2rem] opacity-30 blur-2xl animate-pulse"></div>
                 <div className="relative rounded-[2rem] overflow-hidden shadow-2xl border-4 border-background">
                   <img 
-                    src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=1000" 
+                    src="/images/vision_title.png" 
                     alt="AI Computer Vision Visualization" 
                     className="w-full h-auto object-cover transform transition-transform hover:scale-105 duration-700"
                   />
@@ -326,13 +336,26 @@ const ComputerVisionMasterClass = () => {
             <div className="flex flex-wrap justify-center gap-6">
               {projects.map((project, index) => (
                 <div key={index} className="w-full sm:w-80 group">
-                  <div className="relative overflow-hidden rounded-2xl shadow-lg aspect-video bg-muted mb-4">
+                  <div className={`relative overflow-hidden rounded-2xl shadow-lg bg-muted mb-4 ${project.images.length === 1 ? 'aspect-video' : ''}`}>
                     <div className="absolute inset-0 bg-gradient-to-r from-[#00AFFF] to-[#7B61FF] opacity-0 group-hover:opacity-20 transition-opacity z-10"></div>
-                    <img 
-                      src={project.image} 
-                      alt={project.title} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
+                    {project.images.length === 1 ? (
+                      <img
+                        src={project.images[0]}
+                        alt={project.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="grid grid-cols-2 gap-1">
+                        {project.images.map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img}
+                            alt={`${project.title} ${idx + 1}`}
+                            className="w-full h-full object-cover aspect-video transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <h4 className="font-bold text-lg mb-1 group-hover:text-[#00AFFF] transition-colors">
                     {project.title}
