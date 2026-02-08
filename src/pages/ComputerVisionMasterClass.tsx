@@ -314,13 +314,13 @@ const ComputerVisionMasterClass = () => {
                             </div>
                           </div>
                           {week.projectImages && (
-                            <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div className="flex justify-center gap-2 mt-2">
                               {week.projectImages.map((img: string, idx: number) => (
                                 <img
                                   key={idx}
                                   src={img}
                                   alt={`${week.project} ${idx + 1}`}
-                                  className="w-full rounded-lg object-cover"
+                                  className="w-1/2 rounded-lg object-cover"
                                 />
                               ))}
                             </div>
