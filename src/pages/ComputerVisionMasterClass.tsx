@@ -66,6 +66,7 @@ const ComputerVisionMasterClass = () => {
         "광고 영상 시나리오 작성 및 AI 영상 생성 (Image-to-Video)"
       ],
       project: "나의 쇼핑몰 캐릭터 + 광고 영상 완성",
+      projectImages: ["/images/vision_character.png"],
       borderColor: "border-[#00AFFF]",
       bgColor: "bg-blue-50",
       textColor: "text-[#00AFFF]"
@@ -81,6 +82,7 @@ const ComputerVisionMasterClass = () => {
         "Cursor로 가위바위보 게임 웹앱 제작"
       ],
       project: "AI 가위바위보 게임 완성",
+      projectImages: ["/images/vision_classification.png"],
       borderColor: "border-[#3D87FF]",
       bgColor: "bg-indigo-50",
       textColor: "text-[#3D87FF]"
@@ -96,6 +98,7 @@ const ComputerVisionMasterClass = () => {
         "MediaPipe Pose로 포즈 인식 게임 제작 및 탭으로 통합"
       ],
       project: "물건 이동 게임 + 포즈 챌린지 완성",
+      projectImages: ["/images/vision_detection1.png", "/images/vision_detection2.png"],
       borderColor: "border-[#7B61FF]",
       bgColor: "bg-purple-50",
       textColor: "text-[#7B61FF]"
@@ -111,6 +114,7 @@ const ComputerVisionMasterClass = () => {
         "AI 체험관 메인 페이지 완성 및 최종 포트폴리오 정리"
       ],
       project: "얼굴 인식 보안 기능이 내장된 AI 체험관 완성",
+      projectImages: ["/images/vision_face.png", "/images/vision_filter.png"],
       borderColor: "border-[#9D70FF]",
       bgColor: "bg-purple-50",
       textColor: "text-[#9D70FF]"
@@ -130,27 +134,17 @@ const ComputerVisionMasterClass = () => {
     {
       title: "쇼핑몰 캐릭터 + 광고 영상",
       description: "AI로 생성한 마스코트와 쇼핑몰 광고 영상 콘텐츠",
-      images: ["/images/vision_character.png"]
+      image: "/images/vision_character.png"
     },
     {
       title: "AI 가위바위보 게임",
       description: "Teachable Machine + Cursor로 만든 실시간 웹 게임",
-      images: ["/images/vision_classification.png"]
-    },
-    {
-      title: "물건 이동 + 포즈 챌린지",
-      description: "Roboflow 객체 탐지와 MediaPipe 포즈 인식 게임",
-      images: ["/images/vision_detection1.png", "/images/vision_detection2.png"]
-    },
-    {
-      title: "보안 게이트 + AR 필터",
-      description: "얼굴 인식 보안 시스템과 AR 필터 체험",
-      images: ["/images/vision_face.png", "/images/vision_filter.png"]
+      image: "/images/vision_classification.png"
     },
     {
       title: "AI 체험관 (미니게임 4종)",
       description: "물건이동, 포즈챌린지, 보안게이트, AR필터가 담긴 AI 체험관",
-      images: ["/images/vision_web.png"]
+      image: "/images/vision_web.png"
     }
   ];
 
@@ -309,14 +303,28 @@ const ComputerVisionMasterClass = () => {
                             </li>
                           ))}
                         </ul>
-                        <div className="bg-muted rounded-xl p-4 border border-border flex items-start gap-3">
-                          <div className={`p-2 bg-background rounded-lg shadow-sm ${week.textColor} group-hover:scale-110 transition-transform`}>
-                            <Eye className="w-5 h-5" />
+                        <div className="bg-muted rounded-xl p-4 border border-border">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className={`p-2 bg-background rounded-lg shadow-sm ${week.textColor} group-hover:scale-110 transition-transform`}>
+                              <Eye className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground font-semibold uppercase">Project</p>
+                              <p className="text-sm font-medium text-foreground">{week.project}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground font-semibold uppercase">Project</p>
-                            <p className="text-sm font-medium text-foreground">{week.project}</p>
-                          </div>
+                          {week.projectImages && (
+                            <div className={`grid ${week.projectImages.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 mt-2`}>
+                              {week.projectImages.map((img: string, idx: number) => (
+                                <img
+                                  key={idx}
+                                  src={img}
+                                  alt={`${week.project} ${idx + 1}`}
+                                  className="w-full rounded-lg object-cover"
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -336,26 +344,13 @@ const ComputerVisionMasterClass = () => {
             <div className="flex flex-wrap justify-center gap-6">
               {projects.map((project, index) => (
                 <div key={index} className="w-full sm:w-80 group">
-                  <div className={`relative overflow-hidden rounded-2xl shadow-lg bg-muted mb-4 ${project.images.length === 1 ? 'aspect-video' : ''}`}>
+                  <div className="relative overflow-hidden rounded-2xl shadow-lg aspect-video bg-muted mb-4">
                     <div className="absolute inset-0 bg-gradient-to-r from-[#00AFFF] to-[#7B61FF] opacity-0 group-hover:opacity-20 transition-opacity z-10"></div>
-                    {project.images.length === 1 ? (
-                      <img
-                        src={project.images[0]}
-                        alt={project.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="grid grid-cols-2 gap-1">
-                        {project.images.map((img, idx) => (
-                          <img
-                            key={idx}
-                            src={img}
-                            alt={`${project.title} ${idx + 1}`}
-                            className="w-full h-full object-cover aspect-video transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <img
+                      src={project.image}
+                      alt={project.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
                   </div>
                   <h4 className="font-bold text-lg mb-1 group-hover:text-[#00AFFF] transition-colors">
                     {project.title}
