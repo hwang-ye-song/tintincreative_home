@@ -314,7 +314,7 @@ const ComputerVisionMasterClass = () => {
                             </div>
                           </div>
                           {week.projectImages && (
-                            <div className={`grid ${week.projectImages.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 mt-2`}>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
                               {week.projectImages.map((img: string, idx: number) => (
                                 <img
                                   key={idx}
