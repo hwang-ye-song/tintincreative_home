@@ -1,17 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Helmet } from "react-helmet-async";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ScanFace, Crosshair, Globe, Image, Video, CheckCircle, ArrowRight, PlayCircle, Eye, Sparkles, Layers, BrainCircuit, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, ScanFace, Crosshair, Image, Video, CheckCircle, PlayCircle, Eye, Sparkles, BrainCircuit, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaymentButton } from "@/components/PaymentButton";
 
 const ComputerVisionMasterClass = () => {
-  const navigate = useNavigate();
-
   useEffect(() => {
     // 페이지 로드 시 상단으로 스크롤
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -19,37 +17,37 @@ const ComputerVisionMasterClass = () => {
 
   const goals = [
     {
-      icon: <ScanFace className="w-6 h-6" />,
-      title: "이미지 분류의 원리",
-      description: "Teachable Machine을 사용하여 데이터 수집부터 학습, 추론까지의 AI 프로세스를 직접 경험하고 이해합니다.",
+      icon: <Image className="w-6 h-6" />,
+      title: "AI 이미지 & 영상 생성",
+      description: "AI 이미지 생성과 영상 생성의 원리를 체험하고 나만의 쇼핑몰 광고 콘텐츠를 제작합니다.",
       bgColor: "bg-blue-50",
       iconColor: "text-[#00AFFF]"
+    },
+    {
+      icon: <ScanFace className="w-6 h-6" />,
+      title: "이미지 분류의 원리",
+      description: "Teachable Machine으로 AI 이미지 분류의 기본 원리(데이터 수집 → 학습 → 추론)를 이해합니다.",
+      bgColor: "bg-purple-50",
+      iconColor: "text-[#7B61FF]"
     },
     {
       icon: <Crosshair className="w-6 h-6" />,
-      title: "객체 탐지 (Object Detection)",
-      description: "Roboflow를 활용해 바운딩 박스와 라벨링 개념을 익히고, 나만의 객체 탐지 모델을 학습시킵니다.",
-      bgColor: "bg-purple-50",
-      iconColor: "text-[#7B61FF]"
-    },
-    {
-      icon: <Globe className="w-6 h-6" />,
-      title: "웹 앱 제작 및 배포",
-      description: "Gradio와 Hugging Face Spaces를 통해 내가 만든 AI 모델을 누구나 접속 가능한 웹 서비스로 배포합니다.",
+      title: "객체 탐지 & 포즈 인식",
+      description: "AI 툴을 활용하여 객체 탐지, 포즈 인식, 얼굴 랜드마크 인식의 개념을 익힙니다.",
       bgColor: "bg-blue-50",
       iconColor: "text-[#00AFFF]"
     },
     {
-      icon: <Image className="w-6 h-6" />,
-      title: "생성형 AI 이미지",
-      description: "Nano Banana(Gemini)를 활용하여 텍스트로 이미지를 생성하고 편집하는 원리를 체험하며 창의력을 키웁니다.",
+      icon: <BrainCircuit className="w-6 h-6" />,
+      title: "바이브코딩 웹 앱 제작",
+      description: "AI 코딩 도구(Cursor)를 활용한 바이브코딩으로 본인만의 컴퓨터 비전 웹 앱을 제작합니다.",
       bgColor: "bg-purple-50",
       iconColor: "text-[#7B61FF]"
     },
     {
-      icon: <Video className="w-6 h-6" />,
-      title: "Veo 비디오 생성 & 통합 포트폴리오",
-      description: "최신 도구 Veo를 사용해 텍스트와 이미지로 비디오를 제작하고, 인식과 생성을 아우르는 최종 포트폴리오를 완성합니다.",
+      icon: <Sparkles className="w-6 h-6" />,
+      title: "쇼핑몰 광고 영상 + AI 체험관 포트폴리오",
+      description: "최종적으로 쇼핑몰 광고 영상과 AI 체험관 웹사이트를 완성하여 포트폴리오로 활용합니다.",
       bgColor: "bg-gradient-to-br from-[#00AFFF] to-[#7B61FF]",
       iconColor: "text-white",
       colSpan: "lg:col-span-2"
@@ -59,101 +57,89 @@ const ComputerVisionMasterClass = () => {
   const curriculum = [
     {
       week: 1,
-      title: "이미지 분류 AI 만들기",
-      tool: "Teachable Machine",
-      toolIcon: <ScanFace className="w-3 h-3" />,
+      title: "쇼핑몰 캐릭터 + 광고 영상 만들기",
+      tool: "AI 이미지/영상 생성",
+      toolIcon: <Image className="w-3 h-3" />,
       items: [
-        "컴퓨터 비전 개념 소개 (분류 vs 탐지 vs 생성)",
-        "웹캠으로 클래스별 이미지 데이터 수집 및 학습",
-        "웹 내보내기로 간단한 분류 웹 페이지 제작"
+        "생성 AI 개념 소개 (인식 AI vs 생성 AI)",
+        "나의 쇼핑몰 분석 및 캐릭터 컨셉 기획 · AI 이미지 생성으로 마스코트 제작",
+        "광고 영상 시나리오 작성 및 AI 영상 생성 (Image-to-Video)"
       ],
-      project: "나만의 손동작 인식기 (가위바위보, 숫자 인식 등)",
+      project: "나의 쇼핑몰 캐릭터 + 광고 영상 완성",
       borderColor: "border-[#00AFFF]",
       bgColor: "bg-blue-50",
       textColor: "text-[#00AFFF]"
     },
     {
       week: 2,
-      title: "객체 탐지 AI 만들기",
-      tool: "Roboflow",
-      toolIcon: <Crosshair className="w-3 h-3" />,
+      title: "이미지 분류 AI 만들기",
+      tool: "Teachable Machine + Cursor",
+      toolIcon: <ScanFace className="w-3 h-3" />,
       items: [
-        "이미지 업로드 및 바운딩 박스 라벨링 실습",
-        "데이터 증강(Augmentation)과 AutoML 학습",
-        "YOLOv8 모델 활용 실시간 탐지 테스트"
+        "컴퓨터 비전 개념 소개 (분류 vs 탐지 vs 생성)",
+        "웹캠으로 가위/바위/보 이미지 데이터 수집 및 모델 학습",
+        "Cursor로 가위바위보 게임 웹앱 제작"
       ],
-      project: "교실 물품 탐지기 (필통, 물병, 스마트폰 등)",
+      project: "AI 가위바위보 게임 완성",
       borderColor: "border-[#3D87FF]",
       bgColor: "bg-indigo-50",
       textColor: "text-[#3D87FF]"
     },
     {
       week: 3,
-      title: "AI 웹 앱 배포하기",
-      tool: "Gradio + Hugging Face",
-      toolIcon: <Globe className="w-3 h-3" />,
+      title: "객체 탐지 + 포즈 인식 AI 만들기",
+      tool: "Roboflow + MediaPipe + Cursor",
+      toolIcon: <Crosshair className="w-3 h-3" />,
       items: [
-        "Gradio 기본 문법 학습 (Python 최소 코드)",
-        "1~2주차 모델 연동 및 파일 업로드 UI 제작",
-        "Hugging Face Spaces 배포 및 포트폴리오 정리"
+        "이미지 분류 vs 객체 탐지 vs 포즈 인식 차이점 이해",
+        "Roboflow로 이미지 라벨링 및 객체 탐지 모델 학습",
+        "MediaPipe Pose로 포즈 인식 게임 제작 및 탭으로 통합"
       ],
-      project: "전 세계에 공유 가능한 나만의 CV 웹 앱",
+      project: "물건 이동 게임 + 포즈 챌린지 완성",
       borderColor: "border-[#7B61FF]",
       bgColor: "bg-purple-50",
       textColor: "text-[#7B61FF]"
     },
     {
       week: 4,
-      title: "AI 이미지 생성하기",
-      tool: "Gemini (Nano Banana)",
-      toolIcon: <Image className="w-3 h-3" />,
+      title: "얼굴 인식 AI 만들기",
+      tool: "MediaPipe Face Mesh + Cursor",
+      toolIcon: <Shield className="w-3 h-3" />,
       items: [
-        "Text-to-Image 및 효과적인 프롬프트 작성법",
-        "이미지 편집(In-painting), 스타일 변환, 캐릭터 일관성 유지"
+        "Face Landmark 개념 이해 및 얼굴 인식 보안 시스템(FaceID) 원리 학습",
+        "Cursor로 보안 게이트 + AR 필터 제작",
+        "AI 체험관 메인 페이지 완성 및 최종 포트폴리오 정리"
       ],
-      project: "나만의 AI 캐릭터 & 4컷 스토리 제작",
+      project: "얼굴 인식 보안 기능이 내장된 AI 체험관 완성",
       borderColor: "border-[#9D70FF]",
       bgColor: "bg-purple-50",
       textColor: "text-[#9D70FF]"
-    },
-    {
-      week: 5,
-      title: "AI 비디오 & 최종 포트폴리오",
-      tool: "Veo (Google AI Studio)",
-      toolIcon: <Video className="w-3 h-3" />,
-      items: [
-        "텍스트/이미지를 비디오로 변환 (Text/Image-to-Video)",
-        "여러 클립 연결 및 스토리 영상 제작",
-        "3개의 포트폴리오(분류, 탐지, 생성) 최종 정리"
-      ],
-      project: "30초 AI 생성 숏폼 콘텐츠 완성",
-      borderColor: "border-[#B084FF]",
-      bgColor: "bg-purple-50",
-      textColor: "text-[#B084FF]"
     }
   ];
 
   const outcomes = [
-    { title: "인식부터 생성까지 컴퓨터 비전의 전 과정 마스터", number: 1 },
-    { title: "고입/대입에 활용 가능한 차별화된 포트폴리오 3종", number: 2 },
-    { title: "생성 AI 프롬프트 엔지니어링 역량 확보", number: 3 },
-    { title: "데이터 수집 및 AI 윤리 의식 함양", number: 4 }
+    { title: "2개의 포트폴리오 완성 (쇼핑몰 광고 영상 + AI 체험관)", number: 1 },
+    { title: "컴퓨터 비전 전체 스펙트럼 이해: 생성과 인식의 원리와 차이점 학습", number: 2 },
+    { title: "데이터의 중요성 체감: \"좋은 데이터 = 좋은 모델\" 원리 학습", number: 3 },
+    { title: "생성 AI를 효과적으로 활용하기 위한 프롬프트 엔지니어링 역량 습득", number: 4 },
+    { title: "AI 코딩 도구(Cursor)를 활용한 바이브코딩 경험", number: 5 },
+    { title: "프로젝트명, 사용 도구, 구현 기능을 포함한 실전 포트폴리오 활용", number: 6 }
   ];
 
   const projects = [
     {
-      title: "가위바위보 판독기",
-      description: "손동작을 인식하여 승패를 판별하는 웹 게임",
+      title: "쇼핑몰 캐릭터 + 광고 영상",
+      description: "AI로 생성한 마스코트와 쇼핑몰 광고 영상 콘텐츠",
       image: "https://images.unsplash.com/photo-1589652717521-10c0d092dea9?w=800&q=80&auto=format&fit=crop"
     },
     {
-      title: "재활용 쓰레기 분류",
-      description: "캔, 플라스틱, 유리를 자동으로 탐지하는 AI",
+      title: "AI 가위바위보 게임",
+      description: "Teachable Machine + Cursor로 만든 실시간 웹 게임",
       image: "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=800&q=80&auto=format&fit=crop"
     },
     {
-      title: "AI 숏폼 뮤직비디오",
-      description: "Veo로 생성한 영상과 음악을 합친 나만의 콘텐츠",
+      title: "AI 체험관 (미니게임 4종)",
+      description: "물건이동, 포즈챌린지, 보안게이트, AR필터가 담긴 AI 체험관",
       image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80&auto=format&fit=crop"
     }
   ];
@@ -162,7 +148,7 @@ const ComputerVisionMasterClass = () => {
     <div className="min-h-screen bg-background">
       <Helmet>
         <title>컴퓨터 비전 AI - 틴틴AI로봇아카데미</title>
-        <meta name="description" content="이미지 분류부터 객체 탐지, 그리고 최신 생성형 AI 비디오 제작까지. 코딩 학원 강사가 직접 설계한 실전형 커리큘럼으로 나만의 AI 포트폴리오를 완성하세요." />
+        <meta name="description" content="AI 이미지·영상 생성으로 쇼핑몰 광고를 만들고, AI 툴과 Cursor로 나만의 AI 체험관을 완성하세요." />
       </Helmet>
       <Navbar />
       
@@ -182,19 +168,19 @@ const ComputerVisionMasterClass = () => {
               {/* Text Content */}
               <div className="text-left">
                 <Badge className="mb-6 px-4 py-1 text-sm bg-blue-50 text-[#00AFFF] border-blue-100">
-                  🚀 5주 완성 프로젝트
+                  🚀 4주 완성 프로젝트
                 </Badge>
                 <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
                   컴퓨터 비전 AI,<br />
                   <span className="bg-gradient-to-r from-[#00AFFF] to-[#7B61FF] bg-clip-text text-transparent">
-                    인식에서 생성까지
+                    생성에서 인식까지
                   </span>
                   <br />
                   완벽하게 마스터.
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
-                  이미지 분류부터 객체 탐지, 그리고 최신 생성형 AI 비디오 제작까지.
-                  코딩 학원 강사가 직접 설계한 실전형 커리큘럼으로 나만의 AI 포트폴리오를 완성하세요.
+                  AI 이미지·영상 생성으로 쇼핑몰 광고를 만들고, AI 툴과 Cursor로 나만의 AI 체험관을 완성하세요.
+                  쇼핑몰 광고 영상부터 AI 미니게임까지, 생성과 인식을 모두 경험하는 4주 커리큘럼입니다.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button 
@@ -379,7 +365,7 @@ const ComputerVisionMasterClass = () => {
                 <h3 className="text-2xl font-bold mb-4">지금 바로 시작하세요</h3>
                 <p className="text-muted-foreground mb-8">미래를 준비하는 가장 확실한 방법, 틴틴AI로봇아카데미와 함께하세요.</p>
                 <PaymentButton
-                  amount={99000}
+                  amount={0}
                   orderName="컴퓨터 비전 AI 수강 신청"
                   curriculumId="application-2"
                   size="lg"
