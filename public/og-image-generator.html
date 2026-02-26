@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200, initial-scale=1.0">
+    <title>OG Image Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .og-image {
+            width: 1200px;
+            height: 630px;
+            background: hsl(0, 0%, 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+        
+        /* Canvas 배경 효과 (파티클 스타일) */
+        .og-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, hsla(210, 100%, 50%, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, hsla(200, 95%, 50%, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, hsla(180, 100%, 50%, 0.1) 0%, transparent 50%);
+            z-index: 1;
+        }
+        
+        /* 연결선 효과 */
+        .og-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(45deg, transparent 40%, hsla(210, 100%, 50%, 0.1) 50%, transparent 60%),
+                linear-gradient(-45deg, transparent 40%, hsla(200, 95%, 50%, 0.1) 50%, transparent 60%);
+            z-index: 1;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .robot-icon {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .robot-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: hsla(180, 100%, 50%, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 9999px;
+            margin-bottom: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            color: hsl(180, 100%, 50%);
+        }
+        
+        .academy-name {
+            font-size: 64px;
+            font-weight: 900;
+            margin: 0;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            background: linear-gradient(135deg, hsl(200, 95%, 50%) 0%, hsl(250, 80%, 60%) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 28px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            color: hsl(220, 15%, 35%);
+            line-height: 1.6;
+        }
+        
+        .description {
+            font-size: 22px;
+            font-weight: 400;
+            color: hsl(220, 15%, 45%);
+            line-height: 1.6;
+        }
+        
+        .download-btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="margin-bottom: 20px; text-align: center;">카카오톡 링크 미리보기 이미지 생성기</h1>
+        
+        <div class="og-image" id="ogImage">
+            <div class="content">
+                <div class="logo-container">
+                    <div class="robot-icon">
+                        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="robotGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#00AFFF;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#7B61FF;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <!-- Robot head -->
+                            <rect x="20" y="15" width="60" height="50" rx="12" fill="none" stroke="url(#robotGradient)" stroke-width="3"/>
+                            <!-- Left eye -->
+                            <rect x="28" y="25" width="12" height="12" rx="2" fill="url(#robotGradient)"/>
+                            <!-- Right eye -->
+                            <rect x="60" y="25" width="12" height="12" rx="2" fill="url(#robotGradient)"/>
+                            <!-- Mouth -->
+                            <rect x="40" y="50" width="20" height="2" rx="1" fill="url(#robotGradient)"/>
+                            <!-- Left arm -->
+                            <rect x="8" y="38" width="8" height="8" rx="2" fill="url(#robotGradient)"/>
+                            <!-- Right arm -->
+                            <rect x="84" y="38" width="8" height="8" rx="2" fill="url(#robotGradient)"/>
+                        </svg>
+                    </div>
+                    <div class="academy-name">틴틴AI로봇아카데미</div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="download-btn" onclick="downloadImage()">이미지 다운로드</button>
+        
+        <div class="instructions">
+            <strong>사용 방법:</strong><br>
+            1. 위의 "이미지 다운로드" 버튼을 클릭하세요<br>
+            2. 다운로드된 이미지를 <code>public/images/og-image.jpg</code>로 저장하세요<br>
+            3. 또는 브라우저 개발자 도구(F12)를 열고 Elements 탭에서 <code>#ogImage</code> 요소를 선택한 후 스크린샷을 찍으세요
+        </div>
+    </div>
+    
+    <script>
+        function downloadImage() {
+            const element = document.getElementById('ogImage');
+            html2canvas(element, {
+                width: 1200,
+                height: 630,
+                scale: 1,
+                useCORS: true,
+                backgroundColor: null
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'og-image.jpg';
+                link.href = canvas.toDataURL('image/jpeg', 0.95);
+                link.click();
+            });
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html>
+
