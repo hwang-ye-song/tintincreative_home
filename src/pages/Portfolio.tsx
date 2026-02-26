@@ -130,12 +130,12 @@ const Portfolio = () => {
         // 클라이언트 사이드 필터링 (검색)
         let filteredProjects = projectsData.filter(matchesSearch);
 
-        // 하위 카테고리 필터링 (작성자의 profiles.student_type 기반)
+        // 하위 카테고리 필터링 (작성 시 선택한 project.sub_category 우선 기반)
         if (selectedCategory !== "전체" && selectedCategory !== "BEST" && selectedSubCategory !== "전체") {
           filteredProjects = filteredProjects.filter(project => {
             const p = project as any;
-            const studentType = p.profiles?.student_type || p.sub_category;
-            return studentType === selectedSubCategory;
+            const itemSubCategory = p.sub_category || p.profiles?.student_type;
+            return itemSubCategory === selectedSubCategory;
           });
         }
 
