@@ -30,6 +30,7 @@ const EditProject = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [subCategory, setSubCategory] = useState("중등");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -63,20 +64,20 @@ const EditProject = () => {
           return;
         }
 
-        // 관리자 여부 확인 (먼저 확인)
+        // 관리자 여부 확인 및 기본 소속 가져오기
         let userIsAdmin = false;
+        let defaultSubCategory = "중등";
         try {
           const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("role")
+            .select("role, student_type")
             .eq("id", user.id)
             .single();
-          
-          if (!profileError && profile && 'role' in profile) {
-            const role = (profile as { role?: string }).role;
-            userIsAdmin = role === "admin" || role === "teacher";
-          } else {
-            userIsAdmin = false;
+
+          if (!profileError && profile) {
+            const p = profile as any;
+            userIsAdmin = p.role === "admin" || p.role === "teacher";
+            if (p.student_type) defaultSubCategory = p.student_type;
           }
           setIsAdmin(userIsAdmin);
         } catch {
@@ -106,6 +107,7 @@ const EditProject = () => {
         setTitle(project.title);
         setDescription(project.description);
         setCategory(project.category || "");
+        setSubCategory((project as any).sub_category || defaultSubCategory);
         setTags(project.tags || []);
         setCurrentImageUrl(project.image_url);
         setVideoUrl((project as Project).video_url || "");
@@ -151,7 +153,7 @@ const EditProject = () => {
 
         const compressedFile = await imageCompression(file, options);
         setImageFile(compressedFile);
-        
+
         toast({
           title: "이미지 최적화 완료",
           description: `이미지가 ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB로 최적화되었습니다.`,
@@ -201,7 +203,7 @@ const EditProject = () => {
       setTempPassword("");
       setPasswordDialogOpen(true);
     }
-    
+
     // input 초기화
     e.target.value = "";
   };
@@ -223,7 +225,7 @@ const EditProject = () => {
           [currentFileIndex]: tempPassword.trim()
         });
       }
-      
+
       // 다음 파일이 있으면 계속, 없으면 닫기
       const nextIndex = currentFileIndex + 1;
       if (nextIndex < attachmentFiles.length) {
@@ -302,7 +304,7 @@ const EditProject = () => {
         const sanitizedName = sanitizeFileName(imageFile.name);
         const fileExt = sanitizedName.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from('project-images')
           .upload(fileName, imageFile);
@@ -325,7 +327,7 @@ const EditProject = () => {
             const sanitizedName = sanitizeFileName(file.name);
             const fileExt = sanitizedName.split('.').pop();
             const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-            
+
             const { error: uploadError } = await supabase.storage
               .from('project-files')
               .upload(fileName, file);
@@ -360,7 +362,7 @@ const EditProject = () => {
       const finalIsBest = category === "BEST" ? true : undefined;
 
       // 유튜브 URL을 embed 형식으로 변환
-      const processedVideoUrl = videoUrl.trim() 
+      const processedVideoUrl = videoUrl.trim()
         ? convertYouTubeUrlToEmbed(videoUrl.trim())
         : null;
 
@@ -368,6 +370,7 @@ const EditProject = () => {
         title: string;
         description: string;
         category: string | null;
+        sub_category: string;
         tags: string[];
         image_url?: string;
         video_url?: string | null;
@@ -377,6 +380,7 @@ const EditProject = () => {
         title,
         description,
         category: finalCategory,
+        sub_category: subCategory,
         tags,
         image_url: imageUrl,
         video_url: processedVideoUrl,
@@ -430,7 +434,7 @@ const EditProject = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <div className="pt-20 pb-20 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="mb-6 flex items-center gap-4">
@@ -475,13 +479,27 @@ const EditProject = () => {
                       <SelectTrigger className="mt-2">
                         <SelectValue placeholder="카테고리를 선택하세요" />
                       </SelectTrigger>
-                  <SelectContent className="bg-popover border border-border z-50">
-                    {(isAdmin ? ["BEST", ...BASE_CATEGORIES] : BASE_CATEGORIES).map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                      <SelectContent className="bg-popover border border-border z-50">
+                        {(isAdmin ? ["BEST", ...BASE_CATEGORIES] : BASE_CATEGORIES).map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="subCategory" className="text-base font-semibold">소속 선택 (초등/중등/일반)</Label>
+                    <Select value={subCategory} onValueChange={setSubCategory}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="소속 선택" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border border-border z-50">
+                        <SelectItem value="초등">초등</SelectItem>
+                        <SelectItem value="중등">중등</SelectItem>
+                        <SelectItem value="일반">일반</SelectItem>
+                      </SelectContent>
                     </Select>
                   </div>
 
@@ -644,7 +662,7 @@ const EditProject = () => {
                   <p className="text-sm text-muted-foreground mb-4">
                     텍스트 편집 도구를 사용하여 내용을 꾸며보세요
                   </p>
-                  
+
                   <TiptapEditor
                     content={description}
                     onChange={setDescription}
@@ -672,13 +690,13 @@ const EditProject = () => {
               <div className="space-y-6">
                 <div className="bg-card border border-border rounded-lg p-6 space-y-4">
                   <h2 className="font-heading text-2xl font-bold">{title || "제목 없음"}</h2>
-                  
+
                   {category && (
                     <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                       {category}
                     </Badge>
                   )}
-                  
+
                   {tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {tags.map((tag, index) => (
@@ -691,7 +709,7 @@ const EditProject = () => {
                 </div>
 
                 <div className="bg-card border border-border rounded-lg p-6">
-                  <div 
+                  <div
                     className="prose prose-sm max-w-none dark:prose-invert"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) || "<p class='text-muted-foreground'>내용 없음</p>" }}
                   />
