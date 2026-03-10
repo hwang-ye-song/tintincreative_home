@@ -137,7 +137,7 @@ export const Navbar = () => {
               아카데미 소식
             </button>
             <button onClick={handleConsultationClick} className="cta-btn text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 whitespace-nowrap">
-              상담하기
+              무료 체험 수업 신청
             </button>
             {isCheckingAuth ? (
               <div className="w-16 md:w-20 h-7 md:h-9" /> // 로딩 중일 때 공간 유지
@@ -197,7 +197,7 @@ export const Navbar = () => {
               수업 스케치
             </button>
             <button onClick={handleConsultationClick} className="cta-btn w-full">
-              수강 상담하기
+              무료 체험 수업 신청
             </button>
             {isCheckingAuth ? (
               <div className="w-full h-10" /> // 로딩 중일 때 공간 유지

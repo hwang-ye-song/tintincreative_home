@@ -24,6 +24,7 @@ const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState("전체");
+  const [selectedSubCategory, setSelectedSubCategory] = useState("전체");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -1035,23 +1036,21 @@ const Index = () => {
           <div className="bg-gradient-to-br from-primary/10 via-accent/5 to-primary/10 rounded-lg p-12 text-center animate-fade-in hover-scale">
             <h2 className="font-heading text-4xl font-bold mb-4">학습 여정을 시작할 준비가 되셨나요?</h2>
             <p className="text-lg text-muted-foreground mb-8">
-              AI와 로봇공학을 배우는 수백 명의 학생들과 함께하세요. 얼리버드 할인 제공!
+              AI와 협업하는 아이의 미래, 틴틴AI로봇 아카데미에서 무료로 시작하세요.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-              <Input type="email" placeholder="이메일을 입력하세요" className="flex-1" />
-              <PaymentButton
-                amount={99000}
-                orderName="틴틴AI로봇아카데미 수강 신청"
-                curriculumId="application-2"
+            <div className="flex justify-center max-w-md mx-auto">
+              <Button
                 size="lg"
-                className="hover-scale"
+                className="w-full sm:w-auto bg-gradient-to-r from-primary to-accent text-white px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5"
+                onClick={() => {
+                  const envUrl = import.meta.env.VITE_GOOGLE_FORM_URL;
+                  const formUrl = envUrl ? envUrl.replace('/edit', '/viewform') : "https://forms.gle/M4jKeZDiPHX6sh4j7";
+                  window.open(formUrl, '_blank', 'noopener,noreferrer');
+                }}
               >
-                시작하기
-              </PaymentButton>
+                무료 체험 수업 신청
+              </Button>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
-              신용카드 불필요. 14일 무료 체험.
-            </p>
           </div>
         </div>
       </section>
