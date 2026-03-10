@@ -130,3 +130,16 @@ export interface PaymentApproval {
   amount: number;
 }
 
+export interface ClassGallery {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  media_url: string;
+  is_video: boolean;
+  is_hidden: boolean;
+  created_at: string;
+  updated_at: string;
+  profiles?: Partial<Profile>;
+}
+

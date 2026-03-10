@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown, Pencil, X } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { smoothScrollTo, devLog } from "@/lib/utils";
+import { ClassGalleryPreview } from "@/components/ClassGalleryPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { Project } from "@/types";
 import { getOptimizedThumbnailUrl } from "@/lib/imageUtils";
@@ -974,6 +975,11 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Class Gallery Preview */}
+      <div id="gallery">
+        <ClassGalleryPreview />
+      </div>
 
       {/* Faculty Preview */}
       <section className="py-20 px-4 bg-muted/30">

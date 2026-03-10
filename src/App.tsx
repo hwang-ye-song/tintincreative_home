@@ -28,6 +28,10 @@ import RobotArmMasterClass from "./pages/RobotArmMasterClass";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFail from "./pages/PaymentFail";
 import PartialPayment from "./pages/PartialPayment";
+import GalleryList from "./pages/GalleryList";
+import GalleryDetail from "./pages/GalleryDetail";
+import CreateGallery from "./pages/CreateGallery";
+import EditGallery from "./pages/EditGallery";
 import EmptyPage from "./pages/EmptyPage";
 import NotFound from "./pages/NotFound";
 
@@ -75,9 +79,9 @@ const OAuthCallbackHandler = () => {
         try {
           // 세션이 설정될 때까지 대기
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          
+
           if (sessionError) {
             devLog.error('Session error:', sessionError);
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -138,6 +142,10 @@ const App = () => (
             <Route path="/portfolio/create" element={<CreateProject />} />
             <Route path="/portfolio/edit/:id" element={<EditProject />} />
             <Route path="/portfolio/:id" element={<ProjectDetailPage />} />
+            <Route path="/gallery" element={<GalleryList />} />
+            <Route path="/gallery/create" element={<CreateGallery />} />
+            <Route path="/gallery/:id" element={<GalleryDetail />} />
+            <Route path="/gallery/edit/:id" element={<EditGallery />} />
             <Route path="/faculty" element={<Faculty />} />
             <Route path="/login" element={<Login />} />
             <Route path="/mypage" element={<MyPage />} />

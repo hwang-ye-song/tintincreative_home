@@ -72,7 +72,7 @@ export const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['hero', 'curriculum', 'portfolio', 'contact'];
+      const sections = ['hero', 'curriculum', 'portfolio', 'gallery', 'contact'];
       const scrollPosition = window.scrollY + 100;
 
       for (const sectionId of sections) {
@@ -105,8 +105,8 @@ export const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden sm:flex items-center gap-2 md:gap-4 lg:gap-8 flex-shrink-0">
-            <button 
-              onClick={() => scrollToSection('hero')} 
+            <button
+              onClick={() => scrollToSection('hero')}
               className={`text-xs md:text-sm lg:text-base text-foreground hover:text-primary transition-colors whitespace-nowrap ${activeSection === 'hero' ? 'text-primary font-semibold' : ''}`}
             >
               홈
@@ -118,17 +118,23 @@ export const Navbar = () => {
                 </Button>
               </Link>
             )}
-            <button 
-              onClick={() => scrollToSection('curriculum')} 
+            <button
+              onClick={() => scrollToSection('curriculum')}
               className={`text-xs md:text-sm lg:text-base text-foreground hover:text-primary transition-colors whitespace-nowrap ${activeSection === 'curriculum' ? 'text-primary font-semibold' : ''}`}
             >
               커리큘럼
             </button>
-            <button 
-              onClick={() => scrollToSection('portfolio')} 
+            <button
+              onClick={() => scrollToSection('portfolio')}
               className={`text-xs md:text-sm lg:text-base text-foreground hover:text-primary transition-colors whitespace-nowrap ${activeSection === 'portfolio' ? 'text-primary font-semibold' : ''}`}
             >
               포트폴리오
+            </button>
+            <button
+              onClick={() => scrollToSection('gallery')}
+              className={`text-xs md:text-sm lg:text-base text-foreground hover:text-primary transition-colors whitespace-nowrap ${activeSection === 'gallery' ? 'text-primary font-semibold' : ''}`}
+            >
+              아카데미 소식
             </button>
             <button onClick={handleConsultationClick} className="cta-btn text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 whitespace-nowrap">
               상담하기
@@ -183,6 +189,12 @@ export const Navbar = () => {
               className={`block w-full text-left text-foreground hover:text-primary transition-colors ${activeSection === 'portfolio' ? 'text-primary font-semibold' : ''}`}
             >
               포트폴리오
+            </button>
+            <button
+              onClick={() => scrollToSection('gallery')}
+              className={`block w-full text-left text-foreground hover:text-primary transition-colors ${activeSection === 'gallery' ? 'text-primary font-semibold' : ''}`}
+            >
+              수업 스케치
             </button>
             <button onClick={handleConsultationClick} className="cta-btn w-full">
               수강 상담하기

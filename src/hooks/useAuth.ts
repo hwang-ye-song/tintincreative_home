@@ -25,34 +25,32 @@ export function useAuth(): UseAuthReturn {
     const checkUser = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+
         if (sessionError || !session || !session.user) {
           setUser(null);
           setUserRole(null);
           setIsLoading(false);
           return;
         }
-        
+
         setUser(session.user);
-        
-        // 프로필 조회는 비동기로 처리
-        (async () => {
-          try {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (!profileError && profile && 'role' in profile) {
-              setUserRole((profile as { role?: string }).role || null);
-            } else {
-              setUserRole(null);
-            }
-          } catch {
+
+        // 프로필 조회가 완료될 때까지 대기
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+          if (!profileError && profile && 'role' in profile) {
+            setUserRole((profile as { role?: string }).role || null);
+          } else {
             setUserRole(null);
           }
-        })();
+        } catch {
+          setUserRole(null);
+        }
       } catch (error) {
         devLog.error('User check error:', error);
         setUser(null);
@@ -61,22 +59,21 @@ export function useAuth(): UseAuthReturn {
         setIsLoading(false);
       }
     };
-    
+
     checkUser();
-    
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!session || !session.user) {
           setUser(null);
           setUserRole(null);
           setIsLoading(false);
           return;
         }
-        
+
         setUser(session.user);
-        setIsLoading(false);
-        
-        // 프로필 조회는 비동기로 처리
+
+        // 프로필 조회가 완료될 때까지 대기하되 db 호출이 deadlock을 일으키지 않도록 별도 비동기 실행
         (async () => {
           try {
             const { data: profile, error: profileError } = await supabase
@@ -84,7 +81,7 @@ export function useAuth(): UseAuthReturn {
               .select('role')
               .eq('id', session.user.id)
               .single();
-            
+
             if (!profileError && profile && 'role' in profile) {
               setUserRole((profile as { role?: string }).role || null);
             } else {
@@ -92,6 +89,8 @@ export function useAuth(): UseAuthReturn {
             }
           } catch {
             setUserRole(null);
+          } finally {
+            setIsLoading(false);
           }
         })();
       }
