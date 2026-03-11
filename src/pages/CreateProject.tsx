@@ -20,7 +20,7 @@ import { validateImageFile, validateAttachmentFile, sanitizeFileName } from "@/l
 
 const BASE_CATEGORIES = ["AI 기초", "AI 활용", "로봇", "기타"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_VIDEO_FILE_SIZE = 100 * 1024 * 1024; // 100MB for videos
+const MAX_VIDEO_FILE_SIZE = 20 * 1024 * 1024; // 20MB for videos
 const MAX_IMAGE_WIDTH = 1920;
 const MAX_IMAGE_HEIGHT = 1080;
 const IMAGE_QUALITY = 0.8;
@@ -35,6 +35,8 @@ const CreateProject = () => {
   const [tagInput, setTagInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUploadType, setVideoUploadType] = useState<"url" | "file">("url");
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [attachmentPasswords, setAttachmentPasswords] = useState<Record<number, string>>({});
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -124,6 +126,31 @@ const CreateProject = () => {
 
   const handleVideoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setVideoUrl(e.target.value);
+  };
+
+  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > MAX_VIDEO_FILE_SIZE) {
+        toast({
+          title: "파일 크기 초과",
+          description: "동영상은 20MB 이하여야 합니다.",
+          variant: "destructive"
+        });
+        e.target.value = "";
+        return;
+      }
+      if (!file.type.startsWith('video/')) {
+        toast({
+          title: "잘못된 파일 형식",
+          description: "동영상 파일만 업로드 가능합니다.",
+          variant: "destructive"
+        });
+        e.target.value = "";
+        return;
+      }
+      setVideoFile(file);
+    }
   };
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -313,10 +340,36 @@ const CreateProject = () => {
       const finalCategory = category === "BEST" ? null : category;
       const finalIsBest = category === "BEST" ? true : undefined;
 
-      // 유튜브 URL을 embed 형식으로 변환
-      const processedVideoUrl = videoUrl.trim()
-        ? convertYouTubeUrlToEmbed(videoUrl.trim())
-        : null;
+      // 유튜브 URL을 embed 형식으로 변환 또는 비디오 파일 처리
+      let processedVideoUrl = null;
+
+      if (videoUploadType === "file" && videoFile) {
+        setUploadingAttachments(true);
+        try {
+          const sanitizedName = sanitizeFileName(videoFile.name);
+          const fileExt = sanitizedName.split('.').pop();
+          const fileName = `${user.id}/video_${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('project-files')
+            .upload(fileName, videoFile);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('project-files')
+            .getPublicUrl(fileName);
+
+          processedVideoUrl = publicUrl;
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : '동영상 업로드 중 오류가 발생했습니다.';
+          throw new Error(`동영상 업로드 실패: ${errorMessage}`);
+        } finally {
+          setUploadingAttachments(false);
+        }
+      } else if (videoUploadType === "url" && videoUrl.trim()) {
+        processedVideoUrl = convertYouTubeUrlToEmbed(videoUrl.trim());
+      }
 
       const { error: insertError } = await supabase
         .from('projects')
@@ -483,18 +536,57 @@ const CreateProject = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="video" className="text-base font-semibold">영상 URL (선택사항)</Label>
-                    <Input
-                      id="video"
-                      type="url"
-                      value={videoUrl}
-                      onChange={handleVideoUrlChange}
-                      placeholder="YouTube, Vimeo 등의 영상 URL을 입력하세요"
-                      className="mt-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      YouTube, Vimeo 등의 공유 링크를 입력하거나 직접 업로드한 영상의 URL을 입력하세요
-                    </p>
+                    <Label className="text-base font-semibold block mb-2">영상 (선택사항)</Label>
+                    <Tabs value={videoUploadType} onValueChange={(v) => setVideoUploadType(v as "url" | "file")} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsTrigger value="url">URL 링크 입력</TabsTrigger>
+                        <TabsTrigger value="file">동영상 직접 업로드</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="url" className="mt-0 space-y-2">
+                        <Input
+                          id="videoUrl"
+                          type="url"
+                          value={videoUrl}
+                          onChange={handleVideoUrlChange}
+                          placeholder="YouTube, Vimeo 등의 영상 URL을 입력하세요"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          YouTube, Vimeo 등의 공유 링크를 입력하세요
+                        </p>
+                      </TabsContent>
+                      <TabsContent value="file" className="mt-0 space-y-2">
+                        <Input
+                          id="videoFile"
+                          type="file"
+                          accept="video/*"
+                          onChange={handleVideoFileChange}
+                          className="mt-2"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          최대 20MB 용량의 동영상 파일을 직접 업로드하세요
+                        </p>
+                        {videoFile && (
+                          <div className="flex items-center gap-2 mt-2 bg-muted p-2 rounded-md">
+                            <Video className="h-4 w-4" />
+                            <span className="text-sm truncate flex-1">{videoFile.name}</span>
+                            <span className="text-xs text-muted-foreground">{formatFileSize(videoFile.size)}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setVideoFile(null);
+                                const fileInput = document.getElementById('videoFile') as HTMLInputElement;
+                                if (fileInput) fileInput.value = '';
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
                   </div>
 
                   <div>
