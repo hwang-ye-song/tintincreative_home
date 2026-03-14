@@ -1163,6 +1163,45 @@ const AdminPage = () => {
     }
   };
 
+  const handleResetPassword = async (userId: string, userName: string) => {
+    if (!confirm(`${userName} 사용자의 비밀번호를 '00000000'으로 초기화하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("로그인이 필요합니다.");
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ targetUserId: userId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "비밀번호 초기화 실패" }));
+        throw new Error(errorData.error || errorData.message || "비밀번호 초기화에 실패했습니다.");
+      }
+
+      toast({
+        title: "성공",
+        description: `${userName} 사용자의 비밀번호가 '00000000'으로 초기화되었습니다.`,
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "비밀번호 초기화에 실패했습니다.";
+      toast({
+        title: "오류",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   const updateUserRole = async (userId: string, newRole: "admin" | "teacher" | "student") => {
     try {
       const { error } = await supabase
@@ -1742,27 +1781,37 @@ const AdminPage = () => {
                                 {user.email || "이메일 없음"}
                               </CardDescription>
                             </div>
-                            <div className="ml-4">
-                              <Select
-                                value={currentRole}
-                                onValueChange={(value: "admin" | "teacher" | "student") => {
-                                  handleRoleChange(user.id, user.name || "사용자", value, currentRole);
-                                }}
-                                disabled={isCurrentUser}
-                              >
-                                <SelectTrigger className="w-[140px]">
-                                  <SelectValue>
-                                    {currentRole === "admin" ? "관리자" : currentRole === "teacher" ? "선생님" : "학생"}
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="student">학생</SelectItem>
-                                  <SelectItem value="teacher">선생님</SelectItem>
-                                  <SelectItem value="admin">관리자</SelectItem>
-                                </SelectContent>
-                              </Select>
+                            <div className="ml-4 flex flex-col items-end gap-2">
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={currentRole}
+                                  onValueChange={(value: "admin" | "teacher" | "student") => {
+                                    handleRoleChange(user.id, user.name || "사용자", value, currentRole);
+                                  }}
+                                  disabled={isCurrentUser}
+                                >
+                                  <SelectTrigger className="w-[140px]">
+                                    <SelectValue>
+                                      {currentRole === "admin" ? "관리자" : currentRole === "teacher" ? "선생님" : "학생"}
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="student">학생</SelectItem>
+                                    <SelectItem value="teacher">선생님</SelectItem>
+                                    <SelectItem value="admin">관리자</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleResetPassword(user.id, user.name || "사용자")}
+                                  disabled={isCurrentUser}
+                                >
+                                  비밀번호 초기화
+                                </Button>
+                              </div>
                               {isCurrentUser && (
-                                <p className="text-xs text-muted-foreground mt-1 text-center">
+                                <p className="text-xs text-muted-foreground mt-1 text-center w-full">
                                   (본인)
                                 </p>
                               )}
