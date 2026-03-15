@@ -22,6 +22,7 @@ export type Database = {
           is_hidden: boolean
           is_video: boolean
           media_url: string
+          media_urls: string[] | null
           title: string
           updated_at: string
           user_id: string
@@ -33,6 +34,7 @@ export type Database = {
           is_hidden?: boolean
           is_video?: boolean
           media_url: string
+          media_urls?: string[] | null
           title: string
           updated_at?: string
           user_id: string
@@ -44,6 +46,7 @@ export type Database = {
           is_hidden?: boolean
           is_video?: boolean
           media_url?: string
+          media_urls?: string[] | null
           title?: string
           updated_at?: string
           user_id?: string

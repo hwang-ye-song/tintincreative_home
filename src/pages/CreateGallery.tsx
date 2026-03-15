@@ -25,9 +25,8 @@ const CreateGallery = () => {
     });
     const [uploadType, setUploadType] = useState<"file" | "youtube">("file");
     const [youtubeUrl, setYoutubeUrl] = useState("");
-    const [mediaFile, setMediaFile] = useState<File | null>(null);
-    const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-    const [isVideo, setIsVideo] = useState(false);
+    const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+    const [mediaPreviews, setMediaPreviews] = useState<{ url: string; isVideo: boolean }[]>([]);
 
     // 권한 체크
     useEffect(() => {
@@ -53,22 +52,28 @@ const CreateGallery = () => {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
+            const newFiles = Array.from(e.target.files);
+            const validFiles: File[] = [];
+            const newPreviews: { url: string; isVideo: boolean }[] = [];
 
-            // 파일 크기 제한 (이미지 5MB, 비디오 100MB)
-            const isVideoFile = file.type.startsWith("video/");
-            const maxSize = isVideoFile ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+            newFiles.forEach(file => {
+                const isVideoFile = file.type.startsWith("video/");
+                const maxSize = isVideoFile ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
 
-            if (file.size > maxSize) {
-                toast.error(`파일 크기가 너무 큽니다. (${isVideoFile ? '100MB' : '5MB'} 이하만 가능)`);
-                return;
-            }
+                if (file.size > maxSize) {
+                    toast.error(`${file.name}: 파일 크기가 너무 큽니다. (${isVideoFile ? '100MB' : '5MB'} 이하만 가능)`);
+                    return;
+                }
 
-            setMediaFile(file);
-            setIsVideo(isVideoFile);
+                validFiles.push(file);
+                newPreviews.push({
+                    url: URL.createObjectURL(file),
+                    isVideo: isVideoFile
+                });
+            });
 
-            const objectUrl = URL.createObjectURL(file);
-            setMediaPreview(objectUrl);
+            setMediaFiles(prev => [...prev, ...validFiles]);
+            setMediaPreviews(prev => [...prev, ...newPreviews]);
 
             // Clear input
             if (fileInputRef.current) {
@@ -83,32 +88,44 @@ const CreateGallery = () => {
 
         const youtubeId = extractYouTubeId(url);
         if (youtubeId) {
-            setMediaPreview(url);
-            setIsVideo(true);
+            setMediaPreviews([{ url, isVideo: true }]);
         } else {
-            setMediaPreview(null);
-            setIsVideo(false);
+            setMediaPreviews([]);
         }
     };
 
     const clearMedia = () => {
-        if (mediaPreview && !extractYouTubeId(mediaPreview)) {
-            URL.revokeObjectURL(mediaPreview);
-        }
-        setMediaFile(null);
-        setMediaPreview(null);
-        setIsVideo(false);
+        mediaPreviews.forEach(preview => {
+            if (!extractYouTubeId(preview.url)) {
+                URL.revokeObjectURL(preview.url);
+            }
+        });
+        setMediaFiles([]);
+        setMediaPreviews([]);
         setYoutubeUrl("");
+    };
+
+    const removeMediaItem = (index: number) => {
+        setMediaPreviews(prev => {
+            const item = prev[index];
+            if (item && !extractYouTubeId(item.url)) {
+                URL.revokeObjectURL(item.url);
+            }
+            return prev.filter((_, i) => i !== index);
+        });
+        setMediaFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     // 컴포넌트 언마운트 시 URL 정리
     useEffect(() => {
         return () => {
-            if (mediaPreview) {
-                URL.revokeObjectURL(mediaPreview);
-            }
+            mediaPreviews.forEach(preview => {
+                if (!extractYouTubeId(preview.url)) {
+                    URL.revokeObjectURL(preview.url);
+                }
+            });
         };
-    }, [mediaPreview]);
+    }, [mediaPreviews]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -123,8 +140,13 @@ const CreateGallery = () => {
             return;
         }
 
-        if (!mediaFile) {
-            toast.error("사진 또는 영상을 업로드해주세요.");
+        if (uploadType === "file" && mediaFiles.length === 0) {
+            toast.error("사진 또는 영상을 최소 한 개 이상 업로드해주세요.");
+            return;
+        }
+
+        if (uploadType === "youtube" && !extractYouTubeId(youtubeUrl)) {
+            toast.error("올바른 유튜브 링크를 입력해주세요.");
             return;
         }
 
@@ -132,43 +154,50 @@ const CreateGallery = () => {
         const toastId = toast.loading("게시물을 업로드하는 중입니다...");
 
         try {
-            let finalMediaUrl = "";
+            const finalMediaUrls: string[] = [];
+            let isFirstVideo = false;
 
-            // 1. 미디어 파일 업로드 (유튜브 링크가 아닌 경우)
+            // 1. 미디어 파일 업로드
             if (uploadType === "youtube") {
                 const youtubeId = extractYouTubeId(youtubeUrl);
                 if (!youtubeId) {
                     throw new Error("올바른 유튜브 링크를 입력해주세요.");
                 }
-                finalMediaUrl = youtubeUrl;
+                finalMediaUrls.push(youtubeUrl);
+                isFirstVideo = true;
             } else {
-                if (!mediaFile) {
-                    throw new Error("파일을 선택해주세요.");
+                for (const file of mediaFiles) {
+                    const fileExt = file.name.split(".").pop()?.toLowerCase();
+                    const allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'webm'];
+                    if (!fileExt || !allowedExts.includes(fileExt)) {
+                        continue;
+                    }
+
+                    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+                    const filePath = `${user.id}/${fileName}`;
+
+                    const { error: uploadError, data: uploadData } = await supabase.storage
+                        .from("gallery-media")
+                        .upload(filePath, file, {
+                            cacheControl: "3600",
+                            upsert: false,
+                        });
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from("gallery-media")
+                        .getPublicUrl(uploadData.path);
+
+                    finalMediaUrls.push(publicUrl);
+                    if (finalMediaUrls.length === 1 && file.type.startsWith("video/")) {
+                        isFirstVideo = true;
+                    }
                 }
-                const fileExt = mediaFile.name.split(".").pop()?.toLowerCase();
-                // 지원하지 않는 확장자인지 체크
-                const allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'webm'];
-                if (!fileExt || !allowedExts.includes(fileExt)) {
-                    throw new Error('지원하지 않는 파일 형식입니다. (jpg, png, gif, mp4, mov 등 지원)');
-                }
+            }
 
-                const fileName = `${crypto.randomUUID()}.${fileExt}`;
-                const filePath = `${user.id}/${fileName}`;
-
-                const { error: uploadError, data: uploadData } = await supabase.storage
-                    .from("gallery-media")
-                    .upload(filePath, mediaFile, {
-                        cacheControl: "3600",
-                        upsert: false,
-                    });
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from("gallery-media")
-                    .getPublicUrl(uploadData.path);
-
-                finalMediaUrl = publicUrl;
+            if (finalMediaUrls.length === 0) {
+                throw new Error("처리된 파일이 없습니다.");
             }
 
             // 2. 데이터베이스 레코드 생성
@@ -176,8 +205,9 @@ const CreateGallery = () => {
                 title: formData.title,
                 description: formData.description,
                 user_id: user.id,
-                media_url: finalMediaUrl,
-                is_video: isVideo,
+                media_url: finalMediaUrls[0], // 하위 호환성을 위해 첫 번째 URL 저장
+                media_urls: finalMediaUrls,
+                is_video: isFirstVideo,
                 is_hidden: false,
             });
 
@@ -245,48 +275,57 @@ const CreateGallery = () => {
                                 </TabsList>
 
                                 <TabsContent value="file" className="space-y-4 mt-0">
-                                    {!mediaPreview ? (
-                                        <div
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="w-full flex-col border-2 border-dashed rounded-xl flex items-center justify-center min-h-[200px] hover:bg-muted/50 transition-colors cursor-pointer group relative overflow-hidden bg-background"
-                                        >
-                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full flex-col border-2 border-dashed rounded-xl flex items-center justify-center min-h-[150px] hover:bg-muted/50 transition-colors cursor-pointer group relative overflow-hidden bg-background"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-                                            <div className="flex gap-4 mb-3 relative z-10">
-                                                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
-                                                    <ImageIcon className="h-6 w-6" />
-                                                </div>
-                                                <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
-                                                    <Video className="h-6 w-6" />
-                                                </div>
+                                        <div className="flex gap-4 mb-3 relative z-10">
+                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                                <ImageIcon className="h-5 w-5" />
                                             </div>
-
-                                            <p className="text-sm font-medium relative z-10">클릭하여 사진 또는 영상 선택</p>
-                                            <p className="text-xs text-muted-foreground mt-2 text-center max-w-sm relative z-10 px-4">
-                                                JPG, PNG, GIF 이미지 (최대 5MB)<br />
-                                                MP4, MOV, WEBM 비디오 (최대 100MB)
-                                            </p>
+                                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                                                <Video className="h-5 w-5" />
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="relative rounded-xl overflow-hidden border bg-black group w-full flex items-center justify-center" style={{ minHeight: '200px' }}>
-                                            {isVideo ? (
-                                                <video src={mediaPreview} controls className="max-h-[500px] w-auto max-w-full" />
-                                            ) : (
-                                                <img src={mediaPreview} alt="Preview" className="max-h-[500px] w-auto max-w-full object-contain" />
-                                            )}
-                                            {isVideo && (
-                                                <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm flex items-center shadow-lg">
-                                                    <Video className="w-4 h-4 mr-1.5 text-accent" />
-                                                    비디오 선택됨
+
+                                        <p className="text-sm font-medium relative z-10">클릭하여 사진 또는 영상 추가 (여러 장 가능)</p>
+                                        <p className="text-xs text-muted-foreground mt-2 text-center max-w-sm relative z-10 px-4">
+                                            최대 10개까지 선택 가능<br />
+                                            이미지 5MB / 비디오 100MB 이하
+                                        </p>
+                                    </div>
+
+                                    {mediaPreviews.length > 0 && (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6">
+                                            {mediaPreviews.map((preview, index) => (
+                                                <div key={index} className="relative aspect-square rounded-lg overflow-hidden border bg-black group">
+                                                    {preview.isVideo ? (
+                                                        <video src={preview.url} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <img src={preview.url} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                                                    )}
+                                                    {preview.isVideo && (
+                                                        <div className="absolute top-2 left-2 bg-black/60 text-white p-1 rounded-md">
+                                                            <Video className="w-3 h-3 child-video" />
+                                                        </div>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeMediaItem(index);
+                                                        }}
+                                                        className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-sm backdrop-blur-sm">
+                                                        {index + 1}
+                                                    </div>
                                                 </div>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={clearMedia}
-                                                className="absolute top-4 right-4 bg-black/60 text-white p-2 rounded-full hover:bg-red-500 transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover:opacity-100"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </button>
+                                            ))}
                                         </div>
                                     )}
                                     <input
@@ -295,6 +334,7 @@ const CreateGallery = () => {
                                         onChange={handleFileChange}
                                         accept="image/*,video/mp4,video/quicktime,video/webm"
                                         className="hidden"
+                                        multiple
                                     />
                                 </TabsContent>
 
@@ -309,12 +349,12 @@ const CreateGallery = () => {
                                         <p className="text-xs text-muted-foreground">유튜브 영상 주소를 복사하여 붙여넣으면 저장 시 영상이 연결됩니다.</p>
                                     </div>
 
-                                    {mediaPreview && extractYouTubeId(mediaPreview) && (
+                                    {mediaPreviews.length > 0 && extractYouTubeId(mediaPreviews[0].url) && (
                                         <div className="relative rounded-xl overflow-hidden border bg-black group w-full flex items-center justify-center aspect-video">
                                             <iframe
                                                 width="100%"
                                                 height="100%"
-                                                src={`https://www.youtube.com/embed/${extractYouTubeId(mediaPreview)}?autoplay=0`}
+                                                src={`https://www.youtube.com/embed/${extractYouTubeId(mediaPreviews[0].url)}?autoplay=0`}
                                                 title="YouTube video player"
                                                 frameBorder="0"
                                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

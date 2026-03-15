@@ -13,6 +13,17 @@ import { Helmet } from "react-helmet-async";
 import { ClassGallery } from "@/types";
 import { extractYouTubeId, getYouTubeThumbnail } from "@/lib/youtube";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const EditGallery = () => {
     const { id } = useParams();
@@ -28,9 +39,8 @@ const EditGallery = () => {
     });
     const [uploadType, setUploadType] = useState<"file" | "youtube">("file");
     const [youtubeUrl, setYoutubeUrl] = useState("");
-    const [mediaFile, setMediaFile] = useState<File | null>(null);
-    const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-    const [isVideo, setIsVideo] = useState(false);
+    const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+    const [mediaPreviews, setMediaPreviews] = useState<{ url: string; isVideo: boolean; isOriginal?: boolean }[]>([]);
     const [originalGallery, setOriginalGallery] = useState<ClassGallery | null>(null);
 
     // 데이터 불러오기 및 권한 체크
@@ -77,13 +87,24 @@ const EditGallery = () => {
                 title: data.title,
                 description: data.description || "",
             });
-            setMediaPreview(data.media_url);
-            setIsVideo(data.is_video);
 
-            const youtubeId = extractYouTubeId(data.media_url);
-            if (youtubeId) {
+            // Handle media_urls if present, otherwise fallback to media_url
+            const urls = data.media_urls && data.media_urls.length > 0
+                ? data.media_urls
+                : [data.media_url];
+
+            const initialPreviews = urls.map((url: string) => {
+                const youtubeId = extractYouTubeId(url);
+                const isVideo = url.toLowerCase().match(/\.(mp4|mov|webm)$/) || youtubeId;
+                return { url, isVideo: !!isVideo, isOriginal: true };
+            });
+
+            setMediaPreviews(initialPreviews);
+
+            const firstYoutubeId = extractYouTubeId(urls[0]);
+            if (firstYoutubeId) {
                 setUploadType("youtube");
-                setYoutubeUrl(data.media_url);
+                setYoutubeUrl(urls[0]);
             } else {
                 setUploadType("file");
             }
@@ -107,26 +128,29 @@ const EditGallery = () => {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
+            const newFiles = Array.from(e.target.files);
+            const validFiles: File[] = [];
+            const newPreviews: { url: string; isVideo: boolean; isOriginal: boolean }[] = [];
 
-            const isVideoFile = file.type.startsWith("video/");
-            const maxSize = isVideoFile ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+            newFiles.forEach(file => {
+                const isVideoFile = file.type.startsWith("video/");
+                const maxSize = isVideoFile ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
 
-            if (file.size > maxSize) {
-                toast.error(`파일 크기가 너무 큽니다. (${isVideoFile ? '100MB' : '5MB'} 이하만 가능)`);
-                return;
-            }
+                if (file.size > maxSize) {
+                    toast.error(`${file.name}: 파일 크기가 너무 큽니다. (${isVideoFile ? '100MB' : '5MB'} 이하만 가능)`);
+                    return;
+                }
 
-            setMediaFile(file);
-            setIsVideo(isVideoFile);
+                validFiles.push(file);
+                newPreviews.push({
+                    url: URL.createObjectURL(file),
+                    isVideo: isVideoFile,
+                    isOriginal: false
+                });
+            });
 
-            // 기존 프리뷰가 blob URL 이라면 해제
-            if (mediaPreview && mediaPreview.startsWith('blob:')) {
-                URL.revokeObjectURL(mediaPreview);
-            }
-
-            const objectUrl = URL.createObjectURL(file);
-            setMediaPreview(objectUrl);
+            setMediaFiles(prev => [...prev, ...validFiles]);
+            setMediaPreviews(prev => [...prev, ...newPreviews]);
 
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
@@ -140,31 +164,45 @@ const EditGallery = () => {
 
         const youtubeId = extractYouTubeId(url);
         if (youtubeId) {
-            setMediaPreview(url);
-            setIsVideo(true);
+            setMediaPreviews([{ url, isVideo: true, isOriginal: false }]);
         } else {
-            setMediaPreview(null);
-            setIsVideo(false);
+            setMediaPreviews([]);
         }
     };
 
     const clearMedia = () => {
-        if (mediaPreview && mediaPreview.startsWith('blob:')) {
-            URL.revokeObjectURL(mediaPreview);
-        }
-        setMediaFile(null);
-        setMediaPreview(null);
-        setIsVideo(false);
+        mediaPreviews.forEach(preview => {
+            if (preview.url.startsWith('blob:')) {
+                URL.revokeObjectURL(preview.url);
+            }
+        });
+        setMediaFiles([]);
+        setMediaPreviews([]);
         setYoutubeUrl("");
+    };
+
+    const removeMediaItem = (index: number) => {
+        setMediaPreviews(prev => {
+            const item = prev[index];
+            if (item && item.url.startsWith('blob:')) {
+                URL.revokeObjectURL(item.url);
+            }
+            return prev.filter((_, i) => i !== index);
+        });
+        // mediaFiles only contains NEW files. We need to find which one it is.
+        // This is a bit tricky if we mixed original and new.
+        // Let's rely on isOriginal flag.
     };
 
     useEffect(() => {
         return () => {
-            if (mediaPreview && mediaPreview.startsWith('blob:')) {
-                URL.revokeObjectURL(mediaPreview);
-            }
+            mediaPreviews.forEach(preview => {
+                if (preview.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(preview.url);
+                }
+            });
         };
-    }, [mediaPreview]);
+    }, [mediaPreviews]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -176,8 +214,13 @@ const EditGallery = () => {
             return;
         }
 
-        if (!mediaPreview) {
-            toast.error("사진 또는 영상을 업로드해주세요.");
+        if (mediaPreviews.length === 0 && uploadType === "file") {
+            toast.error("사진 또는 영상을 최소 한 개 이상 업로드해주세요.");
+            return;
+        }
+
+        if (uploadType === "youtube" && !extractYouTubeId(youtubeUrl)) {
+            toast.error("올바른 유튜브 링크를 입력해주세요.");
             return;
         }
 
@@ -185,35 +228,53 @@ const EditGallery = () => {
         const toastId = toast.loading("게시물을 수정하는 중입니다...");
 
         try {
-            let finalMediaUrl = originalGallery.media_url;
+            const finalMediaUrls: string[] = [];
+            let isFirstVideoFlag = false;
 
             if (uploadType === "youtube") {
                 const youtubeId = extractYouTubeId(youtubeUrl);
-                if (!youtubeId) {
-                    throw new Error("올바른 유튜브 링크를 입력해주세요.");
+                if (!youtubeId) throw new Error("올바른 유튜브 링크를 입력해주세요.");
+                finalMediaUrls.push(youtubeUrl);
+                isFirstVideoFlag = true;
+            } else {
+                // Handle existing and new files
+                let newFilesIndex = 0;
+                for (const preview of mediaPreviews) {
+                    if (preview.isOriginal) {
+                        finalMediaUrls.push(preview.url);
+                        if (finalMediaUrls.length === 1 && preview.isVideo) {
+                            isFirstVideoFlag = true;
+                        }
+                    } else {
+                        const file = mediaFiles[newFilesIndex++];
+                        if (!file) continue;
+
+                        const fileExt = file.name.split(".").pop()?.toLowerCase();
+                        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+                        const filePath = `${user.id}/${fileName}`;
+
+                        const { error: uploadError, data: uploadData } = await supabase.storage
+                            .from("gallery-media")
+                            .upload(filePath, file, {
+                                cacheControl: "3600",
+                                upsert: false,
+                            });
+
+                        if (uploadError) throw uploadError;
+
+                        const { data: { publicUrl } } = supabase.storage
+                            .from("gallery-media")
+                            .getPublicUrl(uploadData.path);
+
+                        finalMediaUrls.push(publicUrl);
+                        if (finalMediaUrls.length === 1 && file.type.startsWith("video/")) {
+                            isFirstVideoFlag = true;
+                        }
+                    }
                 }
-                finalMediaUrl = youtubeUrl;
-            } else if (mediaFile) {
-                // 1. 새 파일이 있으면 업로드 (기존 파일 교체)
-                const fileExt = mediaFile.name.split(".").pop()?.toLowerCase();
-                const fileName = `${crypto.randomUUID()}.${fileExt}`;
-                const filePath = `${user.id}/${fileName}`;
-
-                const { error: uploadError, data: uploadData } = await supabase.storage
-                    .from("gallery-media")
-                    .upload(filePath, mediaFile, {
-                        cacheControl: "3600",
-                        upsert: false,
-                    });
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from("gallery-media")
-                    .getPublicUrl(uploadData.path);
-
-                finalMediaUrl = publicUrl;
             }
+
+            if (finalMediaUrls.length === 0) throw new Error("처리된 파일이 없습니다.");
 
             // 2. 데이터베이스 레코드 업데이트
             const { error: updateError } = await supabase
@@ -221,8 +282,9 @@ const EditGallery = () => {
                 .update({
                     title: formData.title,
                     description: formData.description,
-                    media_url: finalMediaUrl,
-                    is_video: isVideo,
+                    media_url: finalMediaUrls[0],
+                    media_urls: finalMediaUrls,
+                    is_video: isFirstVideoFlag,
                 })
                 .eq("id", id);
 
@@ -243,39 +305,60 @@ const EditGallery = () => {
     const handleDelete = async () => {
         if (!id || !user) return;
 
-        if (!window.confirm("정말로 이 게시물을 삭제하시겠습니까? 관련 사진/영상도 함께 삭제됩니다.")) {
-            return;
-        }
-
         setIsSubmitting(true);
         const toastId = toast.loading("게시물을 삭제하는 중입니다...");
+        console.log("Starting deletion process...");
 
         try {
-            // 1. Storage 파일 추출 후 삭제 노력 (선택사항, 스키마에 따라 정리)
-            if (originalGallery?.media_url) {
-                // media_url 에서 파일 경로 구하기 로직 (예: supabase url 파싱) 
-                // 완벽하지 않을 수 있으나 가비지 방지 차원.
-                const urlParts = originalGallery.media_url.split('/gallery-media/');
-                if (urlParts.length > 1) {
-                    const path = urlParts[1];
-                    await supabase.storage.from("gallery-media").remove([path]);
+            // 1. Storage 파일 추출 후 삭제
+            const allUrlsToDelete = originalGallery?.media_urls && originalGallery.media_urls.length > 0
+                ? originalGallery.media_urls
+                : [originalGallery?.media_url].filter(Boolean) as string[];
+
+            console.log("URLs to delete from storage:", allUrlsToDelete);
+
+            const pathsToDelete: string[] = [];
+            allUrlsToDelete.forEach(url => {
+                if (url && url.includes('/gallery-media/')) {
+                    const urlParts = url.split('/gallery-media/');
+                    if (urlParts.length > 1) {
+                        pathsToDelete.push(urlParts[1]);
+                    }
+                }
+            });
+
+            if (pathsToDelete.length > 0) {
+                console.log("Storage paths to delete:", pathsToDelete);
+                try {
+                    const { error: storageError } = await supabase.storage.from("gallery-media").remove(pathsToDelete);
+                    if (storageError) {
+                        console.error("Storage deletion error (non-fatal):", storageError);
+                    } else {
+                        console.log("Storage files deleted successfully");
+                    }
+                } catch (storageError) {
+                    console.error("Storage deletion exception (non-fatal):", storageError);
                 }
             }
 
             // 2. DB 레코드 삭제
-            const { error } = await supabase
+            console.log("Deleting DB record with ID:", id);
+            const { error: deleteError } = await supabase
                 .from("class_gallery")
                 .delete()
                 .eq("id", id);
 
-            if (error) throw error;
+            if (deleteError) {
+                console.error("DB deletion error:", deleteError);
+                throw deleteError;
+            }
 
+            console.log("DB record deleted successfully");
             toast.success("게시물이 삭제되었습니다.", { id: toastId });
             navigate("/gallery");
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
-            console.error("Delete error:", error);
+            console.error("Delete sequence error:", error);
             toast.error("게시물 삭제 중 오류가 발생했습니다.", { id: toastId });
             setIsSubmitting(false);
         }
@@ -314,16 +397,37 @@ const EditGallery = () => {
                             <h1 className="text-3xl font-bold font-heading mb-2">아카데미 소식 수정</h1>
                             <p className="text-muted-foreground">잘못된 정보를 수정하거나 새로운 사진/영상으로 교체하세요.</p>
                         </div>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={handleDelete}
-                            disabled={isSubmitting}
-                        >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            삭제
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={isSubmitting}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    삭제하기
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>정말로 삭제하시겠습니까?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        이 게시물과 관련된 모든 사진 및 영상이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={isSubmitting}>취소</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleDelete}
+                                        disabled={isSubmitting}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        {isSubmitting ? "삭제 중..." : "글 삭제"}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
@@ -343,48 +447,57 @@ const EditGallery = () => {
                                 </TabsList>
 
                                 <TabsContent value="file" className="space-y-4 mt-0">
-                                    {!mediaPreview || uploadType !== 'file' ? (
-                                        <div
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="w-full flex-col border-2 border-dashed rounded-xl flex items-center justify-center min-h-[200px] hover:bg-muted/50 transition-colors cursor-pointer group relative overflow-hidden bg-background"
-                                        >
-                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full flex-col border-2 border-dashed rounded-xl flex items-center justify-center min-h-[150px] hover:bg-muted/50 transition-colors cursor-pointer group relative overflow-hidden bg-background"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-                                            <div className="flex gap-4 mb-3 relative z-10">
-                                                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
-                                                    <ImageIcon className="h-6 w-6" />
-                                                </div>
-                                                <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
-                                                    <Video className="h-6 w-6" />
-                                                </div>
+                                        <div className="flex gap-4 mb-3 relative z-10">
+                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                                <ImageIcon className="h-5 w-5" />
                                             </div>
-
-                                            <p className="text-sm font-medium relative z-10">클릭하여 새로운 사진 또는 영상 선택</p>
-                                            <p className="text-xs text-muted-foreground mt-2 text-center max-w-sm relative z-10 px-4">
-                                                JPG, PNG, GIF 이미지 (최대 5MB)<br />
-                                                MP4, MOV, WEBM 비디오 (최대 100MB)
-                                            </p>
+                                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                                                <Video className="h-5 w-5" />
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="relative rounded-xl overflow-hidden border bg-black group w-full flex items-center justify-center" style={{ minHeight: '200px' }}>
-                                            {isVideo ? (
-                                                <video src={mediaPreview} controls className="max-h-[500px] w-auto max-w-full" />
-                                            ) : (
-                                                <img src={mediaPreview} alt="Preview" className="max-h-[500px] w-auto max-w-full object-contain" />
-                                            )}
-                                            {isVideo && (
-                                                <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm flex items-center shadow-lg">
-                                                    <Video className="w-4 h-4 mr-1.5 text-accent" />
-                                                    비디오 선택됨
+
+                                        <p className="text-sm font-medium relative z-10">클릭하여 새로운 사진 또는 영상 추가</p>
+                                        <p className="text-xs text-muted-foreground mt-2 text-center max-w-sm relative z-10 px-4">
+                                            최대 10개까지 선택 가능<br />
+                                            이미지 5MB / 비디오 100MB 이하
+                                        </p>
+                                    </div>
+
+                                    {mediaPreviews.length > 0 && (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6">
+                                            {mediaPreviews.map((preview, index) => (
+                                                <div key={index} className="relative aspect-square rounded-lg overflow-hidden border bg-black group">
+                                                    {preview.isVideo ? (
+                                                        <video src={preview.url} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <img src={preview.url} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                                                    )}
+                                                    {preview.isVideo && (
+                                                        <div className="absolute top-2 left-2 bg-black/60 text-white p-1 rounded-md">
+                                                            <Video className="w-3 h-3 child-video" />
+                                                        </div>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeMediaItem(index);
+                                                        }}
+                                                        className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-sm backdrop-blur-sm">
+                                                        {index + 1}
+                                                    </div>
                                                 </div>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={clearMedia}
-                                                className="absolute top-4 right-4 bg-black/60 text-white p-2 rounded-full hover:bg-red-500 transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover:opacity-100"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </button>
+                                            ))}
                                         </div>
                                     )}
                                     <input
@@ -393,6 +506,7 @@ const EditGallery = () => {
                                         onChange={handleFileChange}
                                         accept="image/*,video/mp4,video/quicktime,video/webm"
                                         className="hidden"
+                                        multiple
                                     />
                                 </TabsContent>
 
@@ -407,12 +521,12 @@ const EditGallery = () => {
                                         <p className="text-xs text-muted-foreground">유튜브 영상 주소를 복사하여 붙여넣으면 저장 시 영상이 연결됩니다.</p>
                                     </div>
 
-                                    {mediaPreview && extractYouTubeId(mediaPreview) && uploadType === 'youtube' && (
+                                    {mediaPreviews.length > 0 && extractYouTubeId(mediaPreviews[0].url) && uploadType === 'youtube' && (
                                         <div className="relative rounded-xl overflow-hidden border bg-black group w-full flex items-center justify-center aspect-video">
                                             <iframe
                                                 width="100%"
                                                 height="100%"
-                                                src={`https://www.youtube.com/embed/${extractYouTubeId(mediaPreview)}?autoplay=0`}
+                                                src={`https://www.youtube.com/embed/${extractYouTubeId(mediaPreviews[0].url)}?autoplay=0`}
                                                 title="YouTube video player"
                                                 frameBorder="0"
                                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

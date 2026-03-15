@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { PortfolioCard } from "@/components/PortfolioCard";
-import { LogOut, User as UserIcon, Lock, Edit2, Save, X, Upload, Camera, CreditCard } from "lucide-react";
+import { LogOut, User as UserIcon, Lock, Edit2, Save, X, Upload, Camera, CreditCard, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Project, Comment, Profile, Payment } from "@/types";
 import { compressAndConvertImage, formatFileSize } from "@/lib/imageUtils";
@@ -642,7 +642,12 @@ const MyPage = () => {
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    onClick={() => setActiveTab("settings")}
+                    onClick={() => {
+                      setActiveTab("settings");
+                      setIsEditingProfile(true);
+                      setEditedName(profile?.name || "");
+                      setEditedStudentType(profile?.student_type || "중등");
+                    }}
                     variant="outline"
                     size="sm"
                   >
@@ -668,11 +673,20 @@ const MyPage = () => {
             </TabsList>
 
             <TabsContent value="projects" className="mt-6">
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => navigate("/portfolio/create")} size="sm" className="hover-scale">
+                  <Plus className="mr-2 h-4 w-4" />
+                  프로젝트 작성하기
+                </Button>
+              </div>
               {projects.length === 0 ? (
                 <Card>
                   <CardContent className="py-12 text-center">
                     <p className="text-muted-foreground mb-4">아직 작성한 프로젝트가 없습니다.</p>
-                    <Button onClick={() => navigate('/portfolio')}>프로젝트 작성하기</Button>
+                    <Button onClick={() => navigate("/portfolio/create")} variant="outline">
+                      <Plus className="mr-2 h-4 w-4" />
+                      프로젝트 작성하기
+                    </Button>
                   </CardContent>
                 </Card>
               ) : (

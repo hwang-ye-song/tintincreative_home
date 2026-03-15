@@ -152,16 +152,16 @@ const GalleryList = () => {
                                     <div className={`relative overflow-hidden bg-muted ${viewMode === 'grid' ? 'aspect-[4/3] w-full' : 'w-48 self-stretch flex-shrink-0 shrink-0 aspect-[4/3] sm:aspect-auto sm:w-64'}`}>
                                         {gallery.is_video ? (
                                             <>
-                                                {extractYouTubeId(gallery.media_url) ? (
+                                                {extractYouTubeId(gallery.media_urls?.[0] || gallery.media_url) ? (
                                                     <img
-                                                        src={getYouTubeThumbnail(extractYouTubeId(gallery.media_url)!)}
+                                                        src={getYouTubeThumbnail(extractYouTubeId(gallery.media_urls?.[0] || gallery.media_url)!)}
                                                         alt={gallery.title}
                                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                         loading="lazy"
                                                     />
                                                 ) : (
                                                     <video
-                                                        src={gallery.media_url}
+                                                        src={gallery.media_urls?.[0] || gallery.media_url}
                                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                         muted
                                                         playsInline
@@ -184,11 +184,17 @@ const GalleryList = () => {
                                             </>
                                         ) : (
                                             <img
-                                                src={getOptimizedThumbnailUrl(gallery.media_url)}
+                                                src={getOptimizedThumbnailUrl(gallery.media_urls?.[0] || gallery.media_url)}
                                                 alt={gallery.title}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                 loading="lazy"
                                             />
+                                        )}
+                                        {gallery.media_urls && gallery.media_urls.length > 1 && (
+                                            <div className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm font-medium z-10 flex items-center">
+                                                <Grid className="w-3 h-3 mr-1" />
+                                                +{gallery.media_urls.length - 1}
+                                            </div>
                                         )}
                                         {gallery.is_hidden && (
                                             <div className="absolute top-3 left-3 bg-red-500 text-white text-xs px-2 py-1 rounded shadow-sm">

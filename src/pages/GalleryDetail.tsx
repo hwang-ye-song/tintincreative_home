@@ -88,37 +88,74 @@ const GalleryDetail = () => {
                     </Button>
 
                     <article className="bg-card rounded-2xl shadow-sm border overflow-hidden animate-fade-in">
-                        {/* 미디어 영역 */}
-                        <div className="w-full bg-black relative flex items-center justify-center" style={{ minHeight: '300px', maxHeight: '70vh' }}>
-                            {gallery.is_video ? (
-                                extractYouTubeId(gallery.media_url) ? (
-                                    <iframe
-                                        src={`https://www.youtube.com/embed/${extractYouTubeId(gallery.media_url)}?autoplay=0`}
-                                        title={gallery.title}
-                                        className="w-full h-full aspect-video min-h-[50vh]"
-                                        frameBorder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                    ></iframe>
-                                ) : (
-                                    <video
-                                        src={gallery.media_url}
-                                        controls
-                                        className="w-auto h-full max-h-[70vh] object-contain"
-                                        poster={gallery.media_url + "#t=0.1"} // 썸네일 대용
-                                    >
-                                        브라우저가 비디오 태그를 지원하지 않습니다.
-                                    </video>
-                                )
+                        <div className="w-full bg-muted/30 flex flex-col gap-4 p-4 md:p-6 items-center">
+                            {gallery.media_urls && gallery.media_urls.length > 0 ? (
+                                gallery.media_urls.map((url, index) => {
+                                    const youtubeId = extractYouTubeId(url);
+                                    const isVideo = url.toLowerCase().match(/\.(mp4|mov|webm)$/) || youtubeId;
+
+                                    return (
+                                        <div key={index} className="w-full max-w-3xl bg-black rounded-lg overflow-hidden shadow-sm flex items-center justify-center min-h-[300px]">
+                                            {youtubeId ? (
+                                                <iframe
+                                                    src={`https://www.youtube.com/embed/${youtubeId}?autoplay=0`}
+                                                    title={`${gallery.title} - ${index}`}
+                                                    className="w-full aspect-video min-h-[300px]"
+                                                    frameBorder="0"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    allowFullScreen
+                                                ></iframe>
+                                            ) : isVideo ? (
+                                                <video
+                                                    src={url}
+                                                    controls
+                                                    className="w-auto h-full max-h-[80vh] object-contain"
+                                                >
+                                                    브라우저가 비디오 태그를 지원하지 않습니다.
+                                                </video>
+                                            ) : (
+                                                <img
+                                                    src={url}
+                                                    alt={`${gallery.title} - ${index}`}
+                                                    className="w-auto h-full max-h-[80vh] object-contain"
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })
                             ) : (
-                                <img
-                                    src={gallery.media_url}
-                                    alt={gallery.title}
-                                    className="w-auto h-full max-h-[70vh] object-contain"
-                                />
+                                <div className="w-full max-w-3xl bg-black rounded-lg overflow-hidden shadow-sm flex items-center justify-center min-h-[300px]">
+                                    {gallery.is_video ? (
+                                        extractYouTubeId(gallery.media_url) ? (
+                                            <iframe
+                                                src={`https://www.youtube.com/embed/${extractYouTubeId(gallery.media_url)}?autoplay=0`}
+                                                title={gallery.title}
+                                                className="w-full aspect-video min-h-[300px]"
+                                                frameBorder="0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen
+                                            ></iframe>
+                                        ) : (
+                                            <video
+                                                src={gallery.media_url}
+                                                controls
+                                                className="w-auto h-full max-h-[80vh] object-contain"
+                                                poster={gallery.media_url + "#t=0.1"}
+                                            >
+                                                브라우저가 비디오 태그를 지원하지 않습니다.
+                                            </video>
+                                        )
+                                    ) : (
+                                        <img
+                                            src={gallery.media_url}
+                                            alt={gallery.title}
+                                            className="w-auto h-full max-h-[80vh] object-contain"
+                                        />
+                                    )}
+                                </div>
                             )}
                             {gallery.is_hidden && (
-                                <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded shadow-md font-bold">
+                                <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded shadow-md font-bold z-20">
                                     비공개 게시물
                                 </div>
                             )}

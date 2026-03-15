@@ -136,6 +136,7 @@ export interface ClassGallery {
   title: string;
   description: string | null;
   media_url: string;
+  media_urls?: string[]; // 다중 이미지/비디오 지원
   is_video: boolean;
   is_hidden: boolean;
   created_at: string;
