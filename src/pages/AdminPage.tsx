@@ -746,6 +746,7 @@ const AdminPage = () => {
   const curriculumList = [
     { id: "basic-2", title: "AI 프로그래밍 입문", category: "AI 기초" },
     { id: "basic", title: "기초 트랙 (Perception AI)", category: "AI 기초" },
+    { id: "canva-ai", title: "캔바 AI 활용 마스터 클래스", category: "AI 기초" },
     { id: "application-4", title: "AI 챗봇 및 대화형 시스템", category: "AI 활용" },
     { id: "application-3", title: "나만의 WEB / Mobile APP디자인", category: "AI 활용" },
     { id: "application-2", title: "컴퓨터 비전", category: "AI 활용" },

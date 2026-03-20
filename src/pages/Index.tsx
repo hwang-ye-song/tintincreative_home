@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentButton } from "@/components/PaymentButton";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown, Pencil, X } from "lucide-react";
+import { Bot, Brain, Lightbulb, ArrowRight, Rocket, Code, Smartphone, Cpu, MessageSquare, Box, ChevronDown, Pencil, X, Sparkles } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { smoothScrollTo, devLog } from "@/lib/utils";
 import { ClassGalleryPreview } from "@/components/ClassGalleryPreview";
@@ -272,6 +272,16 @@ const Index = () => {
       duration: "12주",
       icon: <Lightbulb className="h-6 w-6" />,
       image: "/images/aice.jpg",
+      category: "AI 기초",
+    },
+    {
+      id: "canva-ai",
+      title: "캔바 AI 활용 마스터 클래스",
+      description: "디자인부터 웹사이트까지, 캔바 AI로 완성하는 스마트 창작 수업",
+      level: "기초/중급",
+      duration: "10주",
+      icon: <Sparkles className="h-6 w-6" />,
+      image: "/images/canva-ai-hero.png",
       category: "AI 기초",
     },
     {

@@ -25,6 +25,7 @@ import AIPythonMasterClass from "./pages/AIPythonMasterClass";
 import AICEMasterClass from "./pages/AICEMasterClass";
 import ComputerVisionMasterClass from "./pages/ComputerVisionMasterClass";
 import RobotArmMasterClass from "./pages/RobotArmMasterClass";
+import CanvaMasterClass from "./pages/CanvaMasterClass";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFail from "./pages/PaymentFail";
 import PartialPayment from "./pages/PartialPayment";
@@ -132,6 +133,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/curriculum/application-2" element={<ComputerVisionMasterClass />} />
             <Route path="/curriculum/application-3" element={<AINativeWebMasterClass3 />} />
+            <Route path="/curriculum/canva-ai" element={<CanvaMasterClass />} />
             <Route path="/curriculum/application-4" element={<ChatbotMasterClass />} />
             <Route path="/curriculum/robot" element={<OMOR1miniMasterClass />} />
             <Route path="/curriculum/robot-2" element={<RobotArmMasterClass />} />
