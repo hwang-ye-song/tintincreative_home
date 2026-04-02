@@ -17,8 +17,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 
-const CURRICULUM_CATEGORIES = ["전체", "AI 기초", "AI 활용", "로봇", "Canva AI", "AI Python", "기타"];
-const AI_CURRICULA = ["전체", "AI 네이티브 웹", "챗봇 만들기", "컴퓨터 비전", "Canva AI", "기타"];
+const CURRICULUM_CATEGORIES = [
+  "전체",
+  "AI 네이티브 웹",
+  "챗봇 만들기",
+  "컴퓨터 비전",
+  "Canva AI",
+  "AI Python",
+  "로봇",
+  "기타",
+];
 
 const CATEGORY_COLORS: Record<string, string> = {
   "AI 기초": "bg-blue-100 text-blue-700 border-blue-200",
@@ -269,9 +277,6 @@ const Portfolio = () => {
         ) {
           filteredProjects = filteredProjects.filter((project) => {
             const p = project as any;
-            if (selectedCategory === "AI 활용") {
-              return p.curriculum === selectedSubCategory;
-            }
             const itemSubCategory = p.sub_category || p.profiles?.student_type;
             return itemSubCategory === selectedSubCategory;
           });
@@ -471,7 +476,7 @@ const Portfolio = () => {
             </div>
 
             {/* 서브 카테고리 - 프로젝트 탭 */}
-            {["AI 기초", "로봇", "기타"].includes(selectedCategory) && (
+            {["AI 기초", "AI 활용", "로봇", "기타"].includes(selectedCategory) && (
               <div className="flex flex-wrap justify-center gap-2 animate-fade-in mt-2 bg-muted/50 p-2 rounded-full border border-border">
                 {["전체", "초등", "중등", "일반"].map((subCat) => (
                   <Button
@@ -480,27 +485,6 @@ const Portfolio = () => {
                     onClick={() => setSelectedSubCategory(subCat)}
                     variant={selectedSubCategory === subCat ? "default" : "ghost"}
                     className={`rounded-full transition-colors ${
-                      selectedSubCategory === subCat
-                        ? "bg-primary text-white"
-                        : "hover:bg-primary/10 text-muted-foreground"
-                    }`}
-                  >
-                    {subCat}
-                  </Button>
-                ))}
-              </div>
-            )}
-
-            {/* AI 활용 탭 전용 서브 필터 (커리큘럼) */}
-            {selectedCategory === "AI 활용" && (
-              <div className="flex flex-wrap justify-center gap-2 animate-fade-in mt-2 bg-muted/50 p-2 rounded-full border border-border">
-                {AI_CURRICULA.map((subCat) => (
-                  <Button
-                    key={`curri-${subCat}`}
-                    size="sm"
-                    onClick={() => setSelectedSubCategory(subCat)}
-                    variant={selectedSubCategory === subCat ? "default" : "ghost"}
-                    className={`rounded-full transition-colors px-4 ${
                       selectedSubCategory === subCat
                         ? "bg-primary text-white"
                         : "hover:bg-primary/10 text-muted-foreground"

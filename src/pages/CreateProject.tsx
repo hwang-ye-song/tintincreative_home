@@ -19,13 +19,6 @@ import { convertYouTubeUrlToEmbed, devLog, sanitizeHtml } from "@/lib/utils";
 import { validateImageFile, validateAttachmentFile, sanitizeFileName } from "@/lib/fileValidation";
 
 const BASE_CATEGORIES = ["AI 기초", "AI 활용", "로봇", "기타"];
-const AI_CURRICULA = [
-  "AI 네이티브 웹",
-  "챗봇 만들기",
-  "컴퓨터 비전",
-  "Canva AI",
-  "기타",
-];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_VIDEO_FILE_SIZE = 20 * 1024 * 1024; // 20MB for videos
 const MAX_IMAGE_WIDTH = 1920;
@@ -38,7 +31,6 @@ const CreateProject = () => {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("중등");
-  const [curriculum, setCurriculum] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -405,7 +397,6 @@ const CreateProject = () => {
           description,
           category: finalCategory,
           sub_category: subCategory,
-          curriculum: curriculum || null,
           tags,
           image_url: imageUrl,
           image_urls: imageUrlsList.length > 0 ? imageUrlsList : null,
@@ -508,23 +499,6 @@ const CreateProject = () => {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* AI 활용 커리큘럼 선택 */}
-                  {category === "AI 활용" && (
-                    <div>
-                      <Label htmlFor="curriculum" className="text-base font-semibold">커리큘럼 선택</Label>
-                      <Select value={curriculum} onValueChange={setCurriculum}>
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="해당하는 커리큘럼을 선택하세요" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover border border-border z-50">
-                          {AI_CURRICULA.map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
 
                   <div>
                     <Label htmlFor="tags" className="text-base font-semibold">사용 기술 태그</Label>

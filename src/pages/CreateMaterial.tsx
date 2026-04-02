@@ -16,11 +16,12 @@ import { Helmet } from "react-helmet-async";
 import { TeachingMaterialFile } from "@/types";
 
 const CURRICULUM_CATEGORIES = [
-  "AI 기초",
-  "AI 활용",
-  "로봇",
+  "AI 네이티브 웹",
+  "챗봇 만들기",
+  "컴퓨터 비전",
   "Canva AI",
   "AI Python",
+  "로봇",
   "기타",
 ];
 
