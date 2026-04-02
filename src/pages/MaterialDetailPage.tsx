@@ -80,7 +80,7 @@ const MaterialDetailPage = () => {
       try {
         const { data, error } = await (supabase as any)
           .from("teaching_materials")
-          .select("*, profiles(name, avatar_url)")
+          .select("*")
           .eq("id", id)
           .single();
 

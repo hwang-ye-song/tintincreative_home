@@ -30,6 +30,7 @@ export interface Project {
   is_featured_home?: boolean;
   profiles?: Partial<Profile>;
   sub_category?: "초등" | "중등" | "일반" | null;
+  curriculum?: string | null;
 }
 
 export interface Comment {
