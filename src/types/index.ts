@@ -17,6 +17,7 @@ export interface Project {
   category: string | null;
   tags: string[] | null;
   image_url: string | null;
+  image_urls?: string[] | null;
   video_url?: string | null;
   attachments?: ProjectAttachment[];
   created_at: string;
@@ -141,6 +142,26 @@ export interface ClassGallery {
   is_hidden: boolean;
   created_at: string;
   updated_at: string;
+  profiles?: Partial<Profile>;
+}
+
+export interface TeachingMaterialFile {
+  name: string;
+  url: string;
+  size: number;
+  type?: string;
+}
+
+export interface TeachingMaterial {
+  id: string;
+  title: string;
+  description?: string | null;
+  curriculum_category: string;
+  file_urls: TeachingMaterialFile[];
+  user_id: string;
+  is_hidden?: boolean;
+  created_at: string;
+  updated_at?: string;
   profiles?: Partial<Profile>;
 }
 

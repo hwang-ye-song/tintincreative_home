@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, Plus, ArrowLeft, File, Video, Trash2 } from "lucide-react";
+import { X, Plus, ArrowLeft, File, Video, Trash2, Image as ImageIcon } from "lucide-react";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -33,7 +33,9 @@ const CreateProject = () => {
   const [subCategory, setSubCategory] = useState("중등");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploadType, setVideoUploadType] = useState<"url" | "file">("url");
@@ -77,9 +79,13 @@ const CreateProject = () => {
   }, []);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // 파일 검증
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const validFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    for (const file of files) {
       const validation = validateImageFile(file);
       if (!validation.isValid) {
         toast({
@@ -87,30 +93,34 @@ const CreateProject = () => {
           description: validation.error || "이미지 파일이 올바르지 않습니다.",
           variant: "destructive"
         });
-        return;
+        continue;
       }
-
       try {
-        // 이미지 압축
         const options = {
           maxSizeMB: 1,
           maxWidthOrHeight: Math.max(MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT),
           useWebWorker: true,
           fileType: file.type,
         };
-
         const compressedFile = await imageCompression(file, options);
-        setImageFile(compressedFile);
-
-        toast({
-          title: "이미지 최적화 완료",
-          description: `이미지가 ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB로 최적화되었습니다.`,
-        });
+        validFiles.push(compressedFile);
+        newPreviews.push(URL.createObjectURL(compressedFile));
       } catch (error) {
         devLog.error("Image compression error:", error);
-        setImageFile(file); // 압축 실패 시 원본 사용
+        validFiles.push(file);
+        newPreviews.push(URL.createObjectURL(file));
       }
     }
+
+    setImageFiles(prev => [...prev, ...validFiles]);
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+    e.target.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(imagePreviews[index]);
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const addTag = () => {
@@ -269,23 +279,32 @@ const CreateProject = () => {
       }
 
       let imageUrl = null;
+      const imageUrlsList: string[] = [];
 
-      if (imageFile) {
-        const sanitizedName = sanitizeFileName(imageFile.name);
-        const fileExt = sanitizedName.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      if (imageFiles.length > 0) {
+        setUploadingAttachments(true);
+        try {
+          for (const imgFile of imageFiles) {
+            const sanitizedName = sanitizeFileName(imgFile.name);
+            const fileExt = sanitizedName.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('project-images')
-          .upload(fileName, imageFile);
+            const { error: uploadError } = await supabase.storage
+              .from('project-images')
+              .upload(fileName, imgFile);
 
-        if (uploadError) throw uploadError;
+            if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('project-images')
-          .getPublicUrl(fileName);
+            const { data: { publicUrl } } = supabase.storage
+              .from('project-images')
+              .getPublicUrl(fileName);
 
-        imageUrl = publicUrl;
+            imageUrlsList.push(publicUrl);
+          }
+          imageUrl = imageUrlsList[0] || null;
+        } finally {
+          setUploadingAttachments(false);
+        }
       }
 
       // Upload attachments
@@ -380,12 +399,13 @@ const CreateProject = () => {
           sub_category: subCategory,
           tags,
           image_url: imageUrl,
+          image_urls: imageUrlsList.length > 0 ? imageUrlsList : null,
           video_url: processedVideoUrl,
           attachments: attachments.length > 0 ? attachments : null,
           user_id: user.id,
           is_hidden: false,
           is_best: finalIsBest
-        });
+        } as any);
 
       if (insertError) throw insertError;
 
@@ -520,18 +540,43 @@ const CreateProject = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="image" className="text-base font-semibold">프로젝트 대표 이미지 (최대 10MB)</Label>
-                    <Input
-                      id="image"
+                    <Label className="text-base font-semibold">프로젝트 이미지 (여러 장 가능, 파일당 최대 10MB)</Label>
+                    <div
+                      onClick={() => imageInputRef.current?.click()}
+                      className="mt-2 w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center min-h-[100px] hover:bg-muted/50 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                        <ImageIcon className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium">클릭하여 사진 추가 (여러 장 가능)</p>
+                      <p className="text-xs text-muted-foreground mt-1">이미지 파일만 가능, 자동 압축 적용</p>
+                    </div>
+                    <input
+                      ref={imageInputRef}
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleImageChange}
-                      className="mt-2"
+                      className="hidden"
                     />
-                    {imageFile && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        선택됨: {imageFile.name}
-                      </p>
+                    {imagePreviews.length > 0 && (
+                      <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative aspect-square rounded-lg overflow-hidden border bg-muted group">
+                            <img src={preview} alt={`preview-${index}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                            <div className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded-sm">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
 

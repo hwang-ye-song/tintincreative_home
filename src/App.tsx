@@ -35,6 +35,8 @@ import CreateGallery from "./pages/CreateGallery";
 import EditGallery from "./pages/EditGallery";
 import EmptyPage from "./pages/EmptyPage";
 import NotFound from "./pages/NotFound";
+import CreateMaterial from "./pages/CreateMaterial";
+import MaterialDetailPage from "./pages/MaterialDetailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -143,6 +145,8 @@ const App = () => (
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/portfolio/create" element={<CreateProject />} />
             <Route path="/portfolio/edit/:id" element={<EditProject />} />
+            <Route path="/portfolio/material/create" element={<CreateMaterial />} />
+            <Route path="/portfolio/material/:id" element={<MaterialDetailPage />} />
             <Route path="/portfolio/:id" element={<ProjectDetailPage />} />
             <Route path="/gallery" element={<GalleryList />} />
             <Route path="/gallery/create" element={<CreateGallery />} />

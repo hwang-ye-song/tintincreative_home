@@ -1116,18 +1116,63 @@ const ProjectDetailPage = () => {
           </div>
 
           <div className="space-y-6">
-            {/* Project Image */}
-            {optimizedProjectImage && (
-              <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={optimizedProjectImage}
-                  alt={project.title}
-                  className="w-full h-full object-cover"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
-            )}
+            {/* Project Images */}
+            {(() => {
+              const allImages = (project as any).image_urls?.length > 0
+                ? (project as any).image_urls as string[]
+                : optimizedProjectImage
+                ? [optimizedProjectImage]
+                : [];
+
+              if (allImages.length === 0) return null;
+
+              if (allImages.length === 1) {
+                return (
+                  <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={allImages[0]}
+                      alt={project.title}
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2">
+                  {/* 메인 이미지 */}
+                  <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={allImages[0]}
+                      alt={project.title}
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </div>
+                  {/* 나머지 이미지 그리드 */}
+                  <div className={`grid gap-2 ${allImages.length === 2 ? 'grid-cols-1' : allImages.length === 3 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                    {allImages.slice(1).map((imgUrl: string, idx: number) => (
+                      <div key={idx} className="aspect-video rounded-lg overflow-hidden bg-muted">
+                        <img
+                          src={imgUrl}
+                          alt={`${project.title} ${idx + 2}`}
+                          className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                          loading="lazy"
+                          decoding="async"
+                          onClick={() => window.open(imgUrl, '_blank')}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground text-right">
+                    이미지 {allImages.length}장 · 클릭하면 크게 볼 수 있습니다
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Project Info */}
             <div className="bg-card border border-border rounded-lg p-4 md:p-6 space-y-4">
