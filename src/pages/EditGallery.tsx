@@ -126,32 +126,63 @@ const EditGallery = () => {
         }));
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
-            const validFiles: File[] = [];
-            const newPreviews: { url: string; isVideo: boolean; isOriginal: boolean }[] = [];
+    const [isDragging, setIsDragging] = useState(false);
 
-            newFiles.forEach(file => {
-                const isVideoFile = file.type.startsWith("video/");
-                const maxSize = isVideoFile ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
 
-                if (file.size > maxSize) {
-                    toast.error(`${file.name}: 파일 크기가 너무 큽니다. (${isVideoFile ? '100MB' : '5MB'} 이하만 가능)`);
-                    return;
-                }
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
 
-                validFiles.push(file);
-                newPreviews.push({
-                    url: URL.createObjectURL(file),
-                    isVideo: isVideoFile,
-                    isOriginal: false
-                });
+    const processFiles = (files: File[]) => {
+        const validFiles: File[] = [];
+        const newPreviews: { url: string; isVideo: boolean; isOriginal: boolean }[] = [];
+
+        files.forEach(file => {
+            const isVideoFile = file.type.startsWith("video/");
+            const maxSize = isVideoFile ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+
+            if (file.size > maxSize) {
+                toast.error(`${file.name}: 파일 크기가 너무 큽니다. (${isVideoFile ? '100MB' : '5MB'} 이하만 가능)`);
+                return;
+            }
+
+            validFiles.push(file);
+            newPreviews.push({
+                url: URL.createObjectURL(file),
+                isVideo: isVideoFile,
+                isOriginal: false
             });
+        });
 
+        if (validFiles.length > 0) {
             setMediaFiles(prev => [...prev, ...validFiles]);
             setMediaPreviews(prev => [...prev, ...newPreviews]);
+            toast.success(`${validFiles.length}개의 새로운 파일이 추가되었습니다.`);
+        }
+    };
 
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+            processFiles(files);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
+            processFiles(files);
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
@@ -449,20 +480,28 @@ const EditGallery = () => {
                                 <TabsContent value="file" className="space-y-4 mt-0">
                                     <div
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="w-full flex-col border-2 border-dashed rounded-xl flex items-center justify-center min-h-[150px] hover:bg-muted/50 transition-colors cursor-pointer group relative overflow-hidden bg-background"
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                        className={`w-full flex-col border-2 border-dashed rounded-xl flex items-center justify-center min-h-[150px] transition-all duration-200 cursor-pointer group relative overflow-hidden bg-background
+                                            ${isDragging ? "border-primary bg-primary/10 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-muted/50"}`}
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                                         <div className="flex gap-4 mb-3 relative z-10">
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all
+                                                ${isDragging ? "bg-blue-200 scale-110" : "bg-blue-100 text-blue-500 group-hover:scale-110"}`}>
                                                 <ImageIcon className="h-5 w-5" />
                                             </div>
-                                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all
+                                                ${isDragging ? "bg-purple-200 scale-110" : "bg-purple-100 text-purple-500 group-hover:scale-110"}`}>
                                                 <Video className="h-5 w-5" />
                                             </div>
                                         </div>
 
-                                        <p className="text-sm font-medium relative z-10">클릭하여 새로운 사진 또는 영상 추가</p>
+                                        <p className="text-sm font-medium relative z-10 transition-colors">
+                                            {isDragging ? "여기에 사진이나 영상을 놓으세요! ✨" : "클릭하거나 새로운 사진 또는 영상 드래그 추가 (여러 장 가능)"}
+                                        </p>
                                         <p className="text-xs text-muted-foreground mt-2 text-center max-w-sm relative z-10 px-4">
                                             최대 10개까지 선택 가능<br />
                                             이미지 5MB / 비디오 100MB 이하

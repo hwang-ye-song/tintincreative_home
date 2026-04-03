@@ -37,6 +37,7 @@ const CreateMaterial = () => {
   const [description, setDescription] = useState("");
   const [curriculumCategory, setCurriculumCategory] = useState("");
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   // 권한 체크
   useEffect(() => {
@@ -70,24 +71,49 @@ const CreateMaterial = () => {
     return "📁";
   };
 
+  const processFiles = (newFiles: File[]) => {
+    const validFiles: File[] = [];
+    newFiles.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name}: 파일 크기가 너무 큽니다. (50MB 이하만 가능)`);
+        return;
+      }
+      validFiles.push(file);
+    });
+    if (validFiles.length > 0) {
+      setAttachmentFiles((prev) => [...prev, ...validFiles]);
+      toast.success(`${validFiles.length}개 파일이 추가되었습니다.`);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      const validFiles: File[] = [];
-
-      newFiles.forEach((file) => {
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error(`${file.name}: 파일 크기가 너무 큽니다. (50MB 이하만 가능)`);
-          return;
-        }
-        validFiles.push(file);
-      });
-
-      setAttachmentFiles((prev) => [...prev, ...validFiles]);
-
+      processFiles(Array.from(e.target.files));
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      processFiles(droppedFiles);
     }
   };
 
@@ -270,19 +296,45 @@ const CreateMaterial = () => {
                 <Label className="text-sm font-semibold">
                   파일 첨부 <span className="text-red-500">*</span>
                 </Label>
+
+                {/* 드래그 앤 드롭 영역 */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center min-h-[120px] hover:bg-muted/50 transition-colors cursor-pointer group relative overflow-hidden bg-background"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center min-h-[160px] transition-all duration-200 cursor-pointer group relative overflow-hidden
+                    ${isDragging
+                      ? "border-primary bg-primary/10 scale-[1.01] shadow-lg shadow-primary/10"
+                      : "border-border hover:border-primary/60 hover:bg-muted/40 bg-background"
+                    }`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform relative z-10">
-                    <Upload className="h-5 w-5 text-primary" />
+                  <div className={`absolute inset-0 bg-gradient-to-br from-primary/5 to-blue-500/5 transition-opacity duration-200
+                    ${isDragging ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-all duration-200 relative z-10
+                    ${isDragging ? "bg-primary/25 scale-110 rotate-3" : "bg-primary/10 group-hover:scale-110"}`}>
+                    <Upload className={`h-7 w-7 transition-colors ${isDragging ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                   </div>
-                  <p className="text-sm font-medium relative z-10">클릭하여 파일 추가</p>
-                  <p className="text-xs text-muted-foreground mt-1 relative z-10">
-                    PDF, 이미지, 영상, PPT, Word 등 · 파일당 최대 50MB
-                  </p>
+
+                  {isDragging ? (
+                    <>
+                      <p className="text-base font-bold text-primary relative z-10">여기에 파일을 놓으세요! 📂</p>
+                      <p className="text-sm text-primary/70 mt-1 relative z-10">드롭하여 파일 추가</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold relative z-10">클릭하거나 파일을 드래그하여 추가</p>
+                      <p className="text-xs text-muted-foreground mt-1.5 relative z-10">
+                        PDF, 이미지, 영상, PPT, Word, HWP 등
+                      </p>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5 relative z-10">
+                        파일당 최대 50MB · 여러 파일 동시 업로드 가능
+                      </p>
+                    </>
+                  )}
                 </div>
+
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -301,7 +353,7 @@ const CreateMaterial = () => {
                     {attachmentFiles.map((file, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-3 bg-muted/60 rounded-lg border"
+                        className="flex items-center justify-between p-3 bg-muted/60 rounded-lg border animate-fade-in"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <span className="text-xl flex-shrink-0">{getFileIcon(file.type)}</span>
@@ -315,7 +367,7 @@ const CreateMaterial = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 flex-shrink-0 hover:text-destructive"
-                          onClick={() => removeFile(index)}
+                          onClick={(e) => { e.stopPropagation(); removeFile(index); }}
                         >
                           <X className="h-4 w-4" />
                         </Button>

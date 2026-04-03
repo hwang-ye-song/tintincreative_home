@@ -173,13 +173,15 @@ const MyPage = () => {
     }
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement> | File) => {
     devLog.log('=== handleAvatarChange 함수 호출됨 ===');
-    const file = e.target.files?.[0];
+    const file = (e as React.ChangeEvent<HTMLInputElement>).target?.files?.[0] || (e as File);
     devLog.log('선택된 파일:', file);
 
-    if (!file) {
-      devLog.warn('⚠️ 파일이 선택되지 않았습니다.');
+    if (!file || !(file instanceof File)) {
+      devLog.warn('⚠️ 파일이 유효하지 않습니다.');
       return;
     }
 
@@ -244,6 +246,23 @@ const MyPage = () => {
       });
       setAvatarFile(null);
       setAvatarPreview(null);
+    }
+  };
+
+  const handleAvatarDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingAvatar(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      handleAvatarChange(file);
+    } else if (file) {
+      toast({
+        title: "업로드 불가",
+        description: "이미지 파일만 드롭해주세요.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -846,18 +865,35 @@ const MyPage = () => {
                     <div className="space-y-2">
                       <Label>프로필 이미지</Label>
                       <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                        <div
+                          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingAvatar(true); }}
+                          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingAvatar(false); }}
+                          onDrop={handleAvatarDrop}
+                          className={`relative group cursor-pointer transition-all duration-200
+                            ${isDraggingAvatar ? "scale-110" : ""}`}
+                        >
+                          <div className={`h-20 w-20 rounded-full flex items-center justify-center overflow-hidden border-2 transition-all
+                            ${isDraggingAvatar ? "border-primary bg-primary/20 scale-110 shadow-lg" : "border-transparent bg-primary/10 group-hover:border-primary/50"}`}>
                             {profile?.avatar_url || avatarPreview ? (
                               <img
                                 src={avatarPreview || profile?.avatar_url || ''}
                                 alt={profile?.name || '프로필'}
-                                className="w-full h-full object-cover"
+                                className={`w-full h-full object-cover transition-opacity ${isDraggingAvatar ? "opacity-50" : "opacity-100"}`}
                               />
                             ) : (
-                              <UserIcon className="h-10 w-10 text-primary" />
+                              <UserIcon className={`h-10 w-10 text-primary transition-transform ${isDraggingAvatar ? "scale-125" : ""}`} />
+                            )}
+                            {isDraggingAvatar && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Camera className="w-8 h-8 text-primary animate-pulse" />
+                              </div>
                             )}
                           </div>
+                          {!isDraggingAvatar && (
+                            <div className="absolute -bottom-1 -right-1 bg-background border border-border rounded-full p-1 shadow-sm group-hover:scale-110 transition-transform">
+                              <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 space-y-2">
                           <div className="flex gap-2 flex-wrap">

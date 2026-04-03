@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { X, Plus, ArrowLeft, File, Video, Trash2 } from "lucide-react";
+import { X, Plus, ArrowLeft, File, Video, Trash2, Image as ImageIcon } from "lucide-react";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,10 +35,18 @@ const EditProject = () => {
   const [tagInput, setTagInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploadType, setVideoUploadType] = useState<"url" | "file">("url");
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
+  const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
+
   const [attachmentPasswords, setAttachmentPasswords] = useState<Record<number, string>>({});
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState<number | null>(null);
@@ -66,7 +74,6 @@ const EditProject = () => {
           return;
         }
 
-        // 관리자 여부 확인 및 기본 소속 가져오기
         let userIsAdmin = false;
         let defaultSubCategory = "중등";
         try {
@@ -94,7 +101,6 @@ const EditProject = () => {
 
         if (error) throw error;
 
-        // 작성자이거나 관리자인지 확인 (isAdmin 상태 대신 변수 사용)
         const isOwner = project.user_id === user.id;
         if (!isOwner && !userIsAdmin) {
           toast({
@@ -130,40 +136,62 @@ const EditProject = () => {
     loadProject();
   }, [id, navigate, toast]);
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processImage = async (file: File) => {
+    const validation = validateImageFile(file);
+    if (!validation.isValid) {
+      toast({
+        title: "파일 검증 실패",
+        description: validation.error || "이미지 파일이 올바르지 않습니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: Math.max(MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT),
+        useWebWorker: true,
+        fileType: file.type,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      setImageFile(compressedFile);
+
+      toast({
+        title: "이미지 선택 완료",
+        description: `이미지가 ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB로 최적화되어 선택되었습니다.`,
+      });
+    } catch (error) {
+      devLog.error("Image compression error:", error);
+      setImageFile(file);
+      toast({
+        title: "이미지 선택 완료",
+        description: file.name
+      });
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // 파일 검증
-      const validation = validateImageFile(file);
-      if (!validation.isValid) {
-        toast({
-          title: "파일 검증 실패",
-          description: validation.error || "이미지 파일이 올바르지 않습니다.",
-          variant: "destructive"
-        });
-        return;
-      }
+      processImage(file);
+    }
+  };
 
-      try {
-        // 이미지 압축
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: Math.max(MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT),
-          useWebWorker: true,
-          fileType: file.type,
-        };
-
-        const compressedFile = await imageCompression(file, options);
-        setImageFile(compressedFile);
-
-        toast({
-          title: "이미지 최적화 완료",
-          description: `이미지가 ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB로 최적화되었습니다.`,
-        });
-      } catch (error) {
-        devLog.error("Image compression error:", error);
-        setImageFile(file); // 압축 실패 시 원본 사용
-      }
+  const handleImageDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingImage(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      processImage(file);
+    } else if (file) {
+      toast({
+        title: "업로드 불가",
+        description: "이미지 파일만 드롭해주세요.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -182,35 +210,49 @@ const EditProject = () => {
     setVideoUrl(e.target.value);
   };
 
+  const processVideo = (file: File) => {
+    if (file.size > 20 * 1024 * 1024) { // 20MB limit
+      toast({
+        title: "파일 크기 초과",
+        description: "동영상은 20MB 이하여야 합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (!file.type.startsWith('video/')) {
+      toast({
+        title: "잘못된 파일 형식",
+        description: "동영상 파일만 업로드 가능합니다.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setVideoFile(file);
+    toast({
+      title: "동영상 선택 완료",
+      description: file.name
+    });
+  };
+
   const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 20 * 1024 * 1024) { // 20MB limit
-        toast({
-          title: "파일 크기 초과",
-          description: "동영상은 20MB 이하여야 합니다.",
-          variant: "destructive"
-        });
-        e.target.value = "";
-        return;
-      }
-      if (!file.type.startsWith('video/')) {
-        toast({
-          title: "잘못된 파일 형식",
-          description: "동영상 파일만 업로드 가능합니다.",
-          variant: "destructive"
-        });
-        e.target.value = "";
-        return;
-      }
-      setVideoFile(file);
+      processVideo(file);
     }
   };
 
-  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleVideoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingVideo(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processVideo(file);
+    }
+  };
+
+  const processAttachments = (files: File[]) => {
     const validFiles = files.filter(file => {
-      // 파일 검증
       const validation = validateAttachmentFile(file);
       if (!validation.isValid) {
         toast({
@@ -222,23 +264,41 @@ const EditProject = () => {
       }
       return true;
     });
+
     if (validFiles.length > 0) {
-      // 첫 번째 파일에 대해 비밀번호 설정 다이얼로그 표시
-      const newFiles = [...attachmentFiles, ...validFiles];
-      setAttachmentFiles(newFiles);
-      setCurrentFileIndex(attachmentFiles.length); // 새로 추가된 첫 번째 파일 인덱스
+      const startIdx = attachmentFiles.length;
+      setAttachmentFiles(prev => [...prev, ...validFiles]);
+      setCurrentFileIndex(startIdx);
       setTempPassword("");
       setPasswordDialogOpen(true);
+      toast({
+        title: "첨부 파일 추가 완료",
+        description: `${validFiles.length}개의 첨부 파일이 추가되었습니다.`
+      });
     }
+  };
 
-    // input 초기화
-    e.target.value = "";
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      processAttachments(files);
+      e.target.value = "";
+    }
+  };
+
+  const handleAttachmentDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingAttachment(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      processAttachments(files);
+    }
   };
 
   const handlePasswordDialogConfirm = (skip: boolean = false) => {
     if (currentFileIndex !== null) {
       if (!skip && tempPassword.trim()) {
-        // 비밀번호가 4자리 이하인지 확인
         if (tempPassword.length > 4) {
           toast({
             title: "비밀번호 오류",
@@ -253,7 +313,6 @@ const EditProject = () => {
         });
       }
 
-      // 다음 파일이 있으면 계속, 없으면 닫기
       const nextIndex = currentFileIndex + 1;
       if (nextIndex < attachmentFiles.length) {
         setCurrentFileIndex(nextIndex);
@@ -272,10 +331,8 @@ const EditProject = () => {
 
   const removeAttachment = (index: number) => {
     setAttachmentFiles(attachmentFiles.filter((_, i) => i !== index));
-    // 비밀번호도 함께 제거
     const newPasswords = { ...attachmentPasswords };
     delete newPasswords[index];
-    // 인덱스 재정렬
     const reorderedPasswords: Record<number, string> = {};
     Object.keys(newPasswords).forEach(key => {
       const oldIndex = parseInt(key);
@@ -303,7 +360,6 @@ const EditProject = () => {
     setLoading(true);
 
     try {
-      // 카테고리 필수 검증
       if (!category || category.trim() === "") {
         toast({
           title: "카테고리 선택 필요",
@@ -345,7 +401,6 @@ const EditProject = () => {
         imageUrl = publicUrl;
       }
 
-      // Upload new attachments
       let newAttachments: ProjectAttachment[] = [...currentAttachments];
       if (attachmentFiles.length > 0) {
         setUploadingAttachments(true);
@@ -384,11 +439,9 @@ const EditProject = () => {
         }
       }
 
-      // BEST 카테고리를 선택한 경우, 카테고리는 null로 설정하고 is_best만 true로 설정
       const finalCategory = category === "BEST" ? null : category;
       const finalIsBest = category === "BEST" ? true : undefined;
 
-      // 유튜브 URL을 embed 형식으로 변환 또는 비디오 파일 처리
       let processedVideoUrl = videoUrl;
 
       if (videoUploadType === "file" && videoFile) {
@@ -418,7 +471,6 @@ const EditProject = () => {
       } else if (videoUploadType === "url") {
         processedVideoUrl = videoUrl.trim() ? convertYouTubeUrlToEmbed(videoUrl.trim()) : null;
       } else if (videoUploadType === "file" && !videoFile) {
-        // Keep existing video url untouched
         processedVideoUrl = videoUrl;
       }
 
@@ -443,7 +495,6 @@ const EditProject = () => {
         attachments: newAttachments.length > 0 ? newAttachments : null,
       };
 
-      // BEST 상태가 변경되는 경우에만 is_best 업데이트
       if (finalIsBest !== undefined) {
         updateData.is_best = finalIsBest;
       }
@@ -600,22 +651,40 @@ const EditProject = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="image" className="text-base font-semibold">프로젝트 대표 이미지 (최대 10MB)</Label>
-                    <Input
-                      id="image"
+                    <Label className="text-base font-semibold">프로젝트 대표 이미지 (최대 10MB)</Label>
+                    <div
+                      onClick={() => imageInputRef.current?.click()}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingImage(true); }}
+                      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingImage(false); }}
+                      onDrop={handleImageDrop}
+                      className={`mt-2 w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center min-h-[120px] transition-all duration-200 cursor-pointer group relative overflow-hidden
+                        ${isDraggingImage ? "border-primary bg-primary/10 scale-[1.01]" : "border-border hover:border-primary/50 hover:bg-muted/50 bg-background"}`}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all relative z-10
+                        ${isDraggingImage ? "bg-primary/20 scale-110" : "bg-primary/10 group-hover:scale-110"}`}>
+                        <ImageIcon className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium relative z-10">
+                        {isDraggingImage ? "여기에 사진을 놓으세요 🖼️" : "클릭하거나 사진을 드래그하여 교체"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 relative z-10">이미지 파일 지원, 자동 압축 적용</p>
+                    </div>
+                    <input
+                      ref={imageInputRef}
                       type="file"
                       accept="image/*"
                       onChange={handleImageChange}
-                      className="mt-2"
+                      className="hidden"
                     />
                     {imageFile && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        선택됨: {imageFile.name}
+                      <p className="text-sm text-primary font-medium mt-2 animate-fade-in flex items-center gap-1">
+                        <Badge variant="outline" className="border-primary text-primary">선택됨</Badge> {imageFile.name}
                       </p>
                     )}
                     {!imageFile && currentImageUrl && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        현재 이미지 사용 중
+                      <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
+                        <ImageIcon className="w-3 h-3" /> 기존 프로젝트 이미지 사용 중
                       </p>
                     )}
                   </div>
@@ -645,18 +714,33 @@ const EditProject = () => {
                         )}
                       </TabsContent>
                       <TabsContent value="file" className="mt-0 space-y-2">
-                        <Input
+                        <div
+                          onClick={() => videoInputRef.current?.click()}
+                          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingVideo(true); }}
+                          onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingVideo(false); }}
+                          onDrop={handleVideoDrop}
+                          className={`w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center min-h-[100px] transition-all duration-200 cursor-pointer group relative overflow-hidden
+                            ${isDraggingVideo ? "border-primary bg-primary/10" : "border-border hover:border-primary/50 hover:bg-muted/50 bg-background"}`}
+                        >
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-1 relative z-10
+                            ${isDraggingVideo ? "bg-primary/20" : "bg-primary/10 group-hover:scale-110 transition-transform"}`}>
+                            <Video className="h-4 w-4 text-primary" />
+                          </div>
+                          <p className="text-sm font-medium relative z-10">
+                            {isDraggingVideo ? "여기에 비디오를 놓으세요 🎬" : "클릭하거나 동영상을 드래그하여 교체"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1 relative z-10">최대 20MB 용량</p>
+                        </div>
+                        <input
                           id="videoFile"
+                          ref={videoInputRef}
                           type="file"
                           accept="video/*"
                           onChange={handleVideoFileChange}
-                          className="mt-2"
+                          className="hidden"
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          최대 20MB 용량의 동영상 파일을 직접 업로드하세요
-                        </p>
                         {videoFile && (
-                          <div className="flex items-center gap-2 mt-2 bg-muted p-2 rounded-md">
+                          <div className="flex items-center gap-2 mt-2 bg-muted p-2 rounded-md animate-fade-in">
                             <Video className="h-4 w-4" />
                             <span className="text-sm truncate flex-1">{videoFile.name}</span>
                             <span className="text-xs text-muted-foreground">{formatFileSize(videoFile.size)}</span>
@@ -665,10 +749,10 @@ const EditProject = () => {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setVideoFile(null);
-                                const fileInput = document.getElementById('videoFile') as HTMLInputElement;
-                                if (fileInput) fileInput.value = '';
+                                if (videoInputRef.current) videoInputRef.current.value = '';
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -678,7 +762,7 @@ const EditProject = () => {
                         {!videoFile && videoUrl && videoUrl.includes('supabase') && (
                           <div className="flex items-center gap-2 mt-2 bg-muted p-2 rounded-md">
                             <Video className="h-4 w-4" />
-                            <span className="text-sm truncate flex-1">현재 업로드된 동영상 파일 사용</span>
+                            <span className="text-sm truncate flex-1">현재 업로드된 동영상 파일 사용 중</span>
                           </div>
                         )}
                       </TabsContent>
@@ -687,29 +771,46 @@ const EditProject = () => {
 
                   <div>
                     <Label htmlFor="attachments" className="text-base font-semibold">첨부 파일 (최대 10MB/파일)</Label>
-                    <Input
+                    <div
+                      onClick={() => attachmentInputRef.current?.click()}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingAttachment(true); }}
+                      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingAttachment(false); }}
+                      onDrop={handleAttachmentDrop}
+                      className={`mt-2 w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center min-h-[100px] transition-all duration-200 cursor-pointer group relative overflow-hidden
+                        ${isDraggingAttachment ? "border-primary bg-primary/10" : "border-border hover:border-primary/50 hover:bg-muted/50 bg-background"}`}
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-1 relative z-10
+                        ${isDraggingAttachment ? "bg-primary/20" : "bg-primary/10 group-hover:scale-110 transition-transform"}`}>
+                        <File className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium relative z-10">
+                        {isDraggingAttachment ? "여기에 파일을 놓으세요 📂" : "클릭하거나 파일을 드래그하여 추가"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 relative z-10">여러 파일 선택 가능, 각 10MB 제한</p>
+                    </div>
+                    <input
                       id="attachments"
+                      ref={attachmentInputRef}
                       type="file"
                       multiple
                       onChange={handleAttachmentChange}
-                      className="mt-2"
+                      className="hidden"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      여러 파일을 선택할 수 있습니다. 각 파일은 최대 10MB까지 업로드 가능합니다.
-                    </p>
                     {currentAttachments.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        <p className="text-sm font-medium">현재 첨부 파일:</p>
+                        <p className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
+                          <Badge variant="outline" className="text-[10px] h-4">기존 파일</Badge> {currentAttachments.length}개
+                        </p>
                         {currentAttachments.map((attachment, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-2 bg-muted rounded-md"
+                            className="flex items-center justify-between p-2 bg-muted/40 rounded-md border border-border/50"
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <File className="h-4 w-4 flex-shrink-0" />
+                              <File className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{attachment.name}</p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-[10px] text-muted-foreground">
                                   {attachment.size ? formatFileSize(attachment.size) : ''}
                                 </p>
                               </div>
@@ -718,31 +819,33 @@ const EditProject = () => {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 flex-shrink-0"
-                              onClick={() => removeCurrentAttachment(index)}
+                              className="h-8 w-8 flex-shrink-0 hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); removeCurrentAttachment(index); }}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         ))}
                       </div>
                     )}
                     {attachmentFiles.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-sm font-medium">새로 추가할 파일:</p>
+                      <div className="mt-4 space-y-2">
+                        <p className="text-xs text-primary font-semibold flex items-center gap-1">
+                          <Badge className="text-[10px] h-4 bg-primary/20 text-primary border-none">새 파일</Badge> {attachmentFiles.length}개
+                        </p>
                         {attachmentFiles.map((file, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-2 bg-muted rounded-md"
+                            className="flex items-center justify-between p-2 bg-primary/5 rounded-md border border-primary/20 animate-fade-in"
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <File className="h-4 w-4 flex-shrink-0" />
+                              <File className="h-4 w-4 flex-shrink-0 text-primary" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{file.name}</p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-[10px] text-muted-foreground">
                                   {formatFileSize(file.size)}
                                   {attachmentPasswords[index] && (
-                                    <span className="ml-2 text-primary">🔒 비밀번호 설정됨</span>
+                                    <span className="ml-2 text-primary font-bold">🔒 보안 설정됨</span>
                                   )}
                                 </p>
                               </div>
@@ -751,10 +854,10 @@ const EditProject = () => {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 flex-shrink-0"
-                              onClick={() => removeAttachment(index)}
+                              className="h-8 w-8 flex-shrink-0 hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); removeAttachment(index); }}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         ))}

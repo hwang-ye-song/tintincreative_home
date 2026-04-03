@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home, Search, CreditCard, Loader2 } from "lucide-react";
+import { Shield, Eye, EyeOff, Trash2, Users, Sparkles, Home, Search, CreditCard, Loader2, Upload } from "lucide-react";
 import { Project, Comment, Profile, Payment } from "@/types";
 import { Helmet } from "react-helmet-async";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -219,6 +219,37 @@ const AdminPage = () => {
     staleTime: 30 * 1000,
     retry: false, // 테이블이 없으면 재시도하지 않음
   });
+
+  const [isDraggingPopupImage, setIsDraggingPopupImage] = useState(false);
+
+  const handlePopupImageDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingPopupImage(true);
+  };
+
+  const handlePopupImageDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingPopupImage(false);
+  };
+
+  const handlePopupImageDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingPopupImage(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      handleImageUpload(file);
+    } else if (file) {
+      toast({
+        title: "업로드 불가",
+        description: "이미지 파일만 드롭해주세요.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // 이미지 업로드 핸들러
   const handleImageUpload = async (file: File) => {
@@ -2089,36 +2120,66 @@ const AdminPage = () => {
                       }}
                       disabled={uploadingImage}
                     />
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById("popup-image")?.click()}
-                        disabled={uploadingImage}
-                        className="w-full"
-                      >
-                        {uploadingImage ? "업로드 중..." : "이미지 선택"}
-                      </Button>
-                      {popupSettings.image_url && (
+                    <div 
+                      onDragOver={handlePopupImageDragOver}
+                      onDragLeave={handlePopupImageDragLeave}
+                      onDrop={handlePopupImageDrop}
+                      className={`flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-xl transition-all duration-200
+                        ${isDraggingPopupImage ? "border-primary bg-primary/10 scale-[1.02]" : "border-border hover:border-primary/50 hover:bg-muted/50"}`}
+                    >
+                      <div className={`p-3 rounded-full transition-transform
+                        ${isDraggingPopupImage ? "bg-primary/20 scale-110" : "bg-primary/5"}`}>
+                        <Sparkles className={`h-6 w-6 text-primary ${isDraggingPopupImage ? "animate-pulse" : ""}`} />
+                      </div>
+                      <div className="text-center mb-2">
+                        <p className="text-sm font-medium">
+                          {isDraggingPopupImage ? "여기에 사진을 놓으세요! ✨" : "클릭하거나 사진을 드래그하여 업로드"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PNG, JPG, WEBP, SVG 지원
+                        </p>
+                      </div>
+                      <div className="flex gap-2 w-full mt-2">
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setPopupSettings(prev => ({ 
-                              ...prev, 
-                              image_url: "",
-                              max_width: "500px",
-                              max_height: "auto"
-                            }));
-                            setImageFile(null);
-                            setImageAspectRatio(null); // 이미지 비율 초기화
-                          }}
+                          variant={isDraggingPopupImage ? "default" : "outline"}
+                          onClick={() => document.getElementById("popup-image")?.click()}
                           disabled={uploadingImage}
+                          className="flex-1"
                         >
-                          삭제
+                          {uploadingImage ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              업로드 중...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              이미지 선택
+                            </>
+                          )}
                         </Button>
-                      )}
+                        {popupSettings.image_url && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setPopupSettings(prev => ({ 
+                                ...prev, 
+                                image_url: "",
+                                max_width: "500px",
+                                max_height: "auto"
+                              }));
+                              setImageFile(null);
+                              setImageAspectRatio(null);
+                            }}
+                            disabled={uploadingImage}
+                          >
+                            삭제
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     {popupSettings.image_url && (
                       <div className="w-full aspect-video rounded-lg overflow-hidden border mt-2">
